@@ -618,58 +618,30 @@ async def refresh_device_statuses_async(devices: List[Device]) -> None:
 # Sample static device lists
 STATIC_TAILSCALE_DEVICES: List[Device] = [
     Device(
-        name="ubuntu-server",
-        ip_address="100.109.43.88",
+        name="fedora-server",
+        ip_address="100.97.205.22",
         device_type="tailscale",
         description="Main Server",
         username="sawyer",
     ),
     Device(
-        name="ubuntu-lenovo",
+        name="windows-lenovo",
         ip_address="100.88.172.104",
         device_type="tailscale",
         description="Lenovo Laptop",
-        username="sawyer",
-    ),
-    Device(
-        name="ubuntu-server-vm-01",
-        ip_address="100.84.119.114",
-        device_type="tailscale",
-        description="VM 01",
-        username="sawyer",
-    ),
-    Device(
-        name="ubuntu-server-vm-02",
-        ip_address="100.122.237.56",
-        device_type="tailscale",
-        description="VM 02",
-        username="sawyer",
-    ),
-    Device(
-        name="ubuntu-server-vm-03",
-        ip_address="100.97.229.120",
-        device_type="tailscale",
-        description="VM 03",
-        username="sawyer",
-    ),
-    Device(
-        name="ubuntu-server-vm-04",
-        ip_address="100.73.171.7",
-        device_type="tailscale",
-        description="VM 04",
         username="sawyer",
     ),
 ]
 
 STATIC_LOCAL_DEVICES: List[Device] = [
     Device(
-        name="ubuntu-server",
-        ip_address="192.168.68.52",
+        name="fedora-server",
+        ip_address="192.168.68.55",
         device_type="local",
         description="Main Server",
     ),
     Device(
-        name="ubuntu-lenovo",
+        name="windows-lenovo",
         ip_address="192.168.68.54",
         device_type="local",
         description="Lenovo Laptop",
