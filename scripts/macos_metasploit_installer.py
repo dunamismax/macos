@@ -3,8 +3,9 @@
 Automated Metasploit Framework Installer
 --------------------------------------------------
 A fully automated, zero-interaction installer and configuration tool for the
-Metasploit Framework. This script automatically handles installation,
-database setup, and configuration with no user input.
+Metasploit Framework on macOS. This script uses Homebrew to install all
+available dependencies, handles installation, database setup, and configuration
+with minimal user input.
 
 Version: 1.0.0
 """
@@ -72,12 +73,9 @@ INSTALLER_URL = (
 )
 INSTALLER_PATH = "/tmp/msfinstall"
 
-# List of required system dependencies (for apt-based systems)
+# System dependencies to install via Homebrew
 SYSTEM_DEPENDENCIES = [
-    "build-essential",
-    "libpq-dev",
-    "postgresql",
-    "postgresql-contrib",
+    "postgresql",  # PostgreSQL via Homebrew
     "curl",
     "git",
     "nmap",
@@ -269,36 +267,25 @@ atexit.register(cleanup)
 
 
 # ----------------------------------------------------------------
-# Core Setup Functions
+# Core Setup Functions (Using Homebrew)
 # ----------------------------------------------------------------
 def check_system() -> bool:
     """
-    Check system compatibility, distribution, and required tools.
+    Check system compatibility and required tools for macOS.
     """
     print_step("Checking system compatibility...")
-    os_name = platform.system().lower()
-    if os_name != "linux":
-        print_warning(f"This script is designed for Linux, not {os_name}.")
+    if platform.system().lower() != "darwin":
+        print_warning("This installer is designed for macOS.")
         return False
 
-    is_ubuntu_or_debian = False
-    try:
-        with open("/etc/os-release", "r") as f:
-            os_release = f.read().lower()
-            if "ubuntu" in os_release or "debian" in os_release:
-                is_ubuntu_or_debian = True
-    except FileNotFoundError:
-        pass
-    if not is_ubuntu_or_debian:
-        print_warning(
-            "Optimized for Ubuntu/Debian. May not work correctly on your system."
+    # Ensure Homebrew is installed
+    if not check_command_available("brew"):
+        print_error(
+            "Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun the script."
         )
-
-    if os.geteuid() != 0:
-        print_error("Script must be run with root privileges.")
         return False
 
-    # Display system information
+    # Display basic system information
     table = Table(
         show_header=False, box=None, border_style=NordColors.FROST_3, padding=(0, 2)
     )
@@ -306,7 +293,7 @@ def check_system() -> bool:
     table.add_column("Value", style=NordColors.SNOW_STORM_1)
     table.add_row("Python Version", platform.python_version())
     table.add_row("OS", platform.platform())
-    table.add_row("Distribution", "Ubuntu/Debian" if is_ubuntu_or_debian else "Unknown")
+    table.add_row("Architecture", platform.machine())
     console.print(
         Panel(
             table,
@@ -316,17 +303,17 @@ def check_system() -> bool:
         )
     )
 
-    # Check for required tools
+    # Check for required tools using Homebrew
     required_tools = ["curl", "git"]
     missing_tools = [
         tool for tool in required_tools if not check_command_available(tool)
     ]
     if missing_tools:
         print_error(f"Missing required tools: {', '.join(missing_tools)}")
-        print_step("Installing missing tools...")
+        print_step("Installing missing tools via Homebrew...")
         try:
-            run_command(["apt-get", "update"])
-            run_command(["apt-get", "install", "-y"] + missing_tools)
+            run_command(["brew", "update"])
+            run_command(["brew", "install"] + missing_tools)
             print_success("Required tools installed.")
         except Exception as e:
             print_error(f"Failed to install required tools: {e}")
@@ -338,14 +325,13 @@ def check_system() -> bool:
 
 def install_system_dependencies() -> bool:
     """
-    Install required system dependencies.
+    Install required system dependencies using Homebrew.
     """
-    print_step("Installing system dependencies...")
+    print_step("Installing system dependencies via Homebrew...")
     try:
-        with console.status("[bold blue]Updating package lists...", spinner="dots"):
-            run_command(["apt-get", "update"])
+        run_command(["brew", "update"])
         with Progress(
-            SpinnerColumn("dots", style=f"bold {NordColors.FROST_1}"),
+            SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
             TextColumn(f"[bold {NordColors.FROST_2}]Installing dependencies"),
             BarColumn(
                 bar_width=40,
@@ -359,7 +345,7 @@ def install_system_dependencies() -> bool:
             task = progress.add_task("Installing", total=len(SYSTEM_DEPENDENCIES))
             for pkg in SYSTEM_DEPENDENCIES:
                 try:
-                    run_command(["apt-get", "install", "-y", pkg], check=False)
+                    run_command(["brew", "install", pkg], check=False)
                     progress.advance(task)
                 except Exception as e:
                     print_warning(f"Failed to install {pkg}: {e}")
@@ -411,7 +397,7 @@ def run_metasploit_installer() -> bool:
         ) as progress:
             task = progress.add_task("Installing", total=None)
             env = os.environ.copy()
-            env["DEBIAN_FRONTEND"] = "noninteractive"
+            env["DEBIAN_FRONTEND"] = "noninteractive"  # harmless on macOS
             run_command([INSTALLER_PATH], timeout=INSTALLATION_TIMEOUT, env=env)
             progress.update(task, completed=100)
         print_success("Metasploit Framework installed successfully.")
@@ -423,105 +409,57 @@ def run_metasploit_installer() -> bool:
 
 def configure_postgresql() -> bool:
     """
-    Configure PostgreSQL for use with Metasploit.
+    Configure PostgreSQL for use with Metasploit on macOS.
+    This uses Homebrew services and expects the configuration file
+    at /usr/local/var/postgres/pg_hba.conf.
     """
     print_step("Configuring PostgreSQL...")
     try:
-        pg_status = run_command(["systemctl", "status", "postgresql"], check=False)
-        if pg_status.returncode != 0:
-            print_step("Starting PostgreSQL service...")
-            run_command(["systemctl", "start", "postgresql"])
-            run_command(["systemctl", "enable", "postgresql"])
-            pg_verify = run_command(["systemctl", "status", "postgresql"], check=False)
-            if pg_verify.returncode != 0:
-                print_warning(
-                    "Could not start PostgreSQL service, continuing anyway..."
-                )
-                return False
-        print_success("PostgreSQL is running and enabled.")
+        # Start PostgreSQL via Homebrew if not already running
+        pg_status = run_command(["brew", "services", "list"], check=False)
+        if "postgresql" not in pg_status.stdout or "started" not in pg_status.stdout:
+            print_step("Starting PostgreSQL via Homebrew services...")
+            run_command(["brew", "services", "start", "postgresql"])
+        print_success("PostgreSQL is running.")
+
+        # Setup Metasploit database user
         print_step("Setting up Metasploit database user...")
         user_check = run_command(
-            [
-                "sudo",
-                "-u",
-                "postgres",
-                "psql",
-                "-tAc",
-                "SELECT 1 FROM pg_roles WHERE rolname='msf'",
-            ],
+            ["psql", "-tAc", "SELECT 1 FROM pg_roles WHERE rolname='msf'"],
             check=False,
         )
         if "1" not in user_check.stdout:
             run_command(
-                [
-                    "sudo",
-                    "-u",
-                    "postgres",
-                    "psql",
-                    "-c",
-                    "CREATE USER msf WITH PASSWORD 'msf'",
-                ],
-                check=False,
+                ["psql", "-c", "CREATE USER msf WITH PASSWORD 'msf'"], check=False
             )
-            run_command(
-                [
-                    "sudo",
-                    "-u",
-                    "postgres",
-                    "psql",
-                    "-c",
-                    "CREATE DATABASE msf OWNER msf",
-                ],
-                check=False,
-            )
+            run_command(["psql", "-c", "CREATE DATABASE msf OWNER msf"], check=False)
             print_success("Created Metasploit database and user.")
         else:
             print_success("Metasploit database user already exists.")
         db_check = run_command(
-            [
-                "sudo",
-                "-u",
-                "postgres",
-                "psql",
-                "-tAc",
-                "SELECT 1 FROM pg_database WHERE datname='msf'",
-            ],
+            ["psql", "-tAc", "SELECT 1 FROM pg_database WHERE datname='msf'"],
             check=False,
         )
         if "1" not in db_check.stdout:
-            run_command(
-                [
-                    "sudo",
-                    "-u",
-                    "postgres",
-                    "psql",
-                    "-c",
-                    "CREATE DATABASE msf OWNER msf",
-                ],
-                check=False,
-            )
+            run_command(["psql", "-c", "CREATE DATABASE msf OWNER msf"], check=False)
             print_success("Created Metasploit database.")
-        # Update PostgreSQL authentication file if needed
-        pg_hba_files = glob.glob("/etc/postgresql/*/main/pg_hba.conf")
-        if pg_hba_files:
-            for pg_hba in pg_hba_files:
-                backup = f"{pg_hba}.backup"
-                if not os.path.exists(backup):
-                    shutil.copy2(pg_hba, backup)
-                    print_success(f"Created backup of {pg_hba}")
-                with open(pg_hba, "r") as f:
-                    content = f.read()
-                if (
-                    "local   msf         msf                                     md5"
-                    not in content
-                ):
-                    with open(pg_hba, "a") as f:
-                        f.write("\n# Added by Metasploit installer\n")
-                        f.write(
-                            "local   msf         msf                                     md5\n"
-                        )
-                    print_success(f"Updated {pg_hba}")
-                    run_command(["systemctl", "reload", "postgresql"], check=False)
+        # Update pg_hba.conf under Homebrew's PostgreSQL location if needed
+        pg_hba = "/usr/local/var/postgres/pg_hba.conf"
+        if os.path.exists(pg_hba):
+            backup = f"{pg_hba}.backup"
+            if not os.path.exists(backup):
+                shutil.copy2(pg_hba, backup)
+                print_success(f"Created backup of {pg_hba}")
+            with open(pg_hba, "r") as f:
+                content = f.read()
+            if "local   msf         msf" not in content:
+                with open(pg_hba, "a") as f:
+                    f.write("\n# Added by Metasploit installer\n")
+                    f.write(
+                        "local   msf         msf                                     md5\n"
+                    )
+                print_success(f"Updated {pg_hba}")
+                run_command(["brew", "services", "restart", "postgresql"], check=False)
         return True
     except Exception as e:
         print_warning(f"PostgreSQL configuration error: {e}")
@@ -534,9 +472,9 @@ def check_installation() -> Optional[str]:
     """
     print_step("Verifying installation...")
     possible_paths = [
-        "/usr/bin/msfconsole",
         "/opt/metasploit-framework/bin/msfconsole",
         "/usr/local/bin/msfconsole",
+        "/usr/bin/msfconsole",
     ]
     msfconsole_path = None
     for path in possible_paths:

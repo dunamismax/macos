@@ -1,29 +1,34 @@
 #!/usr/bin/env python3
 """
-Enhanced System Monitor and Benchmarker
+Enhanced System Monitor and Benchmarker (macOS Edition)
 --------------------------------------------------
 
 A sophisticated terminal application for monitoring system performance
-metrics and running benchmarks. This tool features real-time system monitoring,
-CPU and GPU benchmarking, process tracking, and data export capabilities,
-all presented in an elegant Nord-themed interface.
+metrics and running benchmarks, optimized for macOS environments.
+This tool features real-time system monitoring, CPU and GPU benchmarking,
+process tracking, and data export capabilities, all presented in an elegant
+Nord-themed interface.
 
 Version: 2.0.0
 """
 
-# ----------------------------------------------------------------
-# Imports & Dependency Check
-# ----------------------------------------------------------------
+import os
+import sys
+import platform
+
+# Ensure we are running on macOS
+if platform.system() != "Darwin":
+    print("This script is tailored for macOS. Exiting.")
+    sys.exit(1)
+
 import atexit
 import csv
 import json
 import logging
 import math
-import os
 import signal
 import socket
 import subprocess
-import sys
 import threading
 import time
 import traceback
@@ -32,8 +37,46 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
+import getpass
+import shutil
 
-# Third-party libraries
+
+# ----------------------------------------------------------------
+# Dependency Check and Installation
+# ----------------------------------------------------------------
+def check_homebrew() -> None:
+    """Ensure Homebrew is installed on macOS."""
+    if shutil.which("brew") is None:
+        print(
+            "Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun this script."
+        )
+        sys.exit(1)
+
+
+def install_dependencies() -> None:
+    """
+    Ensure required third-party packages are installed.
+    Installs numpy, psutil, pyfiglet, and rich via pip.
+    """
+    required_packages = ["numpy", "psutil", "pyfiglet", "rich"]
+    user = os.environ.get("SUDO_USER", os.environ.get("USER", getpass.getuser()))
+    try:
+        if os.geteuid() != 0:
+            print(f"Installing dependencies for user: {user}")
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
+        else:
+            print(f"Running as sudo. Installing dependencies for user: {user}")
+            subprocess.check_call(
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to install dependencies: {e}")
+        sys.exit(1)
+
+
 try:
     import numpy as np
     import psutil
@@ -58,9 +101,10 @@ try:
     from rich.traceback import install as install_rich_traceback
 except ImportError as e:
     print(f"Error: Missing dependency: {e}")
-    print("Please install required dependencies using:")
-    print("pip install numpy psutil pyfiglet rich")
-    sys.exit(1)
+    print("Attempting to install required dependencies...")
+    install_dependencies()
+    print("Dependencies installed. Restarting script...")
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 install_rich_traceback(show_locals=True)
 
@@ -84,8 +128,6 @@ OPERATION_TIMEOUT = 30  # seconds
 # Nord-Themed Colors
 # ----------------------------------------------------------------
 class NordColors:
-    """Nord color palette for consistent theming throughout the application."""
-
     POLAR_NIGHT_1 = "#2E3440"  # Background darkest
     POLAR_NIGHT_2 = "#3B4252"
     POLAR_NIGHT_3 = "#434C5E"
@@ -213,7 +255,7 @@ def display_panel(
 # ----------------------------------------------------------------
 def cleanup() -> None:
     print_step("Performing cleanup tasks...")
-    # Additional cleanup can be added here
+    # Additional cleanup tasks can be added here
 
 
 def signal_handler(sig: int, frame: Any) -> None:
@@ -276,27 +318,14 @@ def get_cpu_info() -> Dict[str, Any]:
     threads = psutil.cpu_count(logical=True)
     cpu_name = "Unknown CPU"
     try:
-        if sys.platform.startswith("linux"):
-            with open("/proc/cpuinfo", "r") as f:
-                for line in f:
-                    if "model name" in line:
-                        cpu_name = line.split(":", 1)[1].strip()
-                        break
-        elif sys.platform == "darwin":
+        # macOS-specific CPU info
+        if sys.platform == "darwin":
             result = subprocess.run(
                 ["sysctl", "-n", "machdep.cpu.brand_string"],
                 text=True,
                 capture_output=True,
             )
             cpu_name = result.stdout.strip()
-        elif sys.platform == "win32":
-            import winreg
-
-            key = winreg.OpenKey(
-                winreg.HKEY_LOCAL_MACHINE,
-                r"HARDWARE\DESCRIPTION\System\CentralProcessor\0",
-            )
-            cpu_name = winreg.QueryValueEx(key, "ProcessorNameString")[0]
     except Exception:
         pass
     return {
@@ -318,11 +347,8 @@ def get_cpu_temperature() -> Optional[float]:
             if key in temps and temps[key]:
                 sensor = temps[key]
                 return sum(t.current for t in sensor) / len(sensor)
-    try:
-        with open("/sys/class/thermal/thermal_zone0/temp", "r") as f:
-            return float(f.read().strip()) / 1000.0
-    except Exception:
-        return None
+    # macOS does not expose CPU temperature via sysfs; return None
+    return None
 
 
 def get_gpu_info() -> Dict[str, Any]:
@@ -370,14 +396,6 @@ def get_gpu_info() -> Dict[str, Any]:
                 return gpu_info
         except Exception:
             pass
-        if sys.platform.startswith("linux"):
-            result = subprocess.run(
-                ["lspci", "-v"], text=True, capture_output=True, check=False
-            )
-            for line in result.stdout.splitlines():
-                if "VGA" in line or "3D" in line:
-                    gpu_info["name"] = line.split(":", 1)[1].strip()
-                    break
     except Exception as e:
         logging.warning(f"Error retrieving GPU info: {e}")
     return gpu_info
@@ -1220,6 +1238,7 @@ def run_monitor(
     sort_by: str = "cpu",
 ) -> None:
     setup_logging()
+    # On macOS, running without root privileges may limit access to some data.
     if os.name == "posix" and os.geteuid() != 0:
         print_warning("Running without root privileges may limit functionality.")
         if not Confirm.ask("Continue anyway?"):
@@ -1235,8 +1254,7 @@ def run_monitor(
             refresh_per_second=1 / refresh,
             screen=True,
         ) as live:
-            running = True
-            while running:
+            while True:
                 monitor.update()
                 live.update(monitor.build_dashboard(sort_by))
                 now = time.time()

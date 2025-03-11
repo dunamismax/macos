@@ -17,43 +17,84 @@ Note: Some operations may require root privileges.
 Version: 2.0.0
 """
 
-import atexit
-import datetime
-import hashlib
 import os
-import re
-import shutil
-import signal
-import stat
-import subprocess
 import sys
-import tarfile
-import threading
+import platform
+import subprocess
+import getpass
+import shutil
+import atexit
+import signal
 import time
+import threading
+import re
+import tarfile
+import hashlib
+import stat
 from datetime import datetime as dt
 from pathlib import Path
 from typing import List, Tuple, Dict, Optional, Any
 
-import pyfiglet
-from rich.align import Align
-from rich.columns import Columns
-from rich.console import Console
-from rich.live import Live
-from rich.panel import Panel
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    BarColumn,
-    TextColumn,
-    TimeRemainingColumn,
-    TaskID,
-)
-from rich.prompt import Prompt, Confirm, IntPrompt
-from rich.table import Table
-from rich.text import Text
-from rich.traceback import install as install_rich_traceback
-from rich.style import Style
-from rich.theme import Theme
+# Ensure this script is run on macOS.
+if platform.system() != "Darwin":
+    print("This script is tailored for macOS. Exiting.")
+    sys.exit(1)
+
+
+# ----------------------------------------------------------------
+# Dependency Check and Installation
+# ----------------------------------------------------------------
+def install_dependencies() -> None:
+    """
+    Ensure required third-party packages are installed.
+    Uses pip (with --user if not run as root) to install:
+      - rich
+      - pyfiglet
+    """
+    required_packages = ["rich", "pyfiglet"]
+    user = os.environ.get("SUDO_USER", os.environ.get("USER", getpass.getuser()))
+    try:
+        if os.geteuid() != 0:
+            print(f"Installing dependencies for user: {user}")
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
+        else:
+            print(f"Running as sudo. Installing dependencies for user: {user}")
+            subprocess.check_call(
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to install dependencies: {e}")
+        sys.exit(1)
+
+
+try:
+    import pyfiglet
+    from rich.console import Console
+    from rich.align import Align
+    from rich.columns import Columns
+    from rich.live import Live
+    from rich.panel import Panel
+    from rich.progress import (
+        Progress,
+        SpinnerColumn,
+        BarColumn,
+        TextColumn,
+        TimeRemainingColumn,
+    )
+    from rich.prompt import Prompt, Confirm, IntPrompt
+    from rich.table import Table
+    from rich.text import Text
+    from rich.traceback import install as install_rich_traceback
+    from rich.style import Style
+    from rich.theme import Theme
+except ImportError:
+    print("Required libraries not found. Installing dependencies...")
+    install_dependencies()
+    print("Dependencies installed. Restarting script...")
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 # Install rich traceback handler for improved error reporting.
 install_rich_traceback(show_locals=True)
@@ -71,8 +112,8 @@ HOSTNAME = (
 )
 
 # Buffer sizes and thresholds
-CHUNK_SIZE = 1024 * 1024  # 1 MB (used for checksum/compression progress)
-DEFAULT_BUFFER_SIZE = 8192  # Buffer for copy operations
+CHUNK_SIZE = 1024 * 1024  # 1 MB (for checksum/compression progress)
+DEFAULT_BUFFER_SIZE = 8192  # Buffer size for copy operations
 COMPRESSION_LEVEL = 9  # tar.gz compression level
 LARGE_FILE_THRESHOLD = 100 * 1024 * 1024  # 100 MB
 
@@ -85,7 +126,6 @@ ARCHIVE_EXTENSIONS = {".zip", ".tar", ".gz", ".rar", ".7z", ".bz2"}
 CODE_EXTENSIONS = {".py", ".js", ".java", ".c", ".cpp", ".h", ".php", ".html", ".css"}
 CHECKSUM_ALGORITHMS = ["md5", "sha1", "sha256", "sha512"]
 
-# Terminal width for formatting
 TERM_WIDTH = shutil.get_terminal_size().columns
 
 
@@ -113,7 +153,6 @@ class NordColors:
     PURPLE = "#B48EAD"
 
 
-# Create a Rich Console with a basic theme (you may expand the theme if desired)
 console = Console(
     theme=Theme(
         {
@@ -217,8 +256,8 @@ def create_menu_table(title: str, options: List[Tuple[str, str]]) -> Table:
     """
     Create a numbered menu table.
     Args:
-        title: Title of the menu
-        options: List of (number, description) pairs
+        title: Title of the menu.
+        options: List of (number, description) pairs.
     Returns:
         A Rich Table.
     """
@@ -918,7 +957,6 @@ def main_menu() -> None:
             time.sleep(1)
 
 
-# Individual menus for copy, move, and delete operations.
 def copy_menu() -> None:
     """Interactive menu for copying files/directories."""
     clear_screen()

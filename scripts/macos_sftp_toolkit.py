@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Fedora SFTP Toolkit
+macOS SFTP Toolkit
 --------------------------------------------------
 A fully interactive, menu-driven SFTP toolkit for performing
-SFTP file transfer operations with a production-grade, polished
-CLI that integrates prompt_toolkit for auto-completion, Rich for
-stylish output, and Pyfiglet for dynamic ASCII banners.
+SFTP file transfer operations to Linux servers. This polished
+CLI integrates prompt_toolkit for auto-completion, Rich for stylish
+output, and Pyfiglet for dynamic ASCII banners.
 
 Features:
   • Interactive, menu-driven interface with dynamic ASCII banners.
@@ -14,18 +14,19 @@ Features:
     directory management.
   • Predefined device lists (Tailscale and local) for quick connection setup.
   • Real-time progress tracking with elegant spinners during file transfers.
-  • Robust error handling and cross-platform compatibility.
+  • Robust error handling and macOS–specific configurations.
   • Fully integrated prompt_toolkit auto-completion for both local and remote
     file/directory selection.
   • Nord-themed color styling throughout the application.
 
-This script is adapted for Fedora Linux.
+This script is optimized for macOS.
 Version: 3.1.0
 """
 
 # ----------------------------------------------------------------
-# Dependency Check and Imports
+# Platform Check and Dependency Check
 # ----------------------------------------------------------------
+import platform
 import atexit
 import os
 import sys
@@ -40,26 +41,34 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Callable
 
+if platform.system() != "Darwin":
+    print("This script is intended to run on macOS. Exiting.")
+    sys.exit(1)
+
 
 def install_dependencies():
-    """Install required dependencies for the non-root user when run with sudo."""
+    """
+    Ensure required third-party packages are installed.
+    Uses pip (with --user if not run as root) to install:
+      - paramiko
+      - rich
+      - pyfiglet
+      - prompt_toolkit
+    """
     required_packages = ["paramiko", "rich", "pyfiglet", "prompt_toolkit"]
     user = os.environ.get("SUDO_USER", os.environ.get("USER", getpass.getuser()))
-    if os.geteuid() != 0:
-        print(f"Installing dependencies for user: {user}")
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "--user"] + required_packages
-        )
-        return
-
-    print(f"Running as sudo. Installing dependencies for user: {user}")
-    real_user_home = os.path.expanduser(f"~{user}")
     try:
-        subprocess.check_call(
-            ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
-            + required_packages
-        )
-        print(f"Successfully installed dependencies for user: {user}")
+        if os.geteuid() != 0:
+            print(f"Installing dependencies for user: {user}")
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
+        else:
+            print(f"Running as sudo. Installing dependencies for user: {user}")
+            subprocess.check_call(
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -94,32 +103,11 @@ try:
 
 except ImportError:
     print("Required libraries not found. Installing dependencies...")
-    try:
-        if os.geteuid() != 0:
-            subprocess.check_call(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "install",
-                    "paramiko",
-                    "rich",
-                    "pyfiglet",
-                    "prompt_toolkit",
-                ]
-            )
-        else:
-            install_dependencies()
-        print("Dependencies installed successfully. Restarting script...")
-        os.execv(sys.executable, [sys.executable] + sys.argv)
-    except Exception as e:
-        print(f"Error installing dependencies: {e}")
-        print("Please install the required packages manually:")
-        print("pip install paramiko rich pyfiglet prompt_toolkit")
-        sys.exit(1)
+    install_dependencies()
+    print("Dependencies installed. Restarting script...")
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 install_rich_traceback(show_locals=True)
-
 console: Console = Console()
 
 # ----------------------------------------------------------------
@@ -131,8 +119,8 @@ DEFAULT_USERNAME: str = (
 )
 SFTP_DEFAULT_PORT: int = 22
 VERSION: str = "3.1.0"
-APP_NAME: str = "Fedora SFTP Toolkit"
-APP_SUBTITLE: str = "Advanced File Transfer Manager for Fedora"
+APP_NAME: str = "macOS SFTP Toolkit"
+APP_SUBTITLE: str = "Advanced File Transfer Manager for macOS"
 OPERATION_TIMEOUT: int = 30  # seconds
 
 if os.environ.get("SUDO_USER"):
@@ -229,7 +217,7 @@ class SFTPConnection:
 sftp_connection = SFTPConnection()
 
 # ----------------------------------------------------------------
-# Static Device Lists (Fedora-based names)
+# Static Device Lists (Leave these unchanged)
 # ----------------------------------------------------------------
 STATIC_TAILSCALE_DEVICES: List[Device] = [
     Device(
@@ -386,11 +374,9 @@ class SpinnerProgressManager:
         """Add a new task with a unique ID."""
         task_id = f"task_{len(self.tasks)}"
         self.start_times[task_id] = time.time()
-
         if total_size is not None:
             self.total_sizes[task_id] = total_size
             self.completed_sizes[task_id] = 0
-
         self.tasks[task_id] = self.progress.add_task(
             description,
             status=f"[{NordColors.FROST_3}]Starting...",
@@ -402,30 +388,22 @@ class SpinnerProgressManager:
         """Update a task's status and progress."""
         if task_id not in self.tasks:
             return
-
         task = self.tasks[task_id]
         self.progress.update(task, status=status)
-
         if completed is not None and task_id in self.total_sizes:
             self.completed_sizes[task_id] = completed
             percentage = min(100, int(100 * completed / self.total_sizes[task_id]))
-
-            # Calculate ETA
             elapsed = time.time() - self.start_times[task_id]
             if percentage > 0:
                 total_time = elapsed * 100 / percentage
                 remaining = total_time - elapsed
                 eta_str = f"[{NordColors.FROST_4}]ETA: {format_time(remaining)}"
-
-                # Show transfer speed
                 if elapsed > 0:
                     speed = completed / elapsed
                     speed_str = format_bytes(speed) + "/s"
                     eta_str += f" • {speed_str}"
             else:
                 eta_str = f"[{NordColors.FROST_4}]Calculating..."
-
-            # Format status with percentage
             status_with_percentage = (
                 f"[{NordColors.FROST_3}]{status} [{NordColors.GREEN}]{percentage}%[/]"
             )
@@ -435,23 +413,18 @@ class SpinnerProgressManager:
         """Mark a task as complete with success or failure indication."""
         if task_id not in self.tasks:
             return
-
         task = self.tasks[task_id]
         status_color = NordColors.GREEN if success else NordColors.RED
         status_text = "COMPLETED" if success else "FAILED"
-
         if task_id in self.total_sizes:
             self.completed_sizes[task_id] = self.total_sizes[task_id]
-
         elapsed = time.time() - self.start_times[task_id]
         elapsed_str = format_time(elapsed)
-
         status_msg = f"[bold {status_color}]{status_text}[/] in {elapsed_str}"
         if task_id in self.total_sizes and success:
             speed = self.total_sizes[task_id] / max(elapsed, 0.1)
             speed_str = format_bytes(speed) + "/s"
             status_msg += f" • {speed_str}"
-
         self.progress.update(task, status=status_msg, eta="")
 
 
@@ -473,11 +446,9 @@ def format_time(seconds: float) -> str:
         return "less than a second"
     elif seconds < 60:
         return f"{seconds:.1f}s"
-
     minutes, seconds = divmod(seconds, 60)
     if minutes < 60:
         return f"{int(minutes)}m {int(seconds)}s"
-
     hours, minutes = divmod(minutes, 60)
     return f"{int(hours)}h {int(minutes)}m"
 
@@ -587,6 +558,13 @@ def show_help() -> None:
 
 def get_prompt_style() -> PtStyle:
     return PtStyle.from_dict({"prompt": f"bold {NordColors.PURPLE}"})
+
+
+def wait_for_key() -> None:
+    pt_prompt(
+        "Press Enter to continue...",
+        style=PtStyle.from_dict({"prompt": f"{NordColors.FROST_2}"}),
+    )
 
 
 # ----------------------------------------------------------------
@@ -775,35 +753,24 @@ def connect_sftp() -> bool:
 
     try:
         spinner.start()
-
-        # Step 1: Initialize secure channel
         spinner.update_task(task_id, "Initializing secure channel...")
-        time.sleep(0.5)  # Slight delay for visual feedback
+        time.sleep(0.5)
         transport = paramiko.Transport((hostname, port))
-
-        # Step 2: Negotiate encryption
         spinner.update_task(task_id, "Negotiating encryption parameters...")
         time.sleep(0.5)
         transport.connect(username=username, pkey=key)
-
-        # Step 3: Establish SFTP
         spinner.update_task(task_id, f"Establishing SFTP connection to {hostname}...")
         time.sleep(0.5)
         sftp = paramiko.SFTPClient.from_transport(transport)
-
-        # Mark as complete
         spinner.update_task(task_id, "Connection established successfully!")
         time.sleep(0.5)
         spinner.complete_task(task_id, True)
-
-        # Update connection state
         sftp_connection.sftp = sftp
         sftp_connection.transport = transport
         sftp_connection.hostname = hostname
         sftp_connection.username = username
         sftp_connection.port = port
         sftp_connection.connected_at = datetime.now()
-
         console.print(
             f"[bold {NordColors.GREEN}]Successfully connected to SFTP server using key-based authentication.[/]"
         )
@@ -846,30 +813,20 @@ def connect_sftp_device(device: Device) -> bool:
 
     try:
         spinner.start()
-
-        # Step 1: Initialize secure channel
         spinner.update_task(task_id, "Initializing secure channel...")
         time.sleep(0.5)
         transport = paramiko.Transport((device.ip_address, port))
-
-        # Step 2: Negotiate encryption
         spinner.update_task(task_id, "Negotiating encryption parameters...")
         time.sleep(0.5)
         transport.connect(username=username, pkey=key)
-
-        # Step 3: Establish SFTP
         spinner.update_task(
             task_id, f"Establishing SFTP connection to {device.name}..."
         )
         time.sleep(0.5)
         sftp = paramiko.SFTPClient.from_transport(transport)
-
-        # Mark as complete
         spinner.update_task(task_id, "Connection established successfully!")
         time.sleep(0.5)
         spinner.complete_task(task_id, True)
-
-        # Update connection state
         sftp_connection.sftp = sftp
         sftp_connection.transport = transport
         sftp_connection.hostname = device.ip_address
@@ -877,7 +834,6 @@ def connect_sftp_device(device: Device) -> bool:
         sftp_connection.port = port
         sftp_connection.connected_at = datetime.now()
         device.last_connected = datetime.now()
-
         console.print(
             f"[bold {NordColors.GREEN}]Successfully connected to {device.name} using key-based authentication.[/]"
         )
@@ -902,29 +858,20 @@ def disconnect_sftp() -> None:
 
     try:
         spinner.start()
-
-        # Step 1: Close SFTP channel
         spinner.update_task(task_id, "Closing SFTP channel...")
         time.sleep(0.5)
         if sftp_connection.sftp:
             sftp_connection.sftp.close()
-
-        # Step 2: Terminate transport
         spinner.update_task(task_id, "Terminating transport...")
         time.sleep(0.5)
         if sftp_connection.transport:
             sftp_connection.transport.close()
-
-        # Mark as complete
         spinner.update_task(task_id, "Disconnected successfully")
         time.sleep(0.5)
         spinner.complete_task(task_id, True)
-
-        # Reset connection state
         sftp_connection.sftp = None
         sftp_connection.transport = None
         sftp_connection.connected_at = None
-
         console.print(f"[bold {NordColors.YELLOW}]Disconnected from SFTP server.[/]")
     except Exception as e:
         spinner.complete_task(task_id, False)
@@ -970,26 +917,18 @@ def list_remote_directory() -> None:
         auto_suggest=AutoSuggestFromHistory(),
         style=get_prompt_style(),
     )
-
     spinner = SpinnerProgressManager("Directory Listing")
     task_id = spinner.add_task(f"Listing directory {remote_path}...")
-
     try:
         spinner.start()
-
-        # Start listing
         spinner.update_task(
             task_id, f"Retrieving directory listing for {remote_path}..."
         )
         file_list = sftp_connection.sftp.listdir_attr(remote_path)
-
-        # Mark task complete
         spinner.update_task(task_id, f"Retrieved {len(file_list)} items")
         time.sleep(0.5)
         spinner.complete_task(task_id, True)
         spinner.stop()
-
-        # Sort and display results
         sorted_items = sorted(
             file_list, key=lambda x: (not (x.st_mode & 0o40000), x.filename.lower())
         )
@@ -1042,8 +981,6 @@ def list_remote_directory() -> None:
                 mod_time,
             )
         console.print(table)
-
-        # Print summary
         console.print(
             f"[{NordColors.FROST_3}]Total: {dir_count} directories, {file_count} files, {format_bytes(total_size)}[/]"
         )
@@ -1088,21 +1025,17 @@ def upload_file() -> None:
         print_warning("Upload canceled")
         return
 
-    # Setup spinner with progress tracking
     spinner = SpinnerProgressManager("Upload Operation")
     upload_task_id = spinner.add_task(
         f"Uploading {os.path.basename(local_path)}", total_size=file_size
     )
 
-    # Define callback for progress updates
     def progress_callback(transferred, total):
         spinner.update_task(upload_task_id, "Uploading", completed=transferred)
 
     try:
         spinner.start()
         sftp_connection.sftp.put(local_path, remote_path, callback=progress_callback)
-
-        # Mark as completed on success
         spinner.complete_task(upload_task_id, True)
         print_success(f"Upload completed: {local_path} → {remote_path}")
     except Exception as e:
@@ -1149,31 +1082,25 @@ def download_file() -> None:
         else:
             return
 
-    # Initialize spinner for file info retrieval
     info_spinner = SpinnerProgressManager("File Information")
     info_task_id = info_spinner.add_task("Retrieving file information...")
-
     try:
         info_spinner.start()
         file_stat = sftp_connection.sftp.stat(remote_path)
         file_size = file_stat.st_size
-
         if file_stat.st_mode & 0o40000:
             info_spinner.complete_task(info_task_id, False)
             info_spinner.stop()
             print_error(f"{remote_path} is a directory, not a file")
             return
-
         remote_filename = os.path.basename(remote_path)
         dest_path = os.path.join(local_dest, remote_filename)
-
         info_spinner.update_task(
             info_task_id, f"Retrieved info: {format_bytes(file_size)}"
         )
         time.sleep(0.5)
         info_spinner.complete_task(info_task_id, True)
         info_spinner.stop()
-
         if os.path.exists(dest_path):
             if not Confirm.ask(
                 f"[bold {NordColors.YELLOW}]File {dest_path} already exists. Overwrite?[/]",
@@ -1196,21 +1123,17 @@ def download_file() -> None:
         print_warning("Download canceled")
         return
 
-    # Setup download spinner with progress tracking
     spinner = SpinnerProgressManager("Download Operation")
     download_task_id = spinner.add_task(
         f"Downloading {os.path.basename(remote_path)}", total_size=file_size
     )
 
-    # Define callback for progress updates
     def progress_callback(transferred, total):
         spinner.update_task(download_task_id, "Downloading", completed=transferred)
 
     try:
         spinner.start()
         sftp_connection.sftp.get(remote_path, dest_path, callback=progress_callback)
-
-        # Mark as completed on success
         spinner.complete_task(download_task_id, True)
         print_success(f"Download completed: {remote_path} → {dest_path}")
     except Exception as e:
@@ -1231,16 +1154,12 @@ def delete_remote_file() -> None:
         auto_suggest=AutoSuggestFromHistory(),
         style=get_prompt_style(),
     )
-
-    # Check file info first
     spinner = SpinnerProgressManager("File Verification")
     task_id = spinner.add_task(f"Verifying {remote_path}...")
-
     try:
         spinner.start()
         stat = sftp_connection.sftp.stat(remote_path)
         is_dir = stat.st_mode & 0o40000
-
         if is_dir:
             spinner.complete_task(task_id, False)
             spinner.stop()
@@ -1248,23 +1167,19 @@ def delete_remote_file() -> None:
                 f"{remote_path} is a directory. Use the delete directory option instead."
             )
             return
-
         spinner.update_task(task_id, "Verification complete")
         spinner.complete_task(task_id, True)
         spinner.stop()
-
         if Confirm.ask(
             f"[bold {NordColors.RED}]Are you sure you want to delete {remote_path}?[/]",
             default=False,
         ):
             delete_spinner = SpinnerProgressManager("Delete Operation")
             delete_task = delete_spinner.add_task(f"Deleting {remote_path}...")
-
             try:
                 delete_spinner.start()
                 delete_spinner.update_task(delete_task, f"Deleting {remote_path}...")
                 sftp_connection.sftp.remove(remote_path)
-
                 delete_spinner.update_task(delete_task, "File deleted successfully")
                 time.sleep(0.5)
                 delete_spinner.complete_task(delete_task, True)
@@ -1291,22 +1206,16 @@ def rename_remote_file() -> None:
         auto_suggest=AutoSuggestFromHistory(),
         style=get_prompt_style(),
     )
-
-    # Verify file exists
     spinner = SpinnerProgressManager("File Verification")
     task_id = spinner.add_task(f"Verifying {old_name}...")
-
     try:
         spinner.start()
         stat = sftp_connection.sftp.stat(old_name)
         is_dir = stat.st_mode & 0o40000
-
         entity_type = "directory" if is_dir else "file"
         spinner.update_task(task_id, f"Confirmed {entity_type} exists")
         spinner.complete_task(task_id, True)
         spinner.stop()
-
-        # Get new name
         parent_dir = os.path.dirname(old_name)
         file_name = os.path.basename(old_name)
         same_dir_completer = RemotePathCompleter(
@@ -1320,25 +1229,19 @@ def rename_remote_file() -> None:
             auto_suggest=AutoSuggestFromHistory(),
             style=get_prompt_style(),
         )
-
         if "/" not in new_name and parent_dir:
             new_name = f"{parent_dir}/{new_name}"
-
         if not Confirm.ask(
             f"[bold {NordColors.YELLOW}]Rename {entity_type} from {old_name} to {new_name}?[/]",
             default=True,
         ):
             print_warning("Rename canceled")
             return
-
-        # Perform rename operation
         rename_spinner = SpinnerProgressManager("Rename Operation")
         rename_task = rename_spinner.add_task(f"Renaming {old_name} to {new_name}...")
-
         try:
             rename_spinner.start()
             sftp_connection.sftp.rename(old_name, new_name)
-
             rename_spinner.update_task(
                 rename_task, f"{entity_type.capitalize()} renamed successfully"
             )
@@ -1350,7 +1253,6 @@ def rename_remote_file() -> None:
             print_error(f"Failed to rename {entity_type}: {e}")
         finally:
             rename_spinner.stop()
-
     except Exception as e:
         spinner.complete_task(task_id, False)
         spinner.stop()
@@ -1368,15 +1270,11 @@ def create_remote_directory() -> None:
         auto_suggest=AutoSuggestFromHistory(),
         style=get_prompt_style(),
     )
-
-    # Check if directory already exists
     spinner = SpinnerProgressManager("Directory Check")
     task_id = spinner.add_task(f"Checking if {remote_dir} exists...")
-
     try:
         spinner.start()
         sftp_connection.sftp.stat(remote_dir)
-
         spinner.update_task(task_id, "Directory already exists")
         spinner.complete_task(task_id, False)
         spinner.stop()
@@ -1386,15 +1284,11 @@ def create_remote_directory() -> None:
         spinner.update_task(task_id, "Directory does not exist")
         spinner.complete_task(task_id, True)
         spinner.stop()
-
-        # Create the directory
         create_spinner = SpinnerProgressManager("Directory Creation")
         create_task = create_spinner.add_task(f"Creating directory {remote_dir}...")
-
         try:
             create_spinner.start()
             sftp_connection.sftp.mkdir(remote_dir)
-
             create_spinner.update_task(create_task, "Directory created successfully")
             time.sleep(0.5)
             create_spinner.complete_task(create_task, True)
@@ -1421,41 +1315,31 @@ def delete_remote_directory() -> None:
         auto_suggest=AutoSuggestFromHistory(),
         style=get_prompt_style(),
     )
-
-    # Verify directory exists and is a directory
     spinner = SpinnerProgressManager("Directory Check")
     task_id = spinner.add_task(f"Verifying {remote_dir}...")
-
     try:
         spinner.start()
         stat = sftp_connection.sftp.stat(remote_dir)
         is_dir = stat.st_mode & 0o40000
-
         if not is_dir:
             spinner.complete_task(task_id, False)
             spinner.stop()
             print_error(f"{remote_dir} is not a directory.")
             return
-
         spinner.update_task(task_id, "Directory verified")
         spinner.complete_task(task_id, True)
         spinner.stop()
-
-        # Check if directory is empty
         contents_spinner = SpinnerProgressManager("Contents Check")
         contents_task = contents_spinner.add_task(f"Checking directory contents...")
-
         try:
             contents_spinner.start()
             contents = sftp_connection.sftp.listdir(remote_dir)
-
             if contents:
                 contents_spinner.update_task(
                     contents_task, f"Directory contains {len(contents)} items"
                 )
                 contents_spinner.complete_task(contents_task, True)
                 contents_spinner.stop()
-
                 print_warning(
                     f"Directory is not empty. Contains {len(contents)} items."
                 )
@@ -1472,30 +1356,22 @@ def delete_remote_directory() -> None:
                     def rm_rf(path):
                         try:
                             files = sftp_connection.sftp.listdir(path)
-
-                            # Create a spinner for recursive deletion
                             delete_spinner = SpinnerProgressManager("Recursive Delete")
                             path_task = delete_spinner.add_task(
                                 f"Recursively deleting {path}..."
                             )
-
                             try:
                                 delete_spinner.start()
-
                                 for f in files:
                                     filepath = os.path.join(path, f)
                                     delete_spinner.update_task(
                                         path_task, f"Processing {filepath}"
                                     )
-
                                     try:
                                         try:
-                                            # Check if it's a directory
                                             sftp_connection.sftp.listdir(filepath)
-                                            # If we get here, it's a directory
                                             rm_rf(filepath)
                                         except:
-                                            # If listdir fails, it's a file
                                             sftp_connection.sftp.remove(filepath)
                                             print_step(f"Deleted file: {filepath}")
                                     except Exception as e:
@@ -1503,13 +1379,10 @@ def delete_remote_directory() -> None:
                                         delete_spinner.complete_task(path_task, False)
                                         delete_spinner.stop()
                                         return False
-
-                                # Remove the directory itself
                                 delete_spinner.update_task(
                                     path_task, f"Removing directory {path}"
                                 )
                                 sftp_connection.sftp.rmdir(path)
-
                                 delete_spinner.update_task(
                                     path_task, "Directory deleted successfully"
                                 )
@@ -1522,21 +1395,17 @@ def delete_remote_directory() -> None:
                                     delete_spinner.stop()
                                 print_error(f"Failed operation on {path}: {e}")
                                 return False
-
                         except Exception as e:
                             print_error(f"Failed operation on {path}: {e}")
                             return False
 
-                    # Start the recursive deletion
                     recursive_spinner = SpinnerProgressManager("Recursive Deletion")
                     recursive_task = recursive_spinner.add_task(
                         f"Recursively deleting {remote_dir}..."
                     )
-
                     try:
                         recursive_spinner.start()
                         success = rm_rf(remote_dir)
-
                         if success:
                             recursive_spinner.update_task(
                                 recursive_task, "Directory and all contents deleted"
@@ -1567,19 +1436,15 @@ def delete_remote_directory() -> None:
             contents_spinner.stop()
             print_error(f"Failed to check directory contents: {e}")
             return
-
-        # Delete empty directory
         if Confirm.ask(
             f"[bold {NordColors.RED}]Are you sure you want to delete this directory?[/]",
             default=False,
         ):
             delete_spinner = SpinnerProgressManager("Directory Deletion")
             delete_task = delete_spinner.add_task(f"Deleting directory {remote_dir}...")
-
             try:
                 delete_spinner.start()
                 sftp_connection.sftp.rmdir(remote_dir)
-
                 delete_spinner.update_task(
                     delete_task, "Directory deleted successfully"
                 )
@@ -1614,13 +1479,6 @@ def display_status_bar() -> None:
             border_style=NordColors.FROST_4,
             padding=(0, 2),
         )
-    )
-
-
-def wait_for_key() -> None:
-    pt_prompt(
-        "Press Enter to continue...",
-        style=PtStyle.from_dict({"prompt": f"{NordColors.FROST_2}"}),
     )
 
 

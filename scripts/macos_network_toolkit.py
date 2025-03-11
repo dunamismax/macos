@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Enhanced Network Toolkit
+Enhanced Network Toolkit – macOS Edition
 --------------------------------------------------
 
-A powerful and beautiful terminal-based utility for comprehensive network
-analysis and diagnostics with a clean Nord-themed interface.
+A powerful terminal-based utility for comprehensive network analysis and diagnostics
+with a clean Nord-themed interface, optimized for macOS environments.
 
 Features:
-  • View detailed network interface statistics
-  • Display IP configuration across all interfaces
+  • List and analyze network interfaces using ifconfig
+  • Display IP configuration for all interfaces
   • Test connectivity with ping and visualize response times
   • Trace network paths (traceroute) with hop latency visualization
   • Perform DNS lookups for multiple record types
@@ -19,9 +19,6 @@ Features:
 Version: 2.0.0
 """
 
-# ----------------------------------------------------------------
-# Imports & Dependency Check
-# ----------------------------------------------------------------
 import atexit
 import ctypes
 import datetime
@@ -41,6 +38,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+# Ensure the script runs only on macOS
+if platform.system() != "Darwin":
+    print("This script is optimized for macOS. Exiting.")
+    sys.exit(1)
+
 try:
     import pyfiglet
     from rich import box
@@ -59,7 +61,7 @@ try:
     from rich.rule import Rule
     from rich.style import Style
     from rich.table import Table
-    from rich.text import Text  # Added to fix the undefined "Text"
+    from rich.text import Text
     from rich.traceback import install as install_rich_traceback
 except ImportError:
     print("This script requires 'rich' and 'pyfiglet'. Please install them with:")
@@ -69,7 +71,7 @@ except ImportError:
 install_rich_traceback(show_locals=True)
 
 # ----------------------------------------------------------------
-# Configuration & Constants
+# Configuration & Constants (macOS-specific)
 # ----------------------------------------------------------------
 APP_NAME: str = "Network Toolkit"
 APP_SUBTITLE: str = "Comprehensive Diagnostics Suite"
@@ -115,15 +117,15 @@ TERM_WIDTH: int = min(shutil.get_terminal_size().columns, 100)
 TERM_HEIGHT: int = min(shutil.get_terminal_size().lines, 30)
 PROGRESS_WIDTH: int = 50
 
-# Check for required external commands
+# Required external commands on macOS (ip is not used on macOS)
 COMMANDS: Dict[str, bool] = {
-    "ip": shutil.which("ip") is not None,
     "ping": shutil.which("ping") is not None,
     "traceroute": shutil.which("traceroute") is not None,
     "dig": shutil.which("dig") is not None,
     "nslookup": shutil.which("nslookup") is not None,
     "nmap": shutil.which("nmap") is not None,
     "ifconfig": shutil.which("ifconfig") is not None,
+    "curl": shutil.which("curl") is not None,
 }
 
 # Mapping for common ports
@@ -156,21 +158,17 @@ PORT_SERVICES: Dict[int, str] = {
 class NordColors:
     """Nord theme color palette."""
 
-    # Background shades
     NORD0 = "#2E3440"
     NORD1 = "#3B4252"
     NORD2 = "#434C5E"
     NORD3 = "#4C566A"
-    # Text shades
     NORD4 = "#D8DEE9"
     NORD5 = "#E5E9F0"
     NORD6 = "#ECEFF4"
-    # Accent (Frost)
     NORD7 = "#8FBCBB"
     NORD8 = "#88C0D0"
     NORD9 = "#81A1C1"
     NORD10 = "#5E81AC"
-    # Status (Aurora)
     NORD11 = "#BF616A"  # Error/Red
     NORD12 = "#D08770"  # Warning/Orange
     NORD13 = "#EBCB8B"  # Caution/Yellow
@@ -178,7 +176,6 @@ class NordColors:
     NORD15 = "#B48EAD"  # Special/Purple
 
 
-# Create a global Rich Console with default theme
 console: Console = Console()
 
 
@@ -187,8 +184,6 @@ console: Console = Console()
 # ----------------------------------------------------------------
 @dataclass
 class NetworkInterface:
-    """Represents a network interface and its properties."""
-
     name: str
     status: str
     mac_address: str
@@ -197,8 +192,6 @@ class NetworkInterface:
 
 @dataclass
 class PingResult:
-    """Stores ping results."""
-
     target: str
     sent: int = 0
     received: int = 0
@@ -210,8 +203,6 @@ class PingResult:
 
 @dataclass
 class TraceHop:
-    """Stores traceroute hop information."""
-
     hop: str
     host: str
     times: List[float] = field(default_factory=list)
@@ -222,9 +213,6 @@ class TraceHop:
 # Console & Logging Helpers
 # ----------------------------------------------------------------
 def create_header() -> Panel:
-    """
-    Create a dynamic ASCII art header using Pyfiglet and apply a Nord-themed gradient.
-    """
     fonts = ["slant", "small", "digital", "standard", "mini"]
     ascii_art = ""
     for font in fonts:
@@ -238,7 +226,6 @@ def create_header() -> Panel:
     if not ascii_art.strip():
         ascii_art = APP_NAME
 
-    # Apply gradient using Nord accent colors
     lines = [line for line in ascii_art.splitlines() if line.strip()]
     colors = [NordColors.NORD7, NordColors.NORD8, NordColors.NORD9, NordColors.NORD10]
     styled_text = ""
@@ -258,34 +245,28 @@ def create_header() -> Panel:
 
 
 def print_message(text: str, style: str = NordColors.NORD8, prefix: str = "•") -> None:
-    """Print a styled message."""
     console.print(f"[{style}]{prefix} {text}[/{style}]")
 
 
 def print_success(message: str) -> None:
-    """Print a success message."""
     console.print(f"[bold {NordColors.NORD14}]✓ {message}[/]")
 
 
 def print_warning(message: str) -> None:
-    """Print a warning message."""
     console.print(f"[bold {NordColors.NORD13}]⚠ {message}[/]")
 
 
 def print_error(message: str) -> None:
-    """Print an error message."""
     console.print(f"[bold {NordColors.NORD11}]✗ {message}[/]")
 
 
 def print_section(title: str) -> None:
-    """Print a section header using a Rich rule."""
     console.rule(f"[bold {NordColors.NORD8}]{title}[/]", style=NordColors.NORD8)
 
 
 def display_panel(
     message: str, style: str = NordColors.NORD8, title: Optional[str] = None
 ) -> None:
-    """Display a message in a styled panel."""
     panel = Panel(
         Text.from_markup(f"[bold {style}]{message}[/]"),
         border_style=Style(color=style),
@@ -296,22 +277,18 @@ def display_panel(
 
 
 def clear_screen() -> None:
-    """Clear the terminal screen."""
     console.clear()
 
 
 def pause() -> None:
-    """Pause execution until the user presses Enter."""
     console.input(f"\n[{NordColors.NORD15}]Press Enter to continue...[/]")
 
 
 def get_user_input(prompt: str, default: str = "") -> str:
-    """Get input from the user using a styled prompt."""
     return Prompt.ask(f"[bold {NordColors.NORD15}]{prompt}[/]", default=default)
 
 
 def create_menu_table(title: str, options: List[Tuple[str, str]]) -> Table:
-    """Create a Rich table displaying menu options."""
     table = Table(title=title, box=box.SIMPLE, title_style=f"bold {NordColors.NORD8}")
     table.add_column("Option", style=NordColors.NORD9, justify="right")
     table.add_column("Description", style=NordColors.NORD4)
@@ -321,7 +298,6 @@ def create_menu_table(title: str, options: List[Tuple[str, str]]) -> Table:
 
 
 def format_time(seconds: float) -> str:
-    """Format seconds into a human-readable time string."""
     if seconds < 60:
         return f"{seconds:.1f}s"
     elif seconds < 3600:
@@ -334,7 +310,6 @@ def format_time(seconds: float) -> str:
 
 
 def format_rate(bps: float) -> str:
-    """Format bytes per second into a human-readable rate."""
     if bps < 1024:
         return f"{bps:.1f} B/s"
     elif bps < 1024**2:
@@ -349,7 +324,6 @@ def format_rate(bps: float) -> str:
 # Logging Setup
 # ----------------------------------------------------------------
 def setup_logging(log_file: str = LOG_FILE) -> None:
-    """Setup logging to a file."""
     import logging
 
     try:
@@ -380,9 +354,6 @@ def run_command(
     verbose: bool = False,
     env: Optional[Dict[str, str]] = None,
 ) -> subprocess.CompletedProcess:
-    """
-    Run a system command and return the CompletedProcess.
-    """
     if verbose:
         print_message(f"Executing: {' '.join(cmd) if not shell else cmd}")
     try:
@@ -411,12 +382,10 @@ def run_command(
 # Signal Handling and Cleanup
 # ----------------------------------------------------------------
 def cleanup() -> None:
-    """Cleanup before exit."""
     print_message("Cleaning up resources...", NordColors.NORD9)
 
 
 def signal_handler(sig: int, frame: Any) -> None:
-    """Handle termination signals gracefully."""
     sig_name = (
         signal.Signals(sig).name if hasattr(signal, "Signals") else f"signal {sig}"
     )
@@ -434,8 +403,6 @@ atexit.register(cleanup)
 # Progress Tracking Classes
 # ----------------------------------------------------------------
 class ProgressManager:
-    """Unified progress tracking using Rich's Progress."""
-
     def __init__(self):
         self.progress = Progress(
             SpinnerColumn(style=f"bold {NordColors.NORD9}"),
@@ -466,8 +433,6 @@ class ProgressManager:
 
 
 class Spinner:
-    """Simple spinner for indeterminate tasks."""
-
     def __init__(self, message: str):
         self.message = message
         self.spinner_chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
@@ -529,10 +494,6 @@ class Spinner:
 # Latency Tracking
 # ----------------------------------------------------------------
 class LatencyTracker:
-    """
-    Tracks and visualizes latency measurements.
-    """
-
     def __init__(self, max_history: int = 100, width: int = 60):
         self.history: deque = deque(maxlen=max_history)
         self.min_rtt = float("inf")
@@ -584,11 +545,11 @@ class LatencyTracker:
                     graph += "×"
                 else:
                     if rtt < self.avg_rtt * 0.8:
-                        color = NordColors.NORD14  # Good
+                        color = NordColors.NORD14
                     elif rtt < self.avg_rtt * 1.2:
-                        color = NordColors.NORD4  # Average
+                        color = NordColors.NORD4
                     else:
-                        color = NordColors.NORD13  # High
+                        color = NordColors.NORD13
                     graph += f"[{color}]█[/{color}]"
             return graph
 
@@ -597,18 +558,10 @@ class LatencyTracker:
 # System Helper Functions
 # ----------------------------------------------------------------
 def check_root() -> bool:
-    """Return True if running as root/administrator."""
-    if sys.platform.startswith("win"):
-        try:
-            return ctypes.windll.shell32.IsUserAnAdmin() != 0
-        except Exception:
-            return False
-    else:
-        return os.geteuid() == 0
+    return os.geteuid() == 0
 
 
 def is_valid_ip(ip: str) -> bool:
-    """Return True if string is a valid IP address."""
     try:
         ipaddress.ip_address(ip)
         return True
@@ -617,7 +570,6 @@ def is_valid_ip(ip: str) -> bool:
 
 
 def is_valid_hostname(hostname: str) -> bool:
-    """Validate hostname format."""
     pattern = re.compile(
         r"^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?"
         r"(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$"
@@ -626,7 +578,6 @@ def is_valid_hostname(hostname: str) -> bool:
 
 
 def validate_target(target: str) -> bool:
-    """Return True if target is a valid IP or hostname."""
     if is_valid_ip(target) or is_valid_hostname(target):
         return True
     print_error(f"Invalid target: {target}")
@@ -634,7 +585,6 @@ def validate_target(target: str) -> bool:
 
 
 def check_command_availability(command: str) -> bool:
-    """Return True if a required external command is available."""
     if not COMMANDS.get(command, False):
         print_error(f"Required command '{command}' is not available.")
         return False
@@ -642,208 +592,141 @@ def check_command_availability(command: str) -> bool:
 
 
 # ----------------------------------------------------------------
-# Network Operation Functions
+# Network Operation Functions (macOS-specific implementations)
 # ----------------------------------------------------------------
 def get_network_interfaces() -> List[NetworkInterface]:
-    """Retrieve and display network interface information."""
     print_section("Network Interfaces")
     interfaces = []
-    with ProgressManager() as progress:
-        task = progress.add_task("Collecting interface info...", total=None)
-        try:
-            if check_command_availability("ip"):
-                output = run_command(["ip", "-o", "link", "show"], check=False).stdout
-                for line in output.splitlines():
-                    m = re.search(r"^\d+:\s+([^:@]+).*state\s+(\w+)", line)
+    try:
+        # Use ifconfig exclusively on macOS
+        output = run_command(["ifconfig"], check=False).stdout
+        current = None
+        for line in output.splitlines():
+            iface = re.match(r"^(\S+):", line)
+            if iface:
+                current = iface.group(1)
+                # On macOS, loopback interface is named 'lo0'
+                if current == "lo0":
+                    current = None
+                    continue
+                interfaces.append(
+                    NetworkInterface(
+                        name=current, status="unknown", mac_address="Unknown"
+                    )
+                )
+            elif current and "ether" in line:
+                m = re.search(r"ether\s+([0-9a-fA-F:]+)", line)
+                if m:
+                    for iface in interfaces:
+                        if iface.name == current:
+                            iface.mac_address = m.group(1)
+        # Retrieve IP addresses per interface
+        for iface in interfaces:
+            if not check_command_availability("ifconfig"):
+                continue
+            ip_cmd = ["ifconfig", iface.name]
+            ip_output = run_command(ip_cmd, check=False).stdout
+            for line in ip_output.splitlines():
+                if "inet " in line:
+                    # macOS outputs "inet 192.168.1.100 netmask ..."
+                    m = re.search(r"inet\s+([0-9.]+)", line)
                     if m:
-                        name, state = m.groups()
-                        if name.strip() == "lo":
-                            continue
-                        hw = re.search(r"link/\w+\s+([0-9a-fA-F:]+)", line)
-                        mac = hw.group(1) if hw else "Unknown"
-                        interfaces.append(
-                            NetworkInterface(
-                                name=name.strip(), status=state, mac_address=mac
-                            )
+                        iface.ip_addresses.append(
+                            {"type": "IPv4", "address": m.group(1)}
                         )
-            elif check_command_availability("ifconfig"):
-                output = run_command(["ifconfig"], check=False).stdout
-                current = None
-                for line in output.splitlines():
-                    iface = re.match(r"^(\w+):", line)
-                    if iface:
-                        current = iface.group(1)
-                        if current == "lo":
-                            current = None
-                            continue
-                        interfaces.append(
-                            NetworkInterface(
-                                name=current, status="unknown", mac_address="Unknown"
-                            )
+                if "inet6 " in line:
+                    m = re.search(r"inet6\s+([0-9a-f:]+)", line)
+                    if m and not m.group(1).startswith("fe80"):
+                        iface.ip_addresses.append(
+                            {"type": "IPv6", "address": m.group(1)}
                         )
-                    elif current and "ether" in line:
-                        m = re.search(r"ether\s+([0-9a-fA-F:]+)", line)
-                        if m:
-                            for iface in interfaces:
-                                if iface.name == current:
-                                    iface.mac_address = m.group(1)
-            # Retrieve IP addresses per interface
+        if interfaces:
+            print_success(f"Found {len(interfaces)} interfaces")
+            table = Table(title="Network Interfaces", border_style=NordColors.NORD8)
+            table.add_column("Interface", style=NordColors.NORD9)
+            table.add_column("Status", style=NordColors.NORD14)
+            table.add_column("MAC Address", style=NordColors.NORD4)
+            table.add_column("IP Addresses", style=NordColors.NORD4)
             for iface in interfaces:
-                progress.update(
-                    task, description=f"Getting IP info for {iface.name}..."
+                status_color = (
+                    NordColors.NORD14
+                    if iface.status.lower() in ["up", "active"]
+                    else NordColors.NORD11
                 )
-                if check_command_availability("ip"):
-                    ip_cmd = ["ip", "-o", "addr", "show", "dev", iface.name]
-                    ip_output = run_command(ip_cmd, check=False).stdout
-                    for line in ip_output.splitlines():
-                        if "inet " in line:
-                            m = re.search(r"inet\s+([^/]+)", line)
-                            if m:
-                                iface.ip_addresses.append(
-                                    {"type": "IPv4", "address": m.group(1)}
-                                )
-                        if "inet6 " in line and "scope global" in line:
-                            m = re.search(r"inet6\s+([^/]+)", line)
-                            if m:
-                                iface.ip_addresses.append(
-                                    {"type": "IPv6", "address": m.group(1)}
-                                )
-                elif check_command_availability("ifconfig"):
-                    ip_cmd = ["ifconfig", iface.name]
-                    ip_output = run_command(ip_cmd, check=False).stdout
-                    for line in ip_output.splitlines():
-                        if "inet " in line:
-                            m = re.search(r"inet\s+([0-9.]+)", line)
-                            if m:
-                                iface.ip_addresses.append(
-                                    {"type": "IPv4", "address": m.group(1)}
-                                )
-                        if "inet6 " in line and "fe80::" not in line:
-                            m = re.search(r"inet6\s+([0-9a-f:]+)", line)
-                            if m:
-                                iface.ip_addresses.append(
-                                    {"type": "IPv6", "address": m.group(1)}
-                                )
-            # Display results
-            if interfaces:
-                print_success(f"Found {len(interfaces)} interfaces")
-                table = Table(title="Network Interfaces", border_style=NordColors.NORD8)
-                table.add_column("Interface", style=NordColors.NORD9)
-                table.add_column("Status", style=NordColors.NORD14)
-                table.add_column("MAC Address", style=NordColors.NORD4)
-                table.add_column("IP Addresses", style=NordColors.NORD4)
-                for iface in interfaces:
-                    status_color = (
-                        NordColors.NORD14
-                        if iface.status.lower() in ["up", "active"]
-                        else NordColors.NORD11
+                ip_list = []
+                for ip in iface.ip_addresses:
+                    color = (
+                        NordColors.NORD8 if ip["type"] == "IPv4" else NordColors.NORD15
                     )
-                    ip_list = []
-                    for ip in iface.ip_addresses:
-                        color = (
-                            NordColors.NORD8
-                            if ip["type"] == "IPv4"
-                            else NordColors.NORD15
-                        )
-                        ip_list.append(f"[{color}]{ip['type']}:[/] {ip['address']}")
-                    table.add_row(
-                        iface.name,
-                        f"[{status_color}]{iface.status}[/]",
-                        iface.mac_address,
-                        "\n".join(ip_list) if ip_list else "None",
-                    )
-                console.print(table)
-            else:
-                display_panel(
-                    "No network interfaces found",
-                    style=NordColors.NORD13,
-                    title="Error",
+                    ip_list.append(f"[{color}]{ip['type']}:[/] {ip['address']}")
+                table.add_row(
+                    iface.name,
+                    f"[{status_color}]{iface.status}[/]",
+                    iface.mac_address,
+                    "\n".join(ip_list) if ip_list else "None",
                 )
-            return interfaces
-        except Exception as e:
-            print_error(f"Error collecting network interfaces: {e}")
-            return []
+            console.print(table)
+        else:
+            display_panel(
+                "No network interfaces found", style=NordColors.NORD13, title="Error"
+            )
+        return interfaces
+    except Exception as e:
+        print_error(f"Error collecting network interfaces: {e}")
+        return []
 
 
 def get_ip_addresses() -> Dict[str, List[Dict[str, str]]]:
-    """Retrieve and display IP address information for all interfaces."""
     print_section("IP Address Information")
     ip_info = {}
-    with ProgressManager() as progress:
-        task = progress.add_task("Collecting IP addresses...", total=None)
-        try:
-            if check_command_availability("ip"):
-                output = run_command(["ip", "-o", "addr"], check=False).stdout
-                for line in output.splitlines():
-                    parts = line.split()
-                    if len(parts) >= 4:
-                        iface = parts[1]
-                        if iface == "lo":
-                            continue
-                        if "inet" in line:
-                            m = re.search(r"inet\s+([^/]+)", line)
-                            if m:
-                                ip_info.setdefault(iface, []).append(
-                                    {"type": "IPv4", "address": m.group(1)}
-                                )
-                        if "inet6" in line:
-                            m = re.search(r"inet6\s+([^/]+)", line)
-                            if m and not m.group(1).startswith("fe80"):
-                                ip_info.setdefault(iface, []).append(
-                                    {"type": "IPv6", "address": m.group(1)}
-                                )
-            elif check_command_availability("ifconfig"):
-                output = run_command(["ifconfig"], check=False).stdout
-                current = None
-                for line in output.splitlines():
-                    iface = re.match(r"^(\w+):", line)
-                    if iface:
-                        current = iface.group(1)
-                        if current == "lo":
-                            current = None
-                            continue
-                    elif current and "inet " in line:
-                        m = re.search(r"inet\s+([0-9.]+)", line)
-                        if m:
-                            ip_info.setdefault(current, []).append(
-                                {"type": "IPv4", "address": m.group(1)}
-                            )
-                    elif current and "inet6 " in line:
-                        m = re.search(r"inet6\s+([0-9a-f:]+)", line)
-                        if m and not m.group(1).startswith("fe80"):
-                            ip_info.setdefault(current, []).append(
-                                {"type": "IPv6", "address": m.group(1)}
-                            )
-            if ip_info:
-                print_success("IP information collected successfully")
-                for iface, addrs in ip_info.items():
-                    table = Table(
-                        title=f"Interface: {iface}",
-                        border_style=NordColors.NORD8,
-                        show_header=True,
+    try:
+        output = run_command(["ifconfig"], check=False).stdout
+        current = None
+        for line in output.splitlines():
+            iface = re.match(r"^(\S+):", line)
+            if iface:
+                current = iface.group(1)
+                if current == "lo0":
+                    current = None
+                    continue
+            elif current and "inet " in line:
+                m = re.search(r"inet\s+([0-9.]+)", line)
+                if m:
+                    ip_info.setdefault(current, []).append(
+                        {"type": "IPv4", "address": m.group(1)}
                     )
-                    table.add_column("Type", style=NordColors.NORD8, justify="center")
-                    table.add_column("Address", style=NordColors.NORD4)
-                    for addr in addrs:
-                        type_color = (
-                            NordColors.NORD8
-                            if addr["type"] == "IPv4"
-                            else NordColors.NORD15
-                        )
-                        table.add_row(
-                            f"[{type_color}]{addr['type']}[/]", addr["address"]
-                        )
-                    console.print(table)
-            else:
-                display_panel(
-                    "No IP addresses found",
-                    style=NordColors.NORD13,
-                    title="Information",
+            elif current and "inet6 " in line:
+                m = re.search(r"inet6\s+([0-9a-f:]+)", line)
+                if m and not m.group(1).startswith("fe80"):
+                    ip_info.setdefault(current, []).append(
+                        {"type": "IPv6", "address": m.group(1)}
+                    )
+        if ip_info:
+            print_success("IP information collected successfully")
+            for iface, addrs in ip_info.items():
+                table = Table(
+                    title=f"Interface: {iface}",
+                    border_style=NordColors.NORD8,
+                    show_header=True,
                 )
-            return ip_info
-        except Exception as e:
-            print_error(f"Error collecting IP addresses: {e}")
-            return {}
+                table.add_column("Type", style=NordColors.NORD8, justify="center")
+                table.add_column("Address", style=NordColors.NORD4)
+                for addr in addrs:
+                    type_color = (
+                        NordColors.NORD8
+                        if addr["type"] == "IPv4"
+                        else NordColors.NORD15
+                    )
+                    table.add_row(f"[{type_color}]{addr['type']}[/]", addr["address"])
+                console.print(table)
+        else:
+            display_panel(
+                "No IP addresses found", style=NordColors.NORD13, title="Information"
+            )
+        return ip_info
+    except Exception as e:
+        print_error(f"Error collecting IP addresses: {e}")
+        return {}
 
 
 def ping_target(
@@ -851,7 +734,6 @@ def ping_target(
     count: int = PING_COUNT_DEFAULT,
     interval: float = PING_INTERVAL_DEFAULT,
 ) -> PingResult:
-    """Ping a target and display response time tracking."""
     print_section(f"Ping: {target}")
     result = PingResult(target=target)
     if not validate_target(target) or not check_command_availability("ping"):
@@ -861,17 +743,7 @@ def ping_target(
     with ProgressManager() as progress:
         task = progress.add_task(f"Pinging {target}...", total=count)
         try:
-            if sys.platform == "win32":
-                ping_cmd = [
-                    "ping",
-                    "-n",
-                    str(count),
-                    "-w",
-                    str(int(interval * 1000)),
-                    target,
-                ]
-            else:
-                ping_cmd = ["ping", "-c", str(count), "-i", str(interval), target]
+            ping_cmd = ["ping", "-c", str(count), "-i", str(interval), target]
             process = subprocess.Popen(
                 ping_cmd,
                 stdout=subprocess.PIPE,
@@ -883,7 +755,7 @@ def ping_target(
                 line = process.stdout.readline()
                 if not line:
                     continue
-                if "bytes from" in line or "Reply from" in line:
+                if "bytes from" in line:
                     progress.update(task, advance=1)
                     m = re.search(r"time=(\d+\.?\d*)", line)
                     if m:
@@ -926,7 +798,6 @@ def ping_target(
 def traceroute_target(
     target: str, max_hops: int = TRACEROUTE_MAX_HOPS
 ) -> List[TraceHop]:
-    """Perform traceroute to a target and display hop latency."""
     print_section(f"Traceroute: {target}")
     if not validate_target(target) or not check_command_availability("traceroute"):
         return []
@@ -1023,7 +894,6 @@ def traceroute_target(
 def dns_lookup(
     hostname: str, record_types: Optional[List[str]] = None
 ) -> Dict[str, Any]:
-    """Perform DNS lookups for a given hostname and record types."""
     print_section(f"DNS Lookup: {hostname}")
     if not validate_target(hostname):
         return {}
@@ -1125,7 +995,6 @@ def port_scan(
     ports: Union[List[int], str] = "common",
     timeout: float = PORT_SCAN_TIMEOUT,
 ) -> Dict[int, Dict[str, Any]]:
-    """Scan for open ports on a target host and display the results."""
     print_section(f"Port Scan: {target}")
     if not validate_target(target):
         return {}
@@ -1197,7 +1066,6 @@ def monitor_latency(
     count: int = MONITOR_DEFAULT_COUNT,
     interval: float = MONITOR_DEFAULT_INTERVAL,
 ) -> None:
-    """Monitor network latency over time to a target and display live graphs."""
     print_section(f"Latency Monitor: {target}")
     if not validate_target(target):
         return
@@ -1213,17 +1081,7 @@ def monitor_latency(
         remaining = count
         with Live(refresh_per_second=4, screen=True) as live:
             while ping_indefinite or remaining > 0:
-                if sys.platform == "win32":
-                    ping_cmd = [
-                        "ping",
-                        "-n",
-                        "1",
-                        "-w",
-                        str(int(interval * 1000)),
-                        target,
-                    ]
-                else:
-                    ping_cmd = ["ping", "-c", "1", "-i", str(interval), target]
+                ping_cmd = ["ping", "-c", "1", "-i", str(interval), target]
                 start = time.time()
                 try:
                     output = subprocess.check_output(
@@ -1275,11 +1133,6 @@ def monitor_latency(
 def bandwidth_test(
     target: str = "example.com", size: int = BANDWIDTH_TEST_SIZE
 ) -> Dict[str, Any]:
-    """
-    Perform a simple bandwidth test by downloading data from the target.
-
-    On Windows, uses 'NUL' as the output sink for curl.
-    """
     print_section("Bandwidth Test")
     if not validate_target(target):
         return {}
@@ -1291,7 +1144,7 @@ def bandwidth_test(
         print_message(f"Resolved {target} to {ip_addr}", NordColors.NORD9)
         with ProgressManager() as progress:
             task = progress.add_task("Downloading test file...", total=1)
-            output_file = "NUL" if sys.platform.startswith("win") else "/dev/null"
+            output_file = "/dev/null"
             if shutil.which("curl"):
                 start = time.time()
                 curl_cmd = [
@@ -1386,7 +1239,6 @@ def bandwidth_test(
 # Menu Interfaces
 # ----------------------------------------------------------------
 def ping_menu() -> None:
-    """Interactive menu for ping tests."""
     clear_screen()
     console.print(create_header())
     print_section("Ping Configuration")
@@ -1425,7 +1277,6 @@ def ping_menu() -> None:
 
 
 def traceroute_menu() -> None:
-    """Interactive menu for traceroute."""
     clear_screen()
     console.print(create_header())
     print_section("Traceroute Configuration")
@@ -1451,7 +1302,6 @@ def traceroute_menu() -> None:
 
 
 def dns_menu() -> None:
-    """Interactive menu for DNS lookup."""
     clear_screen()
     console.print(create_header())
     print_section("DNS Lookup Configuration")
@@ -1468,7 +1318,6 @@ def dns_menu() -> None:
 
 
 def scan_menu() -> None:
-    """Interactive menu for port scanning."""
     clear_screen()
     console.print(create_header())
     print_section("Port Scan Configuration")
@@ -1497,7 +1346,6 @@ def scan_menu() -> None:
 
 
 def monitor_menu() -> None:
-    """Interactive menu for latency monitoring."""
     clear_screen()
     console.print(create_header())
     print_section("Latency Monitor Configuration")
@@ -1538,7 +1386,6 @@ def monitor_menu() -> None:
 
 
 def bandwidth_menu() -> None:
-    """Interactive menu for bandwidth testing."""
     clear_screen()
     console.print(create_header())
     print_section("Bandwidth Test Configuration")
@@ -1553,7 +1400,6 @@ def bandwidth_menu() -> None:
 
 
 def main_menu() -> None:
-    """Main interactive menu loop."""
     while True:
         clear_screen()
         console.print(create_header())
@@ -1620,7 +1466,6 @@ def main_menu() -> None:
 # Main Entry Point
 # ----------------------------------------------------------------
 def main() -> None:
-    """Main function to setup environment and launch the interactive menu."""
     try:
         setup_logging()
         if not check_root():

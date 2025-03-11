@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Unattended Security Tools Installer
+Unattended Security Tools Installer for macOS
 --------------------------------------------------
 A fully automated system configuration tool that installs and configures
-security, analysis, development, and intrusion detection tools on Ubuntu.
+security, analysis, development, and intrusion detection tools on macOS.
 This script runs completely unattended with no interactive menu or prompts.
 
 Usage:
-  Run with sudo: sudo python3 security_installer.py
+  Run with sudo if required: sudo python3 security_installer.py
 
 Version: 1.0.0
 """
@@ -62,7 +62,6 @@ except ImportError:
         print("pip install rich pyfiglet")
     sys.exit(1)
 
-# Install Rich traceback handler for improved error reporting
 install_rich_traceback(show_locals=True)
 
 # ----------------------------------------------------------------
@@ -70,10 +69,11 @@ install_rich_traceback(show_locals=True)
 # ----------------------------------------------------------------
 VERSION: str = "1.0.0"
 APP_NAME: str = "Unattended Security Tools Installer"
-APP_SUBTITLE: str = "Automated System Security Configuration"
+APP_SUBTITLE: str = "Automated macOS Security Configuration via Homebrew"
 
-DEFAULT_LOG_DIR = Path("/var/log/security_setup")
-DEFAULT_REPORT_DIR = Path("/var/log/security_setup/reports")
+# For macOS, use a log directory in the user's home directory.
+DEFAULT_LOG_DIR = Path.home() / "security_setup_logs"
+DEFAULT_REPORT_DIR = DEFAULT_LOG_DIR / "reports"
 OPERATION_TIMEOUT: int = 600  # 10 minutes timeout for long operations
 
 
@@ -81,171 +81,55 @@ OPERATION_TIMEOUT: int = 600  # 10 minutes timeout for long operations
 # Nord-Themed Colors
 # ----------------------------------------------------------------
 class NordColors:
-    """Nord color palette for consistent theming throughout the application."""
-
-    POLAR_NIGHT_1 = "#2E3440"  # Dark background
-    POLAR_NIGHT_4 = "#4C566A"  # Light background shade
-    SNOW_STORM_1 = "#D8DEE9"  # Dark text color
-    SNOW_STORM_2 = "#E5E9F0"  # Medium text color
-    FROST_1 = "#8FBCBB"  # Light cyan
-    FROST_2 = "#88C0D0"  # Light blue
-    FROST_3 = "#81A1C1"  # Medium blue
-    FROST_4 = "#5E81AC"  # Dark blue
-    RED = "#BF616A"  # Red
-    ORANGE = "#D08770"  # Orange
-    YELLOW = "#EBCB8B"  # Yellow
-    GREEN = "#A3BE8C"  # Green
+    POLAR_NIGHT_1 = "#2E3440"
+    POLAR_NIGHT_4 = "#4C566A"
+    SNOW_STORM_1 = "#D8DEE9"
+    SNOW_STORM_2 = "#E5E9F0"
+    FROST_1 = "#8FBCBB"
+    FROST_2 = "#88C0D0"
+    FROST_3 = "#81A1C1"
+    FROST_4 = "#5E81AC"
+    RED = "#BF616A"
+    ORANGE = "#D08770"
+    YELLOW = "#EBCB8B"
+    GREEN = "#A3BE8C"
 
 
 # ----------------------------------------------------------------
-# Security Tools Categories & Problematic Packages
+# Security Tools Categories
 # ----------------------------------------------------------------
+# Note: Not all these packages are available on macOS/Homebrew.
 SECURITY_TOOLS: Dict[str, List[str]] = {
     "Network Analysis": [
         "wireshark",
         "nmap",
         "tcpdump",
-        "netcat-openbsd",
-        "nethogs",
+        "netcat",
         "iftop",
-        "ettercap-graphical",
+        "ettercap",
         "dsniff",
-        "netsniff-ng",
         "termshark",
-        "ntopng",
-        "zabbix-server-mysql",
-        "prometheus",
-        "bettercap",
-        "p0f",
         "masscan",
-        "arpwatch",
+        "arp-scan",
         "darkstat",
     ],
-    "Vulnerability Assessment": [
-        "nikto",
-        "wapiti",
-        "sqlmap",
-        "dirb",
-        "gobuster",
-        "whatweb",
-        "openvas",
-    ],
-    "Forensics": [
-        "autopsy",
-        "sleuthkit",
-        "dc3dd",
-        "testdisk",
-        "foremost",
-        "scalpel",
-        "recoverjpeg",
-        "extundelete",
-        "xmount",
-        "guymager",
-        "plaso",
-    ],
-    "System Hardening": [
-        "lynis",
-        "rkhunter",
-        "chkrootkit",
-        "aide",
-        "ufw",
-        "fail2ban",
-        "auditd",
-        "apparmor",
-        "firejail",
-        "clamav",
-        "crowdsec",
-        "yubikey-manager",
-        "policycoreutils",
-    ],
-    "Password & Crypto": [
-        "john",
-        "hashcat",
-        "hydra",
-        "medusa",
-        "ophcrack",
-        "fcrackzip",
-        "gnupg",
-        "cryptsetup",
-        "yubikey-personalization",
-        "keepassxc",
-        "pass",
-        "keychain",
-        "ccrypt",
-    ],
-    "Wireless Security": [
-        "aircrack-ng",
-        "wifite",
-        "hostapd",
-        "reaver",
-        "bully",
-        "pixiewps",
-        "mdk4",
-        "bluez-tools",
-        "btscanner",
-        "horst",
-        "wavemon",
-        "cowpatty",
-    ],
+    "Vulnerability Assessment": ["nikto", "sqlmap", "dirb", "gobuster", "whatweb"],
+    "Forensics": ["sleuthkit", "testdisk", "foremost", "scalpel", "photorec"],
+    "System Hardening": ["lynis", "rkhunter", "chkrootkit", "aide", "clamav"],
+    "Password & Crypto": ["john", "hashcat", "hydra", "medusa", "gnupg", "ccrypt"],
+    "Wireless Security": ["aircrack-ng", "wifite", "reaver", "pixiewps"],
     "Development Tools": [
-        "build-essential",
         "git",
         "gdb",
-        "lldb",
         "cmake",
         "meson",
-        "python3-pip",
-        "python3-venv",
+        "python3",
         "radare2",
-        "apktool",
         "binwalk",
-        "patchelf",
-        "elfutils",
     ],
-    "Container Security": [
-        "docker.io",
-        "docker-compose",
-        "podman",
-    ],
-    "Malware Analysis": [
-        "clamav",
-        "yara",
-        "pev",
-        "ssdeep",
-        "inetsim",
-        "radare2",
-    ],
-    "Privacy & Anonymity": [
-        "tor",
-        "torbrowser-launcher",
-        "privoxy",
-        "proxychains4",
-        "macchanger",
-        "bleachbit",
-        "mat2",
-        "keepassxc",
-        "openvpn",
-        "wireguard",
-        "onionshare",
-    ],
-}
-
-PROBLEMATIC_PACKAGES: Dict[str, Dict[str, Any]] = {
-    "samhain": {
-        "service": "samhain.service",
-        "config_dirs": ["/etc/samhain", "/var/lib/samhain"],
-        "force_remove": True,
-    },
-    "ettercap-graphical": {
-        "service": "ettercap.service",
-        "config_dirs": ["/etc/ettercap"],
-        "force_remove": False,
-    },
-    "openvas": {
-        "service": "openvas.service",
-        "config_dirs": ["/etc/openvas"],
-        "force_remove": False,
-    },
+    "Container Security": ["docker", "docker-compose", "podman"],
+    "Malware Analysis": ["clamav", "yara", "ssdeep", "radare2"],
+    "Privacy & Anonymity": ["tor", "torbrowser-launcher", "openvpn", "wireguard-tools"],
 }
 
 # ----------------------------------------------------------------
@@ -258,22 +142,11 @@ console: Console = Console()
 # Console and Logging Helpers
 # ----------------------------------------------------------------
 def setup_logging(log_dir: Path, verbose: bool = False) -> logging.Logger:
-    """
-    Set up logging using RichHandler and file logging.
-
-    Args:
-        log_dir: Directory to store log files.
-        verbose: Enable debug output if True.
-
-    Returns:
-        Configured logger.
-    """
     log_dir.mkdir(exist_ok=True, parents=True)
     log_file = (
         log_dir / f"security_setup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     )
     log_level = logging.DEBUG if verbose else logging.INFO
-
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -288,15 +161,9 @@ def setup_logging(log_dir: Path, verbose: bool = False) -> logging.Logger:
 
 
 def create_header() -> Panel:
-    """
-    Create an ASCII art header with gradient styling using Pyfiglet and Nord colors.
-
-    Returns:
-        A Rich Panel containing the header.
-    """
-    compact_fonts = ["small", "slant", "digital", "chunky", "standard"]
+    fonts = ["small", "slant", "digital", "chunky", "standard"]
     ascii_art = ""
-    for font in compact_fonts:
+    for font in fonts:
         try:
             fig = pyfiglet.Figlet(font=font, width=80)
             ascii_art = fig.renderText(APP_NAME)
@@ -305,8 +172,7 @@ def create_header() -> Panel:
         except Exception:
             continue
     if not ascii_art.strip():
-        ascii_art = "Unattended Security Tools Installer"
-
+        ascii_art = APP_NAME
     ascii_lines = [line for line in ascii_art.split("\n") if line.strip()]
     colors = [
         NordColors.FROST_1,
@@ -318,16 +184,15 @@ def create_header() -> Panel:
     for i, line in enumerate(ascii_lines):
         color = colors[i % len(colors)]
         styled_text += f"[bold {color}]{line}[/]\n"
-    tech_border = f"[{NordColors.FROST_3}]" + "━" * 80 + "[/]"
-    styled_text = tech_border + "\n" + styled_text + tech_border
-
+    border = f"[{NordColors.FROST_3}]" + "━" * 80 + "[/]"
+    styled_text = border + "\n" + styled_text + border
     return Panel(
         Text.from_markup(styled_text),
         border_style=Style(color=NordColors.FROST_1),
         padding=(1, 2),
-        title=f"[bold {NordColors.SNOW_STORM_2}]v{VERSION}[/]",
+        title=f"[bold {NordColors.SNOW_STORM_1}]v{VERSION}[/]",
         title_align="right",
-        subtitle=f"[bold {NordColors.SNOW_STORM_1}]{APP_SUBTITLE}[/]",
+        subtitle=f"[bold {NordColors.SNOW_STORM_2}]{APP_SUBTITLE}[/]",
         subtitle_align="center",
     )
 
@@ -338,9 +203,6 @@ def print_message(
     prefix: str = "•",
     logger: Optional[logging.Logger] = None,
 ) -> None:
-    """
-    Print a styled message and log it if a logger is provided.
-    """
     console.print(f"[{style}]{prefix} {text}[/{style}]")
     if logger:
         if style == NordColors.RED:
@@ -354,9 +216,6 @@ def print_message(
 def display_panel(
     message: str, style: str = NordColors.FROST_2, title: Optional[str] = None
 ) -> None:
-    """
-    Display a message inside a styled panel.
-    """
     panel = Panel(
         Text.from_markup(f"[bold {style}]{message}[/]"),
         border_style=Style(color=style),
@@ -367,9 +226,6 @@ def display_panel(
 
 
 def cleanup(logger: Optional[logging.Logger] = None) -> None:
-    """
-    Cleanup temporary resources.
-    """
     print_message(
         "Cleaning up temporary resources...", NordColors.FROST_3, logger=logger
     )
@@ -386,9 +242,6 @@ def cleanup(logger: Optional[logging.Logger] = None) -> None:
 def signal_handler(
     sig: int, frame: Any, logger: Optional[logging.Logger] = None
 ) -> None:
-    """
-    Handle termination signals gracefully.
-    """
     try:
         sig_name = signal.Signals(sig).name
     except Exception:
@@ -408,9 +261,6 @@ def run_command(
     timeout: int = OPERATION_TIMEOUT,
     logger: Optional[logging.Logger] = None,
 ) -> subprocess.CompletedProcess:
-    """
-    Execute a system command and return its CompletedProcess.
-    """
     cmd_str = " ".join(cmd)
     if logger:
         logger.debug(f"Executing command: {cmd_str}")
@@ -456,10 +306,10 @@ def run_command(
 
 
 # ----------------------------------------------------------------
-# System Setup Class
+# System Setup Class (macOS using Homebrew)
 # ----------------------------------------------------------------
 class SystemSetup:
-    """Handles package management operations and service configuration."""
+    """Handles Homebrew-based package management and service configuration on macOS."""
 
     def __init__(
         self,
@@ -477,22 +327,16 @@ class SystemSetup:
 
     @staticmethod
     def check_root() -> bool:
-        """Return True if the script is running as root."""
-        return os.geteuid() == 0
+        # Homebrew installations typically do not require root on macOS.
+        return True
 
     def get_target_packages(self) -> List[str]:
-        """
-        Return the list of unique packages to install from all categories.
-        """
         all_packages = {pkg for tools in SECURITY_TOOLS.values() for pkg in tools}
         return list(all_packages)
 
     def log_operation(
         self, message: str, level: str = "info", prefix: str = "•"
     ) -> None:
-        """
-        Log a message with the appropriate styling.
-        """
         style_map = {
             "info": NordColors.FROST_2,
             "warning": NordColors.YELLOW,
@@ -503,109 +347,15 @@ class SystemSetup:
             message, style_map.get(level, NordColors.FROST_2), prefix, self.logger
         )
 
-    def remove_problematic_package(self, package_name: str) -> bool:
-        """
-        Remove a problematic package if needed.
-        """
-        if self.simulate:
-            self.log_operation(f"Simulating removal of {package_name}")
-            return True
-
-        pkg_info = PROBLEMATIC_PACKAGES.get(package_name)
-        if not pkg_info:
-            return True
-
-        try:
-            if pkg_info.get("service"):
-                self.log_operation(
-                    f"Stopping service {pkg_info['service']} for {package_name}..."
-                )
-                subprocess.run(
-                    ["systemctl", "stop", pkg_info["service"]],
-                    check=False,
-                    stderr=subprocess.DEVNULL,
-                )
-            self.log_operation(f"Terminating processes for {package_name}...")
-            subprocess.run(
-                ["killall", "-9", package_name], check=False, stderr=subprocess.DEVNULL
-            )
-            self.log_operation(f"Removing package {package_name}...")
-            commands = [
-                ["apt-get", "remove", "-y", package_name],
-                ["apt-get", "purge", "-y", package_name],
-                ["dpkg", "--remove", "--force-all", package_name],
-                ["dpkg", "--purge", "--force-all", package_name],
-            ]
-            for cmd in commands:
-                try:
-                    subprocess.run(cmd, check=False, stderr=subprocess.PIPE)
-                except subprocess.SubprocessError:
-                    continue
-            if pkg_info.get("config_dirs"):
-                for directory in pkg_info["config_dirs"]:
-                    if Path(directory).exists():
-                        self.log_operation(f"Removing directory {directory}...")
-                        subprocess.run(["rm", "-rf", directory], check=False)
-            # Optionally clean package status file if force_remove is True
-            if pkg_info.get("force_remove"):
-                status_file = "/var/lib/dpkg/status"
-                temp_file = "/var/lib/dpkg/status.tmp"
-                self.log_operation("Cleaning package status file...")
-                with open(status_file, "r") as fin, open(temp_file, "w") as fout:
-                    skip_block = False
-                    for line in fin:
-                        if line.startswith(f"Package: {package_name}"):
-                            skip_block = True
-                            continue
-                        if skip_block and line.startswith("Package:"):
-                            skip_block = False
-                        if not skip_block:
-                            fout.write(line)
-                os.rename(temp_file, status_file)
-            self.log_operation(
-                f"Package {package_name} removed successfully", "success", "✓"
-            )
-            return True
-        except Exception as e:
-            if self.logger:
-                self.logger.error(f"Error removing {package_name}: {e}")
-            return False
-
     def cleanup_package_system(self) -> bool:
-        """
-        Clean up the package management system.
-        """
         try:
             if self.simulate:
-                self.log_operation("Simulating package system cleanup...", "warning")
+                self.log_operation("Simulating Homebrew cleanup...", "warning")
                 time.sleep(1)
                 return True
-
-            apt_conf_path = "/etc/apt/apt.conf.d/"
-            invalid_files = glob.glob(f"{apt_conf_path}/*.bak.*")
-            if invalid_files:
-                self.log_operation(
-                    f"Removing {len(invalid_files)} invalid backup files..."
-                )
-                for file in invalid_files:
-                    try:
-                        os.remove(file)
-                    except OSError as e:
-                        if self.logger:
-                            self.logger.error(f"Failed to remove {file}: {e}")
-            else:
-                self.log_operation("No invalid backup files found")
-            for package in PROBLEMATIC_PACKAGES:
-                self.log_operation(f"Checking problematic package: {package}")
-                self.remove_problematic_package(package)
-            self.log_operation("Configuring pending package installations...")
-            run_command(["dpkg", "--configure", "-a"], logger=self.logger)
-            pkg_manager = "nala" if Path("/usr/bin/nala").exists() else "apt"
-            self.log_operation(f"Cleaning package cache with {pkg_manager}...")
-            run_command([pkg_manager, "clean"], logger=self.logger)
-            self.log_operation(f"Removing unused packages with {pkg_manager}...")
-            run_command([pkg_manager, "autoremove", "-y"], logger=self.logger)
-            self.log_operation("Package system cleanup completed", "success", "✓")
+            self.log_operation("Running 'brew cleanup'...")
+            run_command(["brew", "cleanup"], logger=self.logger)
+            self.log_operation("Homebrew cleanup completed", "success", "✓")
             return True
         except subprocess.CalledProcessError as e:
             if self.logger:
@@ -613,26 +363,24 @@ class SystemSetup:
             return False
 
     def setup_package_manager(self) -> bool:
-        """
-        Set up and update the package manager.
-        """
         try:
             if self.simulate:
-                self.log_operation("Simulating package manager setup...", "warning")
+                self.log_operation("Simulating Homebrew update/upgrade...", "warning")
                 time.sleep(1)
                 return True
-
-            if not Path("/usr/bin/nala").exists():
-                self.log_operation("Installing nala package manager...")
-                run_command(["apt", "update"], logger=self.logger)
-                run_command(["apt", "install", "nala", "-y"], logger=self.logger)
-                self.log_operation("Nala installed successfully", "success", "✓")
-            pkg_manager = "nala" if Path("/usr/bin/nala").exists() else "apt"
-            self.log_operation(f"Updating package lists with {pkg_manager}...")
-            run_command([pkg_manager, "update"], logger=self.logger)
-            self.log_operation(f"Upgrading packages with {pkg_manager}...")
-            run_command([pkg_manager, "upgrade", "-y"], logger=self.logger)
-            self.log_operation("Package manager setup completed", "success", "✓")
+            # Ensure Homebrew is installed
+            if shutil.which("brew") is None:
+                self.log_operation(
+                    "Homebrew is not installed. Please install Homebrew from https://brew.sh",
+                    "error",
+                    "✗",
+                )
+                sys.exit(1)
+            self.log_operation("Updating Homebrew...")
+            run_command(["brew", "update"], logger=self.logger)
+            self.log_operation("Upgrading installed formulae...")
+            run_command(["brew", "upgrade"], logger=self.logger)
+            self.log_operation("Homebrew update and upgrade completed", "success", "✓")
             return True
         except subprocess.CalledProcessError as e:
             if self.logger:
@@ -642,9 +390,6 @@ class SystemSetup:
     def install_packages(
         self, packages: List[str], progress_callback=None, skip_failed: bool = True
     ) -> Tuple[bool, List[str]]:
-        """
-        Install the provided list of packages.
-        """
         try:
             if self.simulate:
                 self.log_operation(
@@ -652,12 +397,8 @@ class SystemSetup:
                 )
                 time.sleep(2)
                 return True, []
-            pkg_manager = "nala" if Path("/usr/bin/nala").exists() else "apt"
-            install_cmd = [pkg_manager, "install", "-y", "--no-install-recommends"]
-            env = os.environ.copy()
-            env["DEBIAN_FRONTEND"] = "noninteractive"
             failed_packages = []
-            chunk_size = 15
+            chunk_size = 10
             for i in range(0, len(packages), chunk_size):
                 chunk = packages[i : i + chunk_size]
                 desc = f"Installing packages {i + 1}-{min(i + chunk_size, len(packages))} of {len(packages)}"
@@ -666,15 +407,15 @@ class SystemSetup:
                 else:
                     self.log_operation(desc)
                 try:
-                    run_command(install_cmd + chunk, env=env, logger=self.logger)
+                    run_command(["brew", "install"] + chunk, logger=self.logger)
                     self.successful_packages.extend(chunk)
-                except subprocess.CalledProcessError as e:
+                except subprocess.CalledProcessError:
                     self.log_operation("Retrying individual packages...", "warning")
                     for package in chunk:
                         if package not in self.successful_packages:
                             try:
                                 run_command(
-                                    install_cmd + [package], env=env, logger=self.logger
+                                    ["brew", "install", package], logger=self.logger
                                 )
                                 self.successful_packages.append(package)
                             except subprocess.CalledProcessError:
@@ -711,69 +452,15 @@ class SystemSetup:
             return False, packages
 
     def configure_installed_services(self) -> bool:
-        """
-        Configure and enable installed services.
-        """
         try:
             if self.simulate:
                 self.log_operation("Simulating service configuration...", "warning")
                 time.sleep(1)
                 return True
-
-            services_to_configure = {
-                "ufw": {
-                    "enable": True,
-                    "commands": [
-                        ["ufw", "default", "deny", "incoming"],
-                        ["ufw", "default", "allow", "outgoing"],
-                        ["ufw", "allow", "ssh"],
-                        ["ufw", "--force", "enable"],
-                    ],
-                },
-                "fail2ban": {"enable": True, "commands": []},
-                "clamav-freshclam": {
-                    "enable": True,
-                    "commands": [
-                        ["systemctl", "stop", "clamav-freshclam"],
-                        ["freshclam"],
-                    ],
-                },
-                "apparmor": {"enable": True, "commands": []},
-                "auditd": {"enable": True, "commands": []},
-            }
-            for service, config in services_to_configure.items():
-                if self._check_if_installed(service):
-                    self.log_operation(f"Configuring {service}...")
-                    for cmd in config.get("commands", []):
-                        try:
-                            run_command(cmd, check=False, logger=self.logger)
-                        except Exception as e:
-                            self.log_operation(
-                                f"Command failed for {service}: {e}", "warning", "⚠"
-                            )
-                    if config.get("enable", False):
-                        try:
-                            self.log_operation(f"Enabling and starting {service}...")
-                            run_command(
-                                ["systemctl", "enable", service],
-                                check=False,
-                                logger=self.logger,
-                            )
-                            run_command(
-                                ["systemctl", "restart", service],
-                                check=False,
-                                logger=self.logger,
-                            )
-                        except Exception as e:
-                            self.log_operation(
-                                f"Failed to enable/start {service}: {e}", "warning", "⚠"
-                            )
-                else:
-                    if self.logger:
-                        self.logger.debug(
-                            f"{service} not installed; skipping configuration"
-                        )
-            self.log_operation("Service configuration completed", "success", "✓")
+            # Most Homebrew-installed CLI tools do not require further service configuration on macOS.
+            self.log_operation(
+                "No additional service configuration required on macOS", "info"
+            )
             return True
         except Exception as e:
             self.log_operation(f"Service configuration failed: {e}", "error", "✗")
@@ -782,24 +469,18 @@ class SystemSetup:
             return False
 
     def _check_if_installed(self, package: str) -> bool:
-        """
-        Check if a package is installed via dpkg.
-        """
         try:
             result = run_command(
-                ["dpkg", "-l", package],
+                ["brew", "list", "--formula", package],
                 check=False,
                 capture_output=True,
                 logger=self.logger,
             )
-            return "ii" in result.stdout and package in result.stdout
+            return package in result.stdout
         except Exception:
             return False
 
     def save_installation_report(self, report_dir: Path) -> str:
-        """
-        Save a JSON and human-readable installation report.
-        """
         report_dir.mkdir(exist_ok=True, parents=True)
         elapsed = datetime.now() - self.start_time
         elapsed_str = f"{int(elapsed.total_seconds() // 60)}m {int(elapsed.total_seconds() % 60)}s"
@@ -853,29 +534,25 @@ class SystemSetup:
 
 
 # ----------------------------------------------------------------
-# Main Application Function (Fully Automated)
+# Main Application Function (Fully Automated for macOS)
 # ----------------------------------------------------------------
 def main() -> None:
-    """
-    Main function that runs all installation steps automatically without user interaction.
-    """
     simulate = False
     verbose = False
     skip_failed = True
-    selected_categories = None  # Install all categories
     report_dir = DEFAULT_REPORT_DIR
     log_dir = DEFAULT_LOG_DIR
 
     logger = setup_logging(log_dir, verbose)
 
-    # Register signal and cleanup handlers
     signal.signal(signal.SIGINT, lambda s, f: signal_handler(s, f, logger))
     signal.signal(signal.SIGTERM, lambda s, f: signal_handler(s, f, logger))
     atexit.register(lambda: cleanup(logger))
 
-    if not SystemSetup.check_root():
+    # Homebrew installations on macOS do not require root; however, ensure brew is installed.
+    if shutil.which("brew") is None:
         display_panel(
-            "[bold]This script requires root privileges.[/]\nRun with sudo: [bold cyan]sudo python3 security_installer.py[/]",
+            "[bold]Homebrew is not installed.[/]\nPlease install Homebrew from [bold cyan]https://brew.sh[/]",
             style=NordColors.RED,
             title="Error",
         )
@@ -891,13 +568,9 @@ def main() -> None:
     )
     console.print()
 
-    setup = SystemSetup(
-        simulate=simulate,
-        verbose=verbose,
-        logger=logger,
-    )
+    setup = SystemSetup(simulate=simulate, verbose=verbose, logger=logger)
 
-    # Display informational installation plan
+    # Display installation plan
     table = Table(
         show_header=True,
         header_style=f"bold {NordColors.FROST_1}",
@@ -935,18 +608,18 @@ def main() -> None:
         # Step 1: Cleanup package system
         progress.update(
             main_task,
-            description=f"[{NordColors.FROST_2}]Cleaning package system",
+            description=f"[{NordColors.FROST_2}]Cleaning Homebrew cache",
             completed=0,
         )
         progress.update(
             sub_task,
             visible=True,
             completed=0,
-            description=f"[{NordColors.FROST_2}]Cleaning package system",
+            description=f"[{NordColors.FROST_2}]Cleaning Homebrew cache",
         )
         if not setup.cleanup_package_system():
             print_message(
-                "Package system cleanup failed; continuing as requested...",
+                "Homebrew cleanup failed; continuing as requested...",
                 NordColors.YELLOW,
                 "⚠",
                 logger,
@@ -957,17 +630,17 @@ def main() -> None:
         # Step 2: Setup package manager
         progress.update(
             main_task,
-            description=f"[{NordColors.FROST_2}]Setting up package manager",
+            description=f"[{NordColors.FROST_2}]Updating Homebrew",
             completed=20,
         )
         progress.update(
             sub_task,
             completed=0,
-            description=f"[{NordColors.FROST_2}]Setting up package manager",
+            description=f"[{NordColors.FROST_2}]Updating Homebrew",
         )
         if not setup.setup_package_manager():
             print_message(
-                "Package manager setup failed; continuing as requested...",
+                "Homebrew update/upgrade failed; continuing as requested...",
                 NordColors.YELLOW,
                 "⚠",
                 logger,
@@ -1018,7 +691,7 @@ def main() -> None:
             )
         progress.update(sub_task, completed=100)
 
-        # Step 4: Configure installed services
+        # Step 4: Configure installed services (if applicable)
         progress.update(
             main_task,
             description=f"[{NordColors.FROST_2}]Configuring services",
