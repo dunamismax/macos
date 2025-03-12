@@ -130,7 +130,7 @@ def render_banner(text: str, adjusted_width: int) -> str:
     try:
         fig = pyfiglet.Figlet(font="slant", width=adjusted_width)
         ascii_art = fig.renderText(text)
-    except Exception as e:
+    except Exception:
         ascii_art = text
 
     # Nord theme colors
@@ -140,7 +140,6 @@ def render_banner(text: str, adjusted_width: int) -> str:
     for i, line in enumerate(lines):
         if line.strip():
             color = nord_colors[i % len(nord_colors)]
-            # Escape any brackets that might conflict with Rich markup
             escaped_line = line.replace("[", "\\[").replace("]", "\\]")
             styled_lines.append(f"[bold {color}]{escaped_line}[/]")
     return "\n".join(styled_lines)
@@ -250,7 +249,6 @@ class SpinnerProgressManager:
             console=console,
             transient=True,
         )
-        self.live = self.progress.live_renderable
         self.task = None
 
     def __enter__(self):
@@ -425,7 +423,7 @@ def bandwidth_qos_monitor() -> None:
             "-s",
             "-w",
             "%{size_download} %{time_total}",
-            "https://nbg1-speed.hetzner.com/100MB.bin",
+            "https://speed.hetzner.de/10MB.bin",
         ]
         result = subprocess.run(curl_cmd, capture_output=True, text=True, check=True)
         output = result.stdout.strip()
@@ -597,7 +595,6 @@ def main_menu() -> None:
 
 
 def main() -> None:
-    # Optionally, ensure Homebrew is installed.
     check_homebrew()
     main_menu()
 
