@@ -425,7 +425,7 @@ def bandwidth_qos_monitor() -> None:
             "-s",
             "-w",
             "%{size_download} %{time_total}",
-            "https://speed.hetzner.de/10MB.bin",
+            "https://nbg1-speed.hetzner.com/100MB.bin",
         ]
         result = subprocess.run(curl_cmd, capture_output=True, text=True, check=True)
         output = result.stdout.strip()
