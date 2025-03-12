@@ -377,4 +377,10 @@ struct TrashView: View {
             print("Error permanently deleting task: \(error.localizedDescription)")
         }
     }
-}
+}//
+//  task_manager_ios.swift
+//  task_manager_ios
+//
+//  Created by Stephen Sawyer on 3/12/25.
+//
+

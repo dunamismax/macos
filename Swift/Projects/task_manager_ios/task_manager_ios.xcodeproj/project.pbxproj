@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		245B57692D8232EB00C9A9A0 /* task_manager_ios.swift in Sources */ = {isa = PBXBuildFile; fileRef = 245B57682D8232DE00C9A9A0 /* task_manager_ios.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		245B574C2D82322000C9A9A0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,25 +31,8 @@
 		245B57362D82321F00C9A9A0 /* task_manager_ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = task_manager_ios.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		245B574B2D82322000C9A9A0 /* task_manager_iosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = task_manager_iosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		245B57552D82322000C9A9A0 /* task_manager_iosUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = task_manager_iosUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		245B57682D8232DE00C9A9A0 /* task_manager_ios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = task_manager_ios.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		245B57382D82321F00C9A9A0 /* task_manager_ios */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = task_manager_ios;
-			sourceTree = "<group>";
-		};
-		245B574E2D82322000C9A9A0 /* task_manager_iosTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = task_manager_iosTests;
-			sourceTree = "<group>";
-		};
-		245B57582D82322000C9A9A0 /* task_manager_iosUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = task_manager_iosUITests;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		245B57332D82321F00C9A9A0 /* Frameworks */ = {
@@ -75,9 +62,7 @@
 		245B572D2D82321F00C9A9A0 = {
 			isa = PBXGroup;
 			children = (
-				245B57382D82321F00C9A9A0 /* task_manager_ios */,
-				245B574E2D82322000C9A9A0 /* task_manager_iosTests */,
-				245B57582D82322000C9A9A0 /* task_manager_iosUITests */,
+				245B57682D8232DE00C9A9A0 /* task_manager_ios.swift */,
 				245B57372D82321F00C9A9A0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -107,9 +92,6 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				245B57382D82321F00C9A9A0 /* task_manager_ios */,
-			);
 			name = task_manager_ios;
 			packageProductDependencies = (
 			);
@@ -130,9 +112,6 @@
 			dependencies = (
 				245B574D2D82322000C9A9A0 /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				245B574E2D82322000C9A9A0 /* task_manager_iosTests */,
-			);
 			name = task_manager_iosTests;
 			packageProductDependencies = (
 			);
@@ -152,9 +131,6 @@
 			);
 			dependencies = (
 				245B57572D82322000C9A9A0 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				245B57582D82322000C9A9A0 /* task_manager_iosUITests */,
 			);
 			name = task_manager_iosUITests;
 			packageProductDependencies = (
@@ -236,6 +212,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				245B57692D8232EB00C9A9A0 /* task_manager_ios.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
