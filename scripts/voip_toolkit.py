@@ -2,15 +2,14 @@
 """
 macOS VoIP Toolkit
 --------------------------------------------------
-A comprehensive, menu‐driven CLI application for VoIP-related
-tasks on macOS. This toolkit includes a SIP Checker (to detect if
-SIP ALG is enabled on your router), VoIP network information, a
-SIP port scanner, and a Bandwidth & QoS Monitor.
+A comprehensive, menu‐driven CLI application for VoIP‐related tasks on macOS.
+This toolkit includes a SIP Checker (to detect if SIP ALG is enabled on your router),
+VoIP network information, a SIP port scanner, and a Bandwidth & QoS Monitor.
 
 Core Libraries & Features:
-  • Dependency checks and auto-installation of required Python packages.
+  • Auto‐installation of required Python packages.
   • macOS–specific configuration using Homebrew for package management.
-  • Dynamic Pyfiglet banners with rainbow coloring on every submenu.
+  • Dynamic Pyfiglet banners rendered with a Nord-themed rainbow using the “slant” font.
   • Robust error handling, signal cleanup, and modular design.
 
 Version: 1.0.0
@@ -65,6 +64,13 @@ def install_dependencies():
         sys.exit(1)
 
 
+def shutil_which(cmd):
+    """A simple wrapper around shutil.which (compatible with older Python versions)."""
+    from shutil import which
+
+    return which(cmd)
+
+
 def check_homebrew():
     """Ensure Homebrew is installed on macOS."""
     if not shutil_which("brew"):
@@ -72,13 +78,6 @@ def check_homebrew():
             "Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun this script."
         )
         sys.exit(1)
-
-
-def shutil_which(cmd):
-    """A simple wrapper around shutil.which (compatible with older Python versions)."""
-    from shutil import which
-
-    return which(cmd)
 
 
 # Attempt to import dependencies; if missing, install them.
@@ -98,8 +97,6 @@ try:
         TimeRemainingColumn,
     )
     from rich.align import Align
-    from rich.style import Style
-    from rich.live import Live
     from prompt_toolkit import prompt as pt_prompt
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
@@ -112,7 +109,6 @@ except ImportError:
 
 console: Console = Console()
 
-
 # ----------------------------------------------------------------
 # Global Constants and Paths
 # ----------------------------------------------------------------
@@ -124,36 +120,42 @@ COMMAND_HISTORY = os.path.join(HISTORY_DIR, "command_history")
 
 
 # ----------------------------------------------------------------
-# Create a Dynamic Pyfiglet Header (Rainbow Style)
+# Banner Rendering Helpers
 # ----------------------------------------------------------------
-def create_header() -> Panel:
+def render_banner(text: str, adjusted_width: int) -> str:
     """
-    Generate a dynamic ASCII banner for the application header using Pyfiglet.
-    This banner uses a rainbow coloring style and is used uniformly in every submenu.
+    Render a banner using Pyfiglet with the 'slant' font and a Nord-themed rainbow.
+    Returns the rendered text with Rich markup.
+    """
+    try:
+        fig = pyfiglet.Figlet(font="slant", width=adjusted_width)
+        ascii_art = fig.renderText(text)
+    except Exception as e:
+        ascii_art = text
+
+    # Nord theme colors
+    nord_colors = ["#BF616A", "#D08770", "#EBCB8B", "#A3BE8C", "#88C0D0", "#B48EAD"]
+    lines = ascii_art.splitlines()
+    styled_lines = []
+    for i, line in enumerate(lines):
+        if line.strip():
+            color = nord_colors[i % len(nord_colors)]
+            # Escape any brackets that might conflict with Rich markup
+            escaped_line = line.replace("[", "\\[").replace("]", "\\]")
+            styled_lines.append(f"[bold {color}]{escaped_line}[/]")
+    return "\n".join(styled_lines)
+
+
+def create_main_header() -> Panel:
+    """
+    Generate the main header banner using Pyfiglet with a Nord-themed rainbow.
+    This banner includes the application name, version, and subtitle.
     """
     term_width = os.get_terminal_size().columns
     adjusted_width = min(term_width - 4, 100)
-    fonts = ["slant", "big", "standard", "banner3-D", "digital"]
-    ascii_art = ""
-    for font in fonts:
-        try:
-            fig = pyfiglet.Figlet(font=font, width=adjusted_width)
-            ascii_art = fig.renderText(APP_NAME)
-            if ascii_art.strip():
-                break
-        except Exception:
-            continue
-    ascii_lines = [line for line in ascii_art.splitlines() if line.strip()]
-    colors = ["red", "yellow", "green", "cyan", "blue", "magenta"]
-    styled_text = ""
-    for i, line in enumerate(ascii_lines):
-        color = colors[i % len(colors)]
-        escaped_line = line.replace("[", "\\[").replace("]", "\\]")
-        styled_text += f"[bold {color}]{escaped_line}[/]\n"
-    border = f"[bold white]{'━' * (adjusted_width - 6)}[/]"
-    full_text = border + "\n" + styled_text + border
-    header_panel = Panel(
-        Text.from_markup(full_text),
+    banner_text = render_banner(APP_NAME, adjusted_width)
+    panel = Panel(
+        Text.from_markup(banner_text),
         border_style="white",
         padding=(1, 2),
         title=f"[bold white]v{VERSION}[/]",
@@ -161,7 +163,27 @@ def create_header() -> Panel:
         subtitle=f"[bold white]VoIP Toolkit[/]",
         subtitle_align="center",
     )
-    return header_panel
+    return panel
+
+
+def create_submenu_header(title: str) -> Panel:
+    """
+    Generate a submenu header banner using Pyfiglet with a Nord-themed rainbow.
+    The provided title (e.g., 'SIP Checker') is rendered using the same settings as the main header.
+    """
+    term_width = os.get_terminal_size().columns
+    adjusted_width = min(term_width - 4, 100)
+    banner_text = render_banner(title, adjusted_width)
+    panel = Panel(
+        Text.from_markup(banner_text),
+        border_style="white",
+        padding=(1, 2),
+        title=f"[bold white]{title}[/]",
+        title_align="right",
+        subtitle=f"[bold white]VoIP Toolkit[/]",
+        subtitle_align="center",
+    )
+    return panel
 
 
 # ----------------------------------------------------------------
@@ -228,15 +250,15 @@ class SpinnerProgressManager:
             console=console,
             transient=True,
         )
-        self.live = Live(self.progress, console=console, refresh_per_second=10)
+        self.live = self.progress.live_renderable
         self.task = None
 
     def __enter__(self):
-        self.live.start()
+        self.progress.start()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.live.stop()
+        self.progress.stop()
 
     def add_task(self, description: str, total: int = 100):
         self.task = self.progress.add_task(description, total=total)
@@ -256,16 +278,7 @@ def sip_checker() -> None:
     A minimal SIP OPTIONS message is sent to UDP port 5060.
     If a SIP response is received, SIP is assumed enabled.
     """
-    console.print(create_header())
-    # Display a subheader for SIP Checker (same style as main header)
-    try:
-        sub_banner = pyfiglet.figlet_format("SIP Checker", font="digital")
-    except Exception:
-        sub_banner = "SIP Checker"
-    console.print(
-        Panel(Text.from_markup(f"[bold cyan]{sub_banner}[/]"), border_style="cyan")
-    )
-
+    console.print(create_submenu_header("SIP Checker"))
     gateway = get_default_gateway()
     if not gateway:
         console.print(
@@ -312,12 +325,12 @@ def voip_network_info() -> None:
     """
     Display VoIP-related network information, including the local IP and default gateway.
     """
-    console.print(create_header())
+    console.print(create_submenu_header("VoIP Network Info"))
     local_ip = get_local_ip()
     gateway = get_default_gateway()
 
     info_table = Table(
-        title="VoIP Network Information", show_header=True, header_style="bold cyan"
+        title="Network Information", show_header=True, header_style="bold cyan"
     )
     info_table.add_column("Property", style="bold")
     info_table.add_column("Value", style="cyan")
@@ -335,7 +348,7 @@ def sip_port_scanner() -> None:
     Scan the local subnet for devices with TCP port 5060 (commonly used for SIP).
     This is a best-effort scan and may be subject to network conditions.
     """
-    console.print(create_header())
+    console.print(create_submenu_header("SIP Port Scanner"))
     local_ip = get_local_ip()
     if local_ip == "127.0.0.1":
         console.print(
@@ -391,15 +404,7 @@ def bandwidth_qos_monitor() -> None:
       • Retrieving DSCP configuration via sysctl.
     The results are presented in a formatted summary table.
     """
-    console.print(create_header())
-    try:
-        sub_banner = pyfiglet.figlet_format("BW & QoS Monitor", font="digital")
-    except Exception:
-        sub_banner = "BW & QoS Monitor"
-    console.print(
-        Panel(Text.from_markup(f"[bold cyan]{sub_banner}[/]"), border_style="cyan")
-    )
-
+    console.print(create_submenu_header("BW & QoS Monitor"))
     try:
         ping_cmd = ["ping", "-c", "10", "google.com"]
         result = subprocess.run(ping_cmd, capture_output=True, text=True, check=True)
@@ -497,7 +502,7 @@ def show_help() -> None:
     """
     Display help and available commands.
     """
-    console.print(create_header())
+    console.print(create_submenu_header("Help"))
     help_text = (
         "[bold cyan]Available Commands:[/]\n\n"
         "[bold cyan]1[/]: SIP Checker (check for SIP ALG on your router)\n"
@@ -545,7 +550,7 @@ atexit.register(cleanup)
 def main_menu() -> None:
     while True:
         console.clear()
-        console.print(create_header())
+        console.print(create_main_header())
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         console.print(Align.center(f"[bold cyan]Current Time: {current_time}[/]"))
         console.print()
@@ -592,6 +597,8 @@ def main_menu() -> None:
 
 
 def main() -> None:
+    # Optionally, ensure Homebrew is installed.
+    check_homebrew()
     main_menu()
 
 
