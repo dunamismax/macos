@@ -158,11 +158,11 @@ DEFAULT_USERNAME: str = (
     os.environ.get("SUDO_USER") or os.environ.get("USER") or getpass.getuser()
 )
 VERSION: str = "1.0.0"
-APP_NAME: str = "MacOS Ollama CLI"
+APP_NAME: str = "Ollama CLI"
 APP_SUBTITLE: str = "Interactive CLI for Ollama Models"
 
 # Store history in a hidden folder in the user's home directory
-HISTORY_DIR = os.path.expanduser("~/.macos_ollama_cli")
+HISTORY_DIR = os.path.expanduser("~/.ollama_cli")
 os.makedirs(HISTORY_DIR, exist_ok=True)
 COMMAND_HISTORY = os.path.join(HISTORY_DIR, "command_history")
 if not os.path.exists(COMMAND_HISTORY):
