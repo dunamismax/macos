@@ -286,29 +286,47 @@ def sip_checker() -> None:
         return
     console.print(f"Default Gateway: [bold]{gateway}[/]")
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(3)
+    # Use dynamic branch and Call-ID values for improved compatibility
+    branch = f"z9hG4bK-{int(time.time())}"
+    call_id = f"{int(time.time())}@{gateway}"
     sip_msg = (
         f"OPTIONS sip:dummy@{gateway} SIP/2.0\r\n"
-        f"Via: SIP/2.0/UDP {gateway}:5060;branch=z9hG4bK-12345\r\n"
+        f"Via: SIP/2.0/UDP {gateway}:5060;branch={branch}\r\n"
         f"Max-Forwards: 70\r\n"
         f"From: <sip:tester@{gateway}>;tag=12345\r\n"
         f"To: <sip:dummy@{gateway}>\r\n"
-        f"Call-ID: 1234567890\r\n"
+        f"Call-ID: {call_id}\r\n"
         f"CSeq: 1 OPTIONS\r\n"
         f"Content-Length: 0\r\n\r\n"
     )
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # Increase timeout to allow for network delays (5 seconds)
+    sock.settimeout(5)
     try:
+        # Send the SIP OPTIONS message to the default gateway
         sock.sendto(sip_msg.encode("utf-8"), (gateway, 5060))
-        response, addr = sock.recvfrom(1024)
-        if b"SIP/2.0" in response:
-            console.print("[bold red]SIP Enabled[/bold red]")
+
+        # Collect responses until the socket times out
+        responses = []
+        while True:
+            try:
+                response, addr = sock.recvfrom(2048)
+                responses.append((response, addr))
+            except socket.timeout:
+                break
+
+        if responses:
+            # Check each response for a SIP status line
+            sip_detected = any(b"SIP/2.0" in resp for resp, _ in responses)
+            if sip_detected:
+                console.print("[bold red]SIP Enabled[/bold red]")
+            else:
+                console.print(
+                    "[bold yellow]SIP Enabled (response received but unrecognized format)[/bold yellow]"
+                )
         else:
-            console.print(
-                "[bold green]SIP Enabled (unexpected response format)[/bold green]"
-            )
-    except socket.timeout:
-        console.print("[bold green]SIP Not Detected[/bold green]")
+            console.print("[bold green]SIP Not Detected[/bold green]")
     except Exception as e:
         console.print(f"[bold red]Error during SIP check: {e}[/bold red]")
     finally:
@@ -321,12 +339,67 @@ def sip_checker() -> None:
 # ----------------------------------------------------------------
 def voip_network_info() -> None:
     """
-    Display VoIP-related network information, including the local IP and default gateway.
+    Display VoIP-related network information, including:
+      • The local IP address.
+      • The default gateway.
+      • The external (public) IP address.
+      • The system hostname.
+      • Configured DNS servers.
+      • The current Wi-Fi SSID (if connected).
     """
     console.print(create_submenu_header("VoIP Network Info"))
+
+    # Retrieve local network information
     local_ip = get_local_ip()
     gateway = get_default_gateway()
 
+    # Retrieve external IP using an online service
+    try:
+        external_ip = (
+            subprocess.check_output(["curl", "-s", "https://api.ipify.org"])
+            .strip()
+            .decode("utf-8")
+        )
+    except Exception:
+        external_ip = "Not found"
+
+    # Get system hostname
+    try:
+        hostname = socket.gethostname()
+    except Exception:
+        hostname = "Not found"
+
+    # Retrieve DNS servers from /etc/resolv.conf
+    dns_servers = []
+    try:
+        with open("/etc/resolv.conf", "r") as resolv:
+            for line in resolv:
+                if line.startswith("nameserver"):
+                    parts = line.split()
+                    if len(parts) > 1:
+                        dns_servers.append(parts[1])
+    except Exception:
+        dns_servers = ["Not found"]
+    dns_servers_str = ", ".join(dns_servers) if dns_servers else "Not found"
+
+    # Attempt to get the current Wi-Fi SSID (only applicable if using Wi-Fi)
+    wifi_ssid = "N/A"
+    airport_path = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
+    if os.path.exists(airport_path):
+        try:
+            result = subprocess.run(
+                [airport_path, "-I"], capture_output=True, text=True, check=True
+            )
+            for line in result.stdout.splitlines():
+                if "SSID:" in line:
+                    wifi_ssid = line.split("SSID:")[-1].strip()
+                    break
+        except Exception:
+            wifi_ssid = "Not connected"
+    else:
+        wifi_ssid = "Unavailable"
+
+    # Build a table to display the collected network information
     info_table = Table(
         title="Network Information", show_header=True, header_style="bold cyan"
     )
@@ -334,6 +407,11 @@ def voip_network_info() -> None:
     info_table.add_column("Value", style="cyan")
     info_table.add_row("Local IP", local_ip)
     info_table.add_row("Default Gateway", gateway if gateway else "Not found")
+    info_table.add_row("External IP", external_ip)
+    info_table.add_row("Hostname", hostname)
+    info_table.add_row("DNS Servers", dns_servers_str)
+    info_table.add_row("Wi-Fi SSID", wifi_ssid)
+
     console.print(info_table)
     wait_for_key()
 
@@ -344,7 +422,8 @@ def voip_network_info() -> None:
 def sip_port_scanner() -> None:
     """
     Scan the local subnet for devices with TCP port 5060 (commonly used for SIP).
-    This is a best-effort scan and may be subject to network conditions.
+    This improved version uses parallel scanning for better performance,
+    tracks progress with a spinner, and reports the scan duration.
     """
     console.print(create_submenu_header("SIP Port Scanner"))
     local_ip = get_local_ip()
@@ -357,24 +436,49 @@ def sip_port_scanner() -> None:
 
     subnet_parts = local_ip.split(".")
     subnet_prefix = ".".join(subnet_parts[:3]) + "."
-    found_devices = []
+    total_hosts = 254
     console.print(f"Scanning subnet: {subnet_prefix}0/24 on port 5060 (TCP)...")
 
+    found_devices = []
+    start_time = time.time()
+
+    # Function to scan a single IP address
+    def scan_ip(i: int) -> str:
+        target_ip = f"{subnet_prefix}{i}"
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(0.5)
+            result = s.connect_ex((target_ip, 5060))
+            s.close()
+            if result == 0:
+                return target_ip
+        except Exception:
+            pass
+        return ""
+
+    import concurrent.futures
+
     with SpinnerProgressManager("Scanning...") as spinner:
-        spinner.add_task("Scanning hosts")
-        for i in range(1, 255):
-            target_ip = f"{subnet_prefix}{i}"
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(0.5)
-                result = s.connect_ex((target_ip, 5060))
-                s.close()
-                if result == 0:
-                    found_devices.append(target_ip)
-            except Exception:
-                continue
-            spinner.update(i * 100 // 254)
+        task_id = spinner.add_task("Scanning hosts", total=total_hosts)
+        completed = 0
+        # Use a thread pool to scan IPs concurrently
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            futures = {
+                executor.submit(scan_ip, i): i for i in range(1, total_hosts + 1)
+            }
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                if result:
+                    found_devices.append(result)
+                completed += 1
+                # Update spinner progress based on number of completed scans
+                spinner.update(completed * 100 // total_hosts)
+
+    elapsed_time = time.time() - start_time
+
     if found_devices:
+        # Sort found IP addresses for better readability
+        found_devices.sort(key=lambda ip: list(map(int, ip.split("."))))
         table = Table(
             title="SIP Devices Detected", show_header=True, header_style="bold red"
         )
@@ -382,10 +486,17 @@ def sip_port_scanner() -> None:
         for ip in found_devices:
             table.add_row(ip)
         console.print(table)
+        console.print(
+            f"[bold cyan]Scan completed in {elapsed_time:.2f} seconds.[/bold cyan]"
+        )
     else:
         console.print(
             "[bold green]No devices with SIP port 5060 detected.[/bold green]"
         )
+        console.print(
+            f"[bold cyan]Scan completed in {elapsed_time:.2f} seconds.[/bold cyan]"
+        )
+
     wait_for_key()
 
 
@@ -395,26 +506,48 @@ def sip_port_scanner() -> None:
 def bandwidth_qos_monitor() -> None:
     """
     Perform an extensive network test that includes:
-      • A ping test to measure average latency and packet loss.
-      • A download speed test using curl.
+      • A ping test to measure average, minimum, maximum, and standard deviation of latency,
+        as well as packet loss.
+      • A download speed test using curl (download link remains unchanged).
       • Checking the macOS Application Firewall status.
       • Checking PF (Packet Filter) firewall status.
       • Retrieving DSCP configuration via sysctl.
+      • A traceroute test to count the number of hops to google.com.
+      • A DNS resolution time test for google.com.
+      • Reporting the total duration of the tests.
     The results are presented in a formatted summary table.
     """
     console.print(create_submenu_header("BW & QoS Monitor"))
+
+    # Start overall timer for the test suite.
+    start_time = time.time()
+
+    # -------------------------------
+    # Ping Test
+    # -------------------------------
     try:
         ping_cmd = ["ping", "-c", "10", "google.com"]
         result = subprocess.run(ping_cmd, capture_output=True, text=True, check=True)
         ping_output = result.stdout
+
+        # Parse packet loss
         packet_loss_match = re.search(r"(\d+(?:\.\d+)?)% packet loss", ping_output)
         packet_loss = packet_loss_match.group(1) if packet_loss_match else "N/A"
-        avg_latency_match = re.search(r"round-trip.* = [\d\.]+/([\d\.]+)/", ping_output)
-        avg_latency = avg_latency_match.group(1) if avg_latency_match else "N/A"
-    except Exception:
-        avg_latency = "Error"
-        packet_loss = "Error"
 
+        # Parse latency values (min/avg/max/stddev if available)
+        latency_match = re.search(
+            r"round-trip.* = ([\d\.]+)/([\d\.]+)/([\d\.]+)/([\d\.]+) ms", ping_output
+        )
+        if latency_match:
+            min_latency, avg_latency, max_latency, stddev = latency_match.groups()
+        else:
+            avg_latency = min_latency = max_latency = stddev = "N/A"
+    except Exception:
+        avg_latency = min_latency = max_latency = stddev = packet_loss = "Error"
+
+    # -------------------------------
+    # Download Speed Test
+    # -------------------------------
     try:
         curl_cmd = [
             "curl",
@@ -435,6 +568,9 @@ def bandwidth_qos_monitor() -> None:
     except Exception:
         download_speed = "Error"
 
+    # -------------------------------
+    # macOS Application Firewall Test
+    # -------------------------------
     try:
         fw_cmd = ["socketfilterfw", "--getglobalstate"]
         result = subprocess.run(fw_cmd, capture_output=True, text=True, check=True)
@@ -457,6 +593,9 @@ def bandwidth_qos_monitor() -> None:
         except Exception:
             firewall_state = "Unknown"
 
+    # -------------------------------
+    # PF (Packet Filter) Firewall Test
+    # -------------------------------
     try:
         result = subprocess.run(
             ["pfctl", "-s", "info"], capture_output=True, text=True, check=True
@@ -466,6 +605,9 @@ def bandwidth_qos_monitor() -> None:
     except Exception:
         pf_state = "Error"
 
+    # -------------------------------
+    # DSCP Configuration Test
+    # -------------------------------
     try:
         result = subprocess.run(
             ["sysctl", "net.inet.ip.dscp"], capture_output=True, text=True, check=True
@@ -477,17 +619,58 @@ def bandwidth_qos_monitor() -> None:
     except Exception:
         dscp_value = "Not Configured / Error"
 
+    # -------------------------------
+    # Traceroute Test (Additional Feature)
+    # -------------------------------
+    try:
+        traceroute_cmd = ["traceroute", "google.com"]
+        result = subprocess.run(
+            traceroute_cmd, capture_output=True, text=True, check=True
+        )
+        traceroute_lines = result.stdout.strip().splitlines()
+        # Exclude the header line to count the hops
+        num_hops = len(traceroute_lines) - 1 if len(traceroute_lines) > 1 else "N/A"
+        traceroute_result = f"{num_hops} hops"
+    except Exception:
+        traceroute_result = "Error"
+
+    # -------------------------------
+    # DNS Resolution Test (Additional Feature)
+    # -------------------------------
+    try:
+        dns_start = time.time()
+        socket.gethostbyname("google.com")
+        dns_end = time.time()
+        dns_resolution_time = f"{(dns_end - dns_start) * 1000:.2f} ms"
+    except Exception:
+        dns_resolution_time = "Error"
+
+    # -------------------------------
+    # Calculate Total Test Duration
+    # -------------------------------
+    total_duration = time.time() - start_time
+
+    # -------------------------------
+    # Build and Display the Results Table
+    # -------------------------------
     result_table = Table(
         title="Network Test Summary", show_header=True, header_style="bold cyan"
     )
-    result_table.add_column("Test", style="bold")
-    result_table.add_column("Result", style="cyan")
+    result_table.add_column("Test", style="bold", justify="left")
+    result_table.add_column("Result", style="cyan", justify="right")
+
     result_table.add_row("Ping (Avg Latency)", f"{avg_latency} ms")
+    result_table.add_row("Ping (Min Latency)", f"{min_latency} ms")
+    result_table.add_row("Ping (Max Latency)", f"{max_latency} ms")
+    result_table.add_row("Ping (Std Dev)", f"{stddev} ms")
     result_table.add_row("Ping (Packet Loss)", f"{packet_loss} %")
     result_table.add_row("Download Speed", download_speed)
     result_table.add_row("App Firewall", firewall_state)
     result_table.add_row("PF Firewall", pf_state)
     result_table.add_row("DSCP Value", dscp_value)
+    result_table.add_row("Traceroute", traceroute_result)
+    result_table.add_row("DNS Resolution", dns_resolution_time)
+    result_table.add_row("Total Test Duration", f"{total_duration:.2f} s")
 
     console.print(result_table)
     wait_for_key()
