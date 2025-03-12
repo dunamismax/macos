@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
-macOS Llama AI CLI Chat Interface
-------------------------------------------
+macOS Llama AI CLI Chat Interface (Enhanced)
+--------------------------------------------------
 An interactive, menu-driven CLI application to interact with Llama AI models via the Ollama CLI.
-The app uses Rich for stylish CLI output, Pyfiglet for dynamic ASCII banners, and prompt_toolkit
-for interactive command-line input. It maintains conversation history to provide a production-grade
-chat experience with your configured Ollama models.
+This production-grade app uses Rich for stylish CLI output, Pyfiglet for dynamic ASCII banners, and
+prompt_toolkit for interactive command-line input. It provides a numbered menu for model selection,
+maintains conversation history, and supports graceful error handling and signal cleanup.
 
 Core Libraries & Features:
   • Dependency checks and auto-installation of required Python packages.
   • macOS-specific configuration using Homebrew where applicable.
   • Dynamic ASCII banners, rich menus, and progress spinners with ETAs.
   • Interact with the Ollama CLI to list available models and to send/receive messages.
+  • Numbered model selection for an easier interactive chat session.
   • Robust error handling, signal cleanup, and modular design.
 Version: 1.0.0
 """
@@ -347,13 +348,12 @@ def list_models() -> List[str]:
         result = subprocess.run(
             ["ollama", "list"], capture_output=True, text=True, check=True
         )
-        # Assuming the output lists one model per line
+        # Assume one model per line in the output
         models = [line.strip() for line in result.stdout.splitlines() if line.strip()]
         if not models:
-            # Fallback default models if none are returned
             models = ["llama2", "stablelm", "alpaca"]
         return models
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         print_warning(
             "Failed to list models using Ollama CLI. Using default model list."
         )
@@ -403,9 +403,6 @@ class ChatSession:
     def get_conversation_text(self) -> str:
         """
         Format conversation history into a single text string to send to Ollama.
-        Example format:
-            User: Hello
-            Assistant: Hi, how can I help?
         """
         text = ""
         for entry in self.conversation_history:
@@ -426,7 +423,7 @@ def interactive_chat(session: ChatSession) -> None:
     console.print(
         f"[bold {NordColors.SNOW_STORM_1}]Chatting with model:[/] [bold {NordColors.FROST_2}]{session.model}[/]"
     )
-    console.print(f"[dim]Type 'exit' to end the chat session.[/dim]\n")
+    console.print(f"[dim]Type 'exit' or 'quit' to end the chat session.[/dim]\n")
     while True:
         user_input = pt_prompt(
             "You: ",
@@ -443,7 +440,6 @@ def interactive_chat(session: ChatSession) -> None:
         conversation_text = session.get_conversation_text()
         response = get_model_response(session.model, conversation_text)
         session.append_message("assistant", response)
-        # Display the exchange in styled panels
         console.print(
             Panel(
                 f"[bold {NordColors.FROST_2}]You:[/] {user_input}",
@@ -456,6 +452,32 @@ def interactive_chat(session: ChatSession) -> None:
                 style=NordColors.POLAR_NIGHT_3,
             )
         )
+
+
+def choose_model_menu() -> str:
+    """
+    Present a numbered menu of available models and let the user choose one.
+    Returns the selected model name.
+    """
+    models = list_models()
+    table = Table(
+        title="Available Ollama Models",
+        show_header=True,
+        header_style=f"bold {NordColors.FROST_3}",
+    )
+    table.add_column("No.", style="bold", width=4)
+    table.add_column("Model Name", style=NordColors.FROST_2)
+    for i, model in enumerate(models, 1):
+        table.add_row(str(i), model)
+    console.print(table)
+    while True:
+        choice = pt_prompt("Enter model number: ", style=get_prompt_style())
+        if not choice.isdigit() or int(choice) < 1 or int(choice) > len(models):
+            print_error("Invalid selection. Please enter a valid model number.")
+        else:
+            selected_model = models[int(choice) - 1]
+            print_success(f"Selected model: {selected_model}")
+            return selected_model
 
 
 # ----------------------------------------------------------------
@@ -476,7 +498,7 @@ def chat_menu() -> None:
                 f"[{NordColors.SNOW_STORM_1}]Current Time: {current_time_str()}[/] | Host: {HOSTNAME}"
             )
         )
-        console.print("\n[bold {0}]Ollama Llama Chat Menu[/]".format(NordColors.PURPLE))
+        console.print(f"\n[bold {NordColors.PURPLE}]Ollama Llama Chat Menu[/]")
         table = Table(
             show_header=True, header_style=f"bold {NordColors.FROST_3}", expand=True
         )
@@ -522,15 +544,10 @@ def list_models_menu() -> None:
 
 def start_chat_session() -> None:
     """
-    Start an interactive chat session by selecting a model.
+    Start an interactive chat session by selecting a model from a numbered list.
     """
-    models = list_models()
-    model_choice = Prompt.ask(
-        f"[bold {NordColors.PURPLE}]Enter model name[/]",
-        choices=models,
-        default=models[0],
-    )
-    session = ChatSession(model=model_choice)
+    selected_model = choose_model_menu()
+    session = ChatSession(model=selected_model)
     interactive_chat(session)
     wait_for_key()
 
@@ -540,7 +557,7 @@ def show_help() -> None:
 [bold]Available Commands:[/]
 
 [bold {NordColors.FROST_2}]1[/]: List available models
-[bold {NordColors.FROST_2}]2[/]: Start chat session
+[bold {NordColors.FROST_2}]2[/]: Start chat session (choose model by number)
 [bold {NordColors.FROST_2}]H[/]: Help screen
 [bold {NordColors.FROST_2}]0[/]: Exit application
 
