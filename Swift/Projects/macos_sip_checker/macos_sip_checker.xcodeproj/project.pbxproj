@@ -35,16 +35,6 @@
 			path = macos_sip_checker;
 			sourceTree = "<group>";
 		};
-		249BBD402D820F280089F982 /* macos_sip_checkerTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = macos_sip_checkerTests;
-			sourceTree = "<group>";
-		};
-		249BBD4A2D820F280089F982 /* macos_sip_checkerUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = macos_sip_checkerUITests;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,8 +66,6 @@
 			isa = PBXGroup;
 			children = (
 				249BBD2C2D820F270089F982 /* macos_sip_checker */,
-				249BBD402D820F280089F982 /* macos_sip_checkerTests */,
-				249BBD4A2D820F280089F982 /* macos_sip_checkerUITests */,
 				249BBD2B2D820F270089F982 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -130,9 +118,6 @@
 			dependencies = (
 				249BBD3F2D820F280089F982 /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				249BBD402D820F280089F982 /* macos_sip_checkerTests */,
-			);
 			name = macos_sip_checkerTests;
 			packageProductDependencies = (
 			);
@@ -152,9 +137,6 @@
 			);
 			dependencies = (
 				249BBD492D820F280089F982 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				249BBD4A2D820F280089F982 /* macos_sip_checkerUITests */,
 			);
 			name = macos_sip_checkerUITests;
 			packageProductDependencies = (
