@@ -10,7 +10,7 @@ SIP port scanner, and a Bandwidth & QoS Monitor.
 Core Libraries & Features:
   • Dependency checks and auto-installation of required Python packages.
   • macOS–specific configuration using Homebrew for package management.
-  • Dynamic Pyfiglet banners, rich menus, and progress spinners with ETAs.
+  • Dynamic Pyfiglet banners with rainbow coloring on every submenu.
   • Robust error handling, signal cleanup, and modular design.
 
 Version: 1.0.0
@@ -124,12 +124,12 @@ COMMAND_HISTORY = os.path.join(HISTORY_DIR, "command_history")
 
 
 # ----------------------------------------------------------------
-# Create a Dynamic Pyfiglet Header
+# Create a Dynamic Pyfiglet Header (Rainbow Style)
 # ----------------------------------------------------------------
 def create_header() -> Panel:
     """
     Generate a dynamic ASCII banner for the application header using Pyfiglet.
-    Cycles through a list of fonts until one produces a visually appealing banner.
+    This banner uses a rainbow coloring style and is used uniformly in every submenu.
     """
     term_width = os.get_terminal_size().columns
     adjusted_width = min(term_width - 4, 100)
@@ -143,24 +143,22 @@ def create_header() -> Panel:
                 break
         except Exception:
             continue
-    # Optionally, style each line with a cycling color palette.
     ascii_lines = [line for line in ascii_art.splitlines() if line.strip()]
-    colors = ["cyan", "blue", "magenta", "green"]
+    colors = ["red", "yellow", "green", "cyan", "blue", "magenta"]
     styled_text = ""
     for i, line in enumerate(ascii_lines):
         color = colors[i % len(colors)]
-        # Escape any square brackets to prevent Rich markup issues.
         escaped_line = line.replace("[", "\\[").replace("]", "\\]")
         styled_text += f"[bold {color}]{escaped_line}[/]\n"
-    border = f"[cyan]{'━' * (adjusted_width - 6)}[/]"
+    border = f"[bold white]{'━' * (adjusted_width - 6)}[/]"
     full_text = border + "\n" + styled_text + border
     header_panel = Panel(
         Text.from_markup(full_text),
-        border_style="cyan",
+        border_style="white",
         padding=(1, 2),
-        title=f"[bold cyan]v{VERSION}[/]",
+        title=f"[bold white]v{VERSION}[/]",
         title_align="right",
-        subtitle=f"[bold cyan]VoIP Toolkit[/]",
+        subtitle=f"[bold white]VoIP Toolkit[/]",
         subtitle_align="center",
     )
     return header_panel
@@ -258,13 +256,14 @@ def sip_checker() -> None:
     A minimal SIP OPTIONS message is sent to UDP port 5060.
     If a SIP response is received, SIP is assumed enabled.
     """
-    # Display a dedicated Pyfiglet banner for SIP Checker
+    console.print(create_header())
+    # Display a subheader for SIP Checker (same style as main header)
     try:
-        banner = pyfiglet.figlet_format("SIP Checker", font="slant")
+        sub_banner = pyfiglet.figlet_format("SIP Checker", font="digital")
     except Exception:
-        banner = "SIP Checker"
+        sub_banner = "SIP Checker"
     console.print(
-        Panel(Text.from_markup(f"[bold cyan]{banner}[/]"), border_style="cyan")
+        Panel(Text.from_markup(f"[bold cyan]{sub_banner}[/]"), border_style="cyan")
     )
 
     gateway = get_default_gateway()
@@ -276,7 +275,6 @@ def sip_checker() -> None:
         return
     console.print(f"Default Gateway: [bold]{gateway}[/]")
 
-    # Create a UDP socket to send a minimal SIP OPTIONS message
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(3)
     sip_msg = (
@@ -314,7 +312,6 @@ def voip_network_info() -> None:
     """
     Display VoIP-related network information, including the local IP and default gateway.
     """
-    # Display header on this page too
     console.print(create_header())
     local_ip = get_local_ip()
     gateway = get_default_gateway()
@@ -396,14 +393,13 @@ def bandwidth_qos_monitor() -> None:
     """
     console.print(create_header())
     try:
-        banner = pyfiglet.figlet_format("BW & QoS Monitor", font="slant")
+        sub_banner = pyfiglet.figlet_format("BW & QoS Monitor", font="digital")
     except Exception:
-        banner = "BW & QoS Monitor"
+        sub_banner = "BW & QoS Monitor"
     console.print(
-        Panel(Text.from_markup(f"[bold cyan]{banner}[/]"), border_style="cyan")
+        Panel(Text.from_markup(f"[bold cyan]{sub_banner}[/]"), border_style="cyan")
     )
 
-    # --- Ping Test ---
     try:
         ping_cmd = ["ping", "-c", "10", "google.com"]
         result = subprocess.run(ping_cmd, capture_output=True, text=True, check=True)
@@ -416,7 +412,6 @@ def bandwidth_qos_monitor() -> None:
         avg_latency = "Error"
         packet_loss = "Error"
 
-    # --- Download Speed Test ---
     try:
         curl_cmd = [
             "curl",
@@ -425,7 +420,7 @@ def bandwidth_qos_monitor() -> None:
             "-s",
             "-w",
             "%{size_download} %{time_total}",
-            "https://nbg1-speed.hetzner.com/100MB.bin",
+            "https://speed.hetzner.de/10MB.bin",
         ]
         result = subprocess.run(curl_cmd, capture_output=True, text=True, check=True)
         output = result.stdout.strip()
@@ -437,7 +432,6 @@ def bandwidth_qos_monitor() -> None:
     except Exception:
         download_speed = "Error"
 
-    # --- Check macOS Application Firewall ---
     try:
         fw_cmd = ["socketfilterfw", "--getglobalstate"]
         result = subprocess.run(fw_cmd, capture_output=True, text=True, check=True)
@@ -460,7 +454,6 @@ def bandwidth_qos_monitor() -> None:
         except Exception:
             firewall_state = "Unknown"
 
-    # --- Check PF (Packet Filter) Firewall ---
     try:
         result = subprocess.run(
             ["pfctl", "-s", "info"], capture_output=True, text=True, check=True
@@ -470,7 +463,6 @@ def bandwidth_qos_monitor() -> None:
     except Exception:
         pf_state = "Error"
 
-    # --- Check DSCP Configuration ---
     try:
         result = subprocess.run(
             ["sysctl", "net.inet.ip.dscp"], capture_output=True, text=True, check=True
@@ -553,7 +545,6 @@ atexit.register(cleanup)
 def main_menu() -> None:
     while True:
         console.clear()
-        # Always print the dynamic header at the top of the menu
         console.print(create_header())
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         console.print(Align.center(f"[bold cyan]Current Time: {current_time}[/]"))
