@@ -1,0 +1,1 @@
+yt-dlp -f 'bestvideo+bestaudio' --merge-output-format mp4 -o '/Users/sawyer/Downloads/%(title)s.%(ext)s' 'YOUTUBE_URL'
