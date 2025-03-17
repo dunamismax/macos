@@ -636,7 +636,7 @@ STATIC_TAILSCALE_DEVICES: List[Device] = [
 STATIC_LOCAL_DEVICES: List[Device] = [
     Device(
         name="fedora-server",
-        ip_address="192.168.68.55",
+        ip_address="192.168.68.56",
         device_type="local",
         description="Main Server",
     ),
