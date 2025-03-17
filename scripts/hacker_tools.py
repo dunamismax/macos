@@ -9,7 +9,7 @@ This script runs completely unattended with no interactive menu or prompts.
 Usage:
   Run with sudo if required: sudo python3 security_installer.py
 
-Version: 1.0.0
+Version: 1.1.0-macos
 """
 
 import os
@@ -27,9 +27,6 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple, Any
 
-# ----------------------------------------------------------------
-# Dependency Check and Imports
-# ----------------------------------------------------------------
 try:
     import pyfiglet
     from rich.console import Console
@@ -67,11 +64,9 @@ install_rich_traceback(show_locals=True)
 # ----------------------------------------------------------------
 # Configuration & Constants
 # ----------------------------------------------------------------
-VERSION: str = "1.0.0"
+VERSION: str = "1.1.0-macos"
 APP_NAME: str = "Unattended Security Tools Installer"
 APP_SUBTITLE: str = "Automated macOS Security Configuration via Homebrew"
-
-# For macOS, use a log directory in the user's home directory.
 DEFAULT_LOG_DIR = Path.home() / "security_setup_logs"
 DEFAULT_REPORT_DIR = DEFAULT_LOG_DIR / "reports"
 OPERATION_TIMEOUT: int = 600  # 10 minutes timeout for long operations
@@ -98,7 +93,6 @@ class NordColors:
 # ----------------------------------------------------------------
 # Security Tools Categories
 # ----------------------------------------------------------------
-# Note: Not all these packages are available on macOS/Homebrew.
 SECURITY_TOOLS: Dict[str, List[str]] = {
     "Network Analysis": [
         "wireshark",
@@ -133,13 +127,31 @@ SECURITY_TOOLS: Dict[str, List[str]] = {
 }
 
 # ----------------------------------------------------------------
-# Create a Rich Console
+# Brew Package Type Mapping
+# ----------------------------------------------------------------
+# Specify for certain packages whether they should be installed as a cask
+# or skipped because they are unavailable on macOS.
+BREW_PACKAGE_TYPE: Dict[str, str] = {
+    "docker": "cask",
+    "wireshark": "cask",
+    "torbrowser-launcher": "cask",
+    "scalpel": "skip",
+    "whatweb": "skip",
+    "dsniff": "skip",
+    "photorec": "skip",
+    "dirb": "skip",
+    "wifite": "skip",
+    # All others default to "formula"
+}
+
+# ----------------------------------------------------------------
+# Console Setup
 # ----------------------------------------------------------------
 console: Console = Console()
 
 
 # ----------------------------------------------------------------
-# Console and Logging Helpers
+# Logging and Console Helpers
 # ----------------------------------------------------------------
 def setup_logging(log_dir: Path, verbose: bool = False) -> logging.Logger:
     log_dir.mkdir(exist_ok=True, parents=True)
@@ -309,7 +321,10 @@ def run_command(
 # System Setup Class (macOS using Homebrew)
 # ----------------------------------------------------------------
 class SystemSetup:
-    """Handles Homebrew-based package management and service configuration on macOS."""
+    """
+    Handles Homebrew-based package management and service configuration on macOS.
+    Groups packages by installation type and skips unavailable packages.
+    """
 
     def __init__(
         self,
@@ -325,14 +340,20 @@ class SystemSetup:
         self.skipped_packages: List[str] = []
         self.start_time = datetime.now()
 
-    @staticmethod
-    def check_root() -> bool:
-        # Homebrew installations typically do not require root on macOS.
-        return True
-
-    def get_target_packages(self) -> List[str]:
-        all_packages = {pkg for tools in SECURITY_TOOLS.values() for pkg in tools}
-        return list(all_packages)
+    def get_target_packages(self) -> List[Tuple[str, str]]:
+        """
+        Returns a list of tuples (package, type) where type is 'formula', 'cask', or 'skip'.
+        """
+        packages = []
+        for tools in SECURITY_TOOLS.values():
+            for pkg in tools:
+                pkg_type = BREW_PACKAGE_TYPE.get(pkg, "formula")
+                packages.append((pkg, pkg_type))
+        # Remove duplicates while preserving the installation type.
+        unique = {}
+        for pkg, typ in packages:
+            unique[pkg] = typ
+        return list(unique.items())
 
     def log_operation(
         self, message: str, level: str = "info", prefix: str = "•"
@@ -368,7 +389,6 @@ class SystemSetup:
                 self.log_operation("Simulating Homebrew update/upgrade...", "warning")
                 time.sleep(1)
                 return True
-            # Ensure Homebrew is installed
             if shutil.which("brew") is None:
                 self.log_operation(
                     "Homebrew is not installed. Please install Homebrew from https://brew.sh",
@@ -388,7 +408,10 @@ class SystemSetup:
             return False
 
     def install_packages(
-        self, packages: List[str], progress_callback=None, skip_failed: bool = True
+        self,
+        packages: List[Tuple[str, str]],
+        progress_callback=None,
+        skip_failed: bool = True,
     ) -> Tuple[bool, List[str]]:
         try:
             if self.simulate:
@@ -398,24 +421,67 @@ class SystemSetup:
                 time.sleep(2)
                 return True, []
             failed_packages = []
+            # Group packages by type
+            formula_packages = [pkg for pkg, typ in packages if typ == "formula"]
+            cask_packages = [pkg for pkg, typ in packages if typ == "cask"]
+            skip_packages = [pkg for pkg, typ in packages if typ == "skip"]
+            # Log skipped packages
+            if skip_packages:
+                for pkg in skip_packages:
+                    self.log_operation(
+                        f"Skipping unavailable package: {pkg}", "warning", "⚠"
+                    )
+                    self.skipped_packages.append(pkg)
+            # Install formula packages in chunks
             chunk_size = 10
-            for i in range(0, len(packages), chunk_size):
-                chunk = packages[i : i + chunk_size]
-                desc = f"Installing packages {i + 1}-{min(i + chunk_size, len(packages))} of {len(packages)}"
+            for i in range(0, len(formula_packages), chunk_size):
+                chunk = formula_packages[i : i + chunk_size]
+                desc = f"Installing formula packages {i + 1}-{min(i + chunk_size, len(formula_packages))} of {len(formula_packages)}"
                 if progress_callback:
-                    progress_callback(desc, i, len(packages))
+                    progress_callback(desc, i, len(formula_packages))
                 else:
                     self.log_operation(desc)
                 try:
                     run_command(["brew", "install"] + chunk, logger=self.logger)
                     self.successful_packages.extend(chunk)
                 except subprocess.CalledProcessError:
-                    self.log_operation("Retrying individual packages...", "warning")
+                    self.log_operation(
+                        "Retrying individual formula packages...", "warning"
+                    )
                     for package in chunk:
                         if package not in self.successful_packages:
                             try:
                                 run_command(
                                     ["brew", "install", package], logger=self.logger
+                                )
+                                self.successful_packages.append(package)
+                            except subprocess.CalledProcessError:
+                                failed_packages.append(package)
+                                if self.logger:
+                                    self.logger.error(f"Failed to install: {package}")
+            # Install cask packages in chunks
+            for i in range(0, len(cask_packages), chunk_size):
+                chunk = cask_packages[i : i + chunk_size]
+                desc = f"Installing cask packages {i + 1}-{min(i + chunk_size, len(cask_packages))} of {len(cask_packages)}"
+                if progress_callback:
+                    progress_callback(desc, i, len(cask_packages))
+                else:
+                    self.log_operation(desc)
+                try:
+                    run_command(
+                        ["brew", "install", "--cask"] + chunk, logger=self.logger
+                    )
+                    self.successful_packages.extend(chunk)
+                except subprocess.CalledProcessError:
+                    self.log_operation(
+                        "Retrying individual cask packages...", "warning"
+                    )
+                    for package in chunk:
+                        if package not in self.successful_packages:
+                            try:
+                                run_command(
+                                    ["brew", "install", "--cask", package],
+                                    logger=self.logger,
                                 )
                                 self.successful_packages.append(package)
                             except subprocess.CalledProcessError:
@@ -447,9 +513,9 @@ class SystemSetup:
         except Exception as e:
             if self.logger:
                 self.logger.exception("Installation failed")
-            self.failed_packages = packages
+            self.failed_packages = [pkg for pkg, _ in packages]
             self.log_operation(f"Installation failed: {e}", "error", "✗")
-            return False, packages
+            return False, [pkg for pkg, _ in packages]
 
     def configure_installed_services(self) -> bool:
         try:
@@ -457,7 +523,7 @@ class SystemSetup:
                 self.log_operation("Simulating service configuration...", "warning")
                 time.sleep(1)
                 return True
-            # Most Homebrew-installed CLI tools do not require further service configuration on macOS.
+            # Most Homebrew-installed CLI tools require no further configuration on macOS.
             self.log_operation(
                 "No additional service configuration required on macOS", "info"
             )
@@ -466,18 +532,6 @@ class SystemSetup:
             self.log_operation(f"Service configuration failed: {e}", "error", "✗")
             if self.logger:
                 self.logger.exception("Service configuration failed")
-            return False
-
-    def _check_if_installed(self, package: str) -> bool:
-        try:
-            result = run_command(
-                ["brew", "list", "--formula", package],
-                check=False,
-                capture_output=True,
-                logger=self.logger,
-            )
-            return package in result.stdout
-        except Exception:
             return False
 
     def save_installation_report(self, report_dir: Path) -> str:
@@ -523,7 +577,7 @@ class SystemSetup:
                 f"  Successfully installed: {len(self.successful_packages)} packages\n"
             )
             f.write(f"  Failed packages: {len(self.failed_packages)}\n")
-            f.write(f"  Skipped: {len(self.skipped_packages)}\n")
+            f.write(f"  Skipped packages: {len(self.skipped_packages)}\n")
             f.write(f"  Total attempted: {report['total_packages_attempted']}\n\n")
             if self.failed_packages:
                 f.write("Failed Packages:\n")
@@ -549,7 +603,6 @@ def main() -> None:
     signal.signal(signal.SIGTERM, lambda s, f: signal_handler(s, f, logger))
     atexit.register(lambda: cleanup(logger))
 
-    # Homebrew installations on macOS do not require root; however, ensure brew is installed.
     if shutil.which("brew") is None:
         display_panel(
             "[bold]Homebrew is not installed.[/]\nPlease install Homebrew from [bold cyan]https://brew.sh[/]",
@@ -570,7 +623,7 @@ def main() -> None:
 
     setup = SystemSetup(simulate=simulate, verbose=verbose, logger=logger)
 
-    # Display installation plan
+    # Display installation plan summary.
     table = Table(
         show_header=True,
         header_style=f"bold {NordColors.FROST_1}",
@@ -586,12 +639,12 @@ def main() -> None:
             table, title="[bold]Installation Plan[/]", border_style=NordColors.FROST_2
         )
     )
+    total_unique = len({pkg for tools in SECURITY_TOOLS.values() for pkg in tools})
     console.print(
-        f"Installing [bold {NordColors.FROST_1}]{len(set(pkg for tools in SECURITY_TOOLS.values() for pkg in tools))}[/] unique packages from all {len(SECURITY_TOOLS)} categories"
+        f"Installing [bold {NordColors.FROST_1}]{total_unique}[/] unique packages from all {len(SECURITY_TOOLS)} categories"
     )
     console.print()
 
-    # Use a single Progress instance for all operations
     with Progress(
         SpinnerColumn(style=f"{NordColors.FROST_1}"),
         TextColumn("[progress.description]{task.description}"),
@@ -605,7 +658,6 @@ def main() -> None:
         main_task = progress.add_task("[cyan]Overall Progress", total=100)
         sub_task = progress.add_task("Initializing...", total=100, visible=False)
 
-        # Step 1: Cleanup package system
         progress.update(
             main_task,
             description=f"[{NordColors.FROST_2}]Cleaning Homebrew cache",
@@ -627,7 +679,6 @@ def main() -> None:
         progress.update(main_task, completed=20)
         progress.update(sub_task, completed=100)
 
-        # Step 2: Setup package manager
         progress.update(
             main_task,
             description=f"[{NordColors.FROST_2}]Updating Homebrew",
@@ -648,7 +699,6 @@ def main() -> None:
         progress.update(main_task, completed=40)
         progress.update(sub_task, completed=100)
 
-        # Step 3: Install security tools
         progress.update(
             main_task,
             description=f"[{NordColors.FROST_2}]Installing security tools",
@@ -691,7 +741,6 @@ def main() -> None:
             )
         progress.update(sub_task, completed=100)
 
-        # Step 4: Configure installed services (if applicable)
         progress.update(
             main_task,
             description=f"[{NordColors.FROST_2}]Configuring services",
