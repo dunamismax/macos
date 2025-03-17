@@ -117,7 +117,7 @@ class AppConfig:
     APP_SUBTITLE: str = "Automated File Deployment Utility for macOS"
 
     # Directories: source directory for scripts and target deployment directory.
-    SOURCE_DIR: str = os.path.expanduser("~/scripts")
+    SOURCE_DIR: str = os.path.expanduser("~/github/macos/scripts")
     DEST_DIR: str = os.path.expanduser("~/bin")
     OWNER_USER: str = "sawyer"
 
