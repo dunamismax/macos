@@ -12,6 +12,7 @@ Features:
   • Username Enumeration across platforms
   • Service Enumeration
   • Basic Payload Generation
+  • Direct Tool Launcher for popular installed tools
   • Settings and Configuration
 
 This script is adapted for macOS (the attacker machine). Target hosts
@@ -32,6 +33,7 @@ import subprocess
 import sys
 import threading
 import time
+import shlex
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
@@ -186,6 +188,43 @@ class NordColors:
     ENUMERATION = FROST_2
     EXPLOITATION = RED
     UTILITIES = PURPLE
+
+
+# ----------------------------------------------------------------
+# Security Tools Categories
+# ----------------------------------------------------------------
+SECURITY_TOOLS: Dict[str, List[str]] = {
+    "Network Analysis": [
+        "wireshark",
+        "nmap",
+        "tcpdump",
+        "netcat",
+        "iftop",
+        "ettercap",
+        "dsniff",
+        "termshark",
+        "masscan",
+        "arp-scan",
+        "darkstat",
+    ],
+    "Vulnerability Assessment": ["nikto", "sqlmap", "dirb", "gobuster", "whatweb"],
+    "Forensics": ["sleuthkit", "testdisk", "foremost", "scalpel", "photorec"],
+    "System Hardening": ["lynis", "rkhunter", "chkrootkit", "aide", "clamav"],
+    "Password & Crypto": ["john", "hashcat", "hydra", "medusa", "gnupg", "ccrypt"],
+    "Wireless Security": ["aircrack-ng", "wifite", "reaver", "pixiewps"],
+    "Development Tools": [
+        "git",
+        "gdb",
+        "cmake",
+        "meson",
+        "python3",
+        "radare2",
+        "binwalk",
+    ],
+    "Container Security": ["docker", "docker-compose", "podman"],
+    "Malware Analysis": ["clamav", "yara", "ssdeep", "radare2"],
+    "Privacy & Anonymity": ["tor", "torbrowser-launcher", "openvpn", "wireguard-tools"],
+}
 
 
 # ----------------------------------------------------------------
@@ -446,7 +485,6 @@ def ping_sweep() -> None:
 
             def check_host(ip):
                 try:
-                    # Use macOS ping syntax
                     if sys.platform == "win32":
                         cmd = ["ping", "-n", "1", "-w", "500", str(ip)]
                     elif sys.platform == "darwin":
@@ -1193,7 +1231,8 @@ def display_help() -> None:
     help_text = """
 ## Overview
 macOS Ethical Hacking Toolkit is a CLI tool for security testing and ethical hacking.
-It provides modules for network scanning, OSINT collection, enumeration, and payload generation.
+It provides modules for network scanning, OSINT collection, enumeration, payload generation,
+and direct interaction with popular security tools.
 
 ## Modules
 1. **Network Scanning**: Discover active hosts and open ports
@@ -1202,13 +1241,16 @@ It provides modules for network scanning, OSINT collection, enumeration, and pay
 4. **Service Enumeration**: Gather service details
 5. **Payload Generation**: Create basic reverse and web shells
 6. **Settings**: Configure application settings
+7. **Help**: Display help and documentation
+8. **Tool Launcher**: Directly invoke popular installed security tools
 
 ## Usage Tips
-- Use Network Scanning to identify active hosts on a network before further enumeration.
-- OSINT module provides basic domain intelligence without requiring API keys.
-- Username Enumeration aids reconnaissance for social engineering assessments.
-- Service Enumeration identifies potential attack vectors.
+- Use Network Scanning to identify active hosts before further enumeration.
+- OSINT module provides basic domain intelligence without needing API keys.
+- Username Enumeration aids reconnaissance for social engineering.
+- Service Enumeration helps pinpoint potential attack vectors.
 - Payload Generation creates basic testing payloads for authorized security assessments.
+- Tool Launcher allows you to run tools like nmap, nikto, sqlmap, and more with custom options.
 
 ## Disclaimer
 This tool is designed for ethical security testing only. 
@@ -1216,6 +1258,88 @@ Use it only on systems you have permission to test.
 Unauthorized testing is illegal and unethical.
 """
     console.print(Markdown(help_text))
+    input(f"\n[{NordColors.FROST_2}]Press Enter to continue...[/]")
+
+
+# ----------------------------------------------------------------
+# Tool Launcher Module
+# ----------------------------------------------------------------
+def tool_launcher_module() -> None:
+    console.clear()
+    console.print(create_header())
+    display_panel(
+        "Directly interact with installed hacking tools.",
+        NordColors.UTILITIES,
+        "Tool Launcher",
+    )
+    popular_tools = {
+        "nmap": "nmap -sS -Pn TARGET",
+        "tcpdump": "sudo tcpdump -c 10 -nn -i en0",
+        "netcat": "nc -vz TARGET PORT",
+        "nikto": "nikto -h TARGET",
+        "sqlmap": "sqlmap -u TARGET_URL --batch",
+        "gobuster": "gobuster dir -u TARGET_URL -w /usr/share/wordlists/dirb/common.txt",
+        "aircrack-ng": "aircrack-ng -a2 -b TARGET_MAC CAP_FILE",
+        "john": "john --wordlist=/usr/share/wordlists/rockyou.txt hash.txt",
+        "hydra": "hydra -L user.txt -P pass.txt TARGET ssh",
+        "tor": "tor",
+    }
+    tool_list = list(popular_tools.keys())
+    table = Table(show_header=True, header_style=f"bold {NordColors.FROST_1}")
+    table.add_column("Index", style=f"bold {NordColors.FROST_2}")
+    table.add_column("Tool", style=NordColors.SNOW_STORM_1)
+    table.add_column("Default Command", style=NordColors.SNOW_STORM_2)
+    for i, tool in enumerate(tool_list, start=1):
+        table.add_row(str(i), tool, popular_tools[tool])
+    table.add_row("0", "Return", "Return to Main Menu")
+    console.print(table)
+    choice = get_integer_input("Select a tool to launch", 0, len(tool_list))
+    if choice == 0:
+        return
+    selected_tool = tool_list[choice - 1]
+    default_command = popular_tools[selected_tool]
+    console.print(f"Default command for [bold]{selected_tool}[/]: {default_command}")
+    cmd = get_user_input("Press Enter to use default command or edit command")
+    if not cmd.strip():
+        cmd = default_command
+    # Replace placeholders if present
+    if (
+        "TARGET_URL" in cmd
+        or "TARGET" in cmd
+        or "TARGET_MAC" in cmd
+        or "CAP_FILE" in cmd
+        or "PORT" in cmd
+    ):
+        if "TARGET_URL" in cmd or "TARGET" in cmd:
+            target = get_user_input("Enter target (IP, URL, or hostname)")
+            cmd = cmd.replace("TARGET_URL", target).replace("TARGET", target)
+        if "TARGET_MAC" in cmd:
+            target_mac = get_user_input("Enter target MAC address")
+            cmd = cmd.replace("TARGET_MAC", target_mac)
+        if "CAP_FILE" in cmd:
+            cap_file = get_user_input("Enter capture file path")
+            cmd = cmd.replace("CAP_FILE", cap_file)
+        if "PORT" in cmd:
+            port = get_user_input("Enter port number")
+            cmd = cmd.replace("PORT", port)
+    console.print(f"Executing command: [bold]{cmd}[/]")
+    try:
+        with console.status(f"Running {selected_tool}..."):
+            result = subprocess.run(
+                shlex.split(cmd),
+                capture_output=True,
+                text=True,
+                timeout=AppConfig.DEFAULT_TIMEOUT,
+            )
+        output = result.stdout if result.stdout else result.stderr
+        panel = Panel(
+            Text.from_markup(f"[bold {NordColors.SNOW_STORM_1}]{output}[/]"),
+            title=f"{selected_tool} Output",
+            border_style=NordColors.FROST_1,
+        )
+        console.print(panel)
+    except Exception as e:
+        print_error(f"Failed to run {selected_tool}: {e}")
     input(f"\n[{NordColors.FROST_2}]Press Enter to continue...[/]")
 
 
@@ -1291,6 +1415,11 @@ def display_main_menu() -> None:
     table.add_row(
         "7", f"[bold {NordColors.UTILITIES}]Help[/]", "Display help and documentation"
     )
+    table.add_row(
+        "8",
+        f"[bold {NordColors.UTILITIES}]Tool Launcher[/]",
+        "Directly invoke popular hacking tools",
+    )
     table.add_row("0", "Exit", "Exit the application")
     console.print(table)
 
@@ -1302,7 +1431,7 @@ def main() -> None:
         )
         while True:
             display_main_menu()
-            choice = get_integer_input("Enter your choice", 0, 7)
+            choice = get_integer_input("Enter your choice", 0, 8)
             if choice == 0:
                 console.clear()
                 console.print(
@@ -1331,6 +1460,8 @@ def main() -> None:
                 settings_module()
             elif choice == 7:
                 display_help()
+            elif choice == 8:
+                tool_launcher_module()
     except KeyboardInterrupt:
         print_warning("Operation cancelled by user")
         display_panel("Operation cancelled", NordColors.YELLOW, "Cancelled")
