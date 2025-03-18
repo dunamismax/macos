@@ -207,7 +207,7 @@ class NordColors:
                 finished_style=cls.GREEN
             ),
             TaskProgressColumn(style=cls.SNOW_STORM_1),
-            MofNCompleteColumn(style=cls.SNOW_STORM_1),
+            MofNCompleteColumn(),
             TransferSpeedColumn(style=cls.FROST_3),
             TimeRemainingColumn(compact=True),
         ]
@@ -768,15 +768,50 @@ def download_file(url: str, output_dir: str, verbose: bool = False) -> bool:
         # Start the download
         start_time = time.time()
         
-        # Properly handle the asyncio event loop
+        # Use non-async approach instead of mixing async/sync code
+        success = False
         try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            # If no event loop exists, create a new one
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT) as response:
+                response.raise_for_status()
+                total_size = int(response.headers.get('content-length', 0))
+                
+                with Progress(
+                    SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+                    TextColumn(f"[bold {NordColors.FROST_2}]Downloading"),
+                    BarColumn(
+                        style=NordColors.POLAR_NIGHT_3,
+                        complete_style=NordColors.FROST_2,
+                        finished_style=NordColors.GREEN
+                    ),
+                    TaskProgressColumn(),
+                    TransferSpeedColumn(),
+                    TimeRemainingColumn(compact=True),
+                    console=console,
+                ) as progress:
+                    task = progress.add_task("Downloading", total=total_size or None)
+                    
+                    with open(output_path, 'wb') as f:
+                        downloaded = 0
+                        for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+                            if chunk:
+                                f.write(chunk)
+                                downloaded += len(chunk)
+                                progress.update(
+                                    task, 
+                                    completed=downloaded,
+                                    description=f"Downloading: {filename}"
+                                )
+                                
+                                # For unknown size files, show animated progress
+                                if total_size == 0:
+                                    progress.update(task, advance=len(chunk) / CHUNK_SIZE)
             
-        success = loop.run_until_complete(download_file_with_progress(url, output_path))
+            success = True
+        except Exception as e:
+            if verbose:
+                print_error(f"Download error details: {str(e)}")
+            raise
+            
         end_time = time.time()
         download_time = end_time - start_time
         
