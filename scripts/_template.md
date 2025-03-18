@@ -209,7 +209,7 @@ class NordColors:
             TaskProgressColumn(style=cls.SNOW_STORM_1),
             MofNCompleteColumn(style=cls.SNOW_STORM_1),
             TransferSpeedColumn(style=cls.FROST_3),
-            TimeRemainingColumn(style=cls.FROST_4, compact=True),
+            TimeRemainingColumn(compact=True),
         ]
 
 
@@ -767,7 +767,15 @@ def download_file(url: str, output_dir: str, verbose: bool = False) -> bool:
         
         # Start the download
         start_time = time.time()
-        loop = asyncio.get_event_loop()
+        
+        # Properly handle the asyncio event loop
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            # If no event loop exists, create a new one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
         success = loop.run_until_complete(download_file_with_progress(url, output_path))
         end_time = time.time()
         download_time = end_time - start_time
@@ -876,7 +884,7 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
                 finished_style=NordColors.GREEN
             ),
             TaskProgressColumn(style=NordColors.SNOW_STORM_1),
-            TimeRemainingColumn(style=NordColors.FROST_4),
+            TimeRemainingColumn(),
             console=console,
             expand=True,
         ) as progress:
@@ -959,20 +967,35 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
         return_code = process.returncode
         
         if return_code == 0:
-            # Find the most recently downloaded file
-            files = os.listdir(output_dir)
+            # Allow a small delay for file operations to complete
+            time.sleep(0.5)
+            
+            # Find the most recently downloaded file - use a more thorough approach
             downloaded_file = None
             newest_time = 0
             
-            for file in files:
-                file_path = os.path.join(output_dir, file)
-                try:
-                    file_time = os.path.getmtime(file_path)
-                    if file_time > newest_time and file_time >= start_time:
-                        newest_time = file_time
-                        downloaded_file = file
-                except Exception:
-                    continue
+            # Check both the output directory and any subdirectories
+            for root, dirs, files in os.walk(output_dir):
+                for file in files:
+                    # Only consider media files
+                    if file.endswith(('.mp4', '.mkv', '.webm', '.mp3', '.m4a')):
+                        file_path = os.path.join(root, file)
+                        try:
+                            file_stats = os.stat(file_path)
+                            # Check both modification and creation time
+                            file_time = max(file_stats.st_mtime, file_stats.st_ctime)
+                            
+                            # If file was modified after we started downloading and is newer than our current candidate
+                            if file_time > start_time - 1 and file_time > newest_time:
+                                newest_time = file_time
+                                downloaded_file = file
+                                # Store full path if in subdirectory
+                                if root != output_dir:
+                                    downloaded_file = os.path.relpath(file_path, output_dir)
+                        except Exception as e:
+                            if verbose:
+                                print_warning(f"Error checking file {file}: {e}")
+                            continue
             
             if downloaded_file:
                 file_path = os.path.join(output_dir, downloaded_file)
