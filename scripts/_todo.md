@@ -23,4 +23,4 @@ Prompt:
 Improve the below Python script for MacOS and make it so that the download progress bar tracking is better and more accurate and is colored a nice nord theme dark color like everything else in the CLI should be as well improve everything about this app without changing it's core functionality focusing on the look and feel and style:
 
 Git commit message:
-Rewrite using Claude 3.7 Thinking
+rewrite using Claude 3.7 Thinking

@@ -180,18 +180,8 @@ class NordColors:
     SUBHEADER: Style = Style(color=FROST_3, bold=True)
     ACCENT: Style = Style(color=FROST_4, bold=True)
 
-    # Custom boxes for panels
-    NORD_BOX = Box(
-        "╭─",
-        "─",
-        "─╮",
-        "│ ",
-        " │",
-        "╰─",
-        "─",
-        "─╯",
-        "",
-    )
+    # Use a predefined box from Rich instead of creating a custom one
+    NORD_BOX = ROUNDED
 
     @classmethod
     def get_frost_gradient(cls, steps: int = 4) -> List[str]:
