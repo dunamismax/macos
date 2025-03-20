@@ -3,11 +3,11 @@
 macOS SSH Connector
 --------------------------------------------------
 An asynchronous, interactive SSH connection manager with a dynamic CLI interface.
-This toolkit uses system SSH, Rich for stylish output and progress indicators,
-Pyfiglet for dynamic ASCII banners, and prompt_toolkit for enhanced command-line
-input with auto-completion and history. It also features asynchronous device scanning,
-configuration management via JSON, and robust error and signal handling.
-
+Features:
+  • Dynamic ASCII banners with Pyfiglet and Rich.
+  • Interactive, asynchronous menu and device scanning.
+  • Robust configuration and signal handling.
+  • Stylish output and progress indicators.
 Version: 1.0.0
 """
 
@@ -26,21 +26,25 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
 
 # ----------------------------------------------------------------
-# Ensure macOS Environment and Install Dependencies
+# Environment Check & Dependency Installation
 # ----------------------------------------------------------------
 if platform.system() != "Darwin":
     print("This script is tailored for macOS. Exiting.")
     sys.exit(1)
 
+# Ensure the user site-packages directory is in sys.path.
+import site
+user_site = site.getusersitepackages()
+if user_site not in sys.path:
+    sys.path.insert(0, user_site)
 
 def install_dependencies() -> None:
     """
     Ensure required third-party packages are installed.
     Installs: paramiko, rich, pyfiglet, prompt_toolkit.
-    Uses pip with --user if not run as root.
+    Uses pip with --user flag if not run as root.
     """
     import getpass
-
     required_packages = ["paramiko", "rich", "pyfiglet", "prompt_toolkit"]
     user = os.environ.get("SUDO_USER", os.environ.get("USER", getpass.getuser()))
     try:
@@ -59,8 +63,38 @@ def install_dependencies() -> None:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
 
+# Use an environment flag to avoid infinite restarts.
+if not os.environ.get("DEP_INSTALLED"):
+    try:
+        import paramiko  # For potential future SSH enhancements
+        import pyfiglet
+        from rich.console import Console
+        from rich.panel import Panel
+        from rich.progress import (
+            Progress,
+            SpinnerColumn,
+            TextColumn,
+            BarColumn,
+            TaskProgressColumn,
+            TimeRemainingColumn,
+        )
+        from rich.table import Table
+        from rich.text import Text
+        from rich import box
+        from rich.prompt import Confirm, Prompt
+        from rich.traceback import install as install_rich_traceback
 
-try:
+        from prompt_toolkit import prompt as pt_prompt
+        from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+        from prompt_toolkit.history import FileHistory
+        from prompt_toolkit.styles import Style as PtStyle
+    except ImportError:
+        print("Required libraries not found. Installing dependencies...")
+        install_dependencies()
+        os.environ["DEP_INSTALLED"] = "1"
+        print("Dependencies installed. Restarting script...")
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+else:
     import paramiko  # For potential future SSH enhancements
     import pyfiglet
     from rich.console import Console
@@ -83,15 +117,17 @@ try:
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.styles import Style as PtStyle
+
+# --- Compatibility Shim for Python 3.14 ---
+try:
+    from typing import ByteString
 except ImportError:
-    print("Required libraries not found. Installing dependencies...")
-    install_dependencies()
-    print("Dependencies installed. Restarting script...")
-    os.execv(sys.executable, [sys.executable] + sys.argv)
+    from collections.abc import ByteString
+    import typing
+    typing.ByteString = ByteString
 
 install_rich_traceback(show_locals=True)
 console: Console = Console()
-
 
 # ----------------------------------------------------------------
 # Check for System SSH Command
@@ -113,18 +149,17 @@ APP_NAME: str = "macOS SSH Connector"
 VERSION: str = "1.0.0"
 DEFAULT_USERNAME: str = os.environ.get("USER", "user")
 SSH_COMMAND: str = "ssh"
-PING_TIMEOUT: float = 0.4  # seconds
+PING_TIMEOUT: float = 0.4        # seconds
 PING_COUNT: int = 1
-OPERATION_TIMEOUT: int = 30  # seconds
+OPERATION_TIMEOUT: int = 30      # seconds
 DEFAULT_SSH_PORT: int = 22
 
-# Use a hidden config directory in the user's home folder
+# Configuration directories and history
 CONFIG_DIR: str = os.path.expanduser("~/.macos_ssh_connector")
 CONFIG_FILE: str = os.path.join(CONFIG_DIR, "config.json")
 HISTORY_DIR: str = os.path.join(CONFIG_DIR, "history")
 os.makedirs(HISTORY_DIR, exist_ok=True)
 COMMAND_HISTORY: str = os.path.join(HISTORY_DIR, "command_history")
-
 
 # ----------------------------------------------------------------
 # Nord-Themed Colors
@@ -149,9 +184,7 @@ class NordColors:
 
     @classmethod
     def get_frost_gradient(cls, steps: int = 4) -> List[str]:
-        frosts = [cls.FROST_1, cls.FROST_2, cls.FROST_3, cls.FROST_4]
-        return frosts[:steps]
-
+        return [cls.FROST_1, cls.FROST_2, cls.FROST_3, cls.FROST_4][:steps]
 
 # ----------------------------------------------------------------
 # Data Structures
@@ -161,10 +194,9 @@ class Device:
     """
     Represents an SSH-accessible device with connection and status details.
     """
-
     name: str
     ip_address: str
-    device_type: str = "local"  # e.g., "local" or "tailscale"
+    device_type: str = "local"      # e.g., "local" or "tailscale"
     description: Optional[str] = None
     port: int = DEFAULT_SSH_PORT
     username: Optional[str] = None
@@ -179,7 +211,7 @@ class Device:
         return f"{user}@{self.ip_address} -p {self.port}"
 
     def get_status_indicator(self) -> Text:
-        if self.status is True:
+        if self.status:
             return Text("● ONLINE", style=f"bold {NordColors.GREEN}")
         return Text("● OFFLINE", style=f"bold {NordColors.RED}")
 
@@ -192,12 +224,9 @@ class AppConfig:
     default_username: str = DEFAULT_USERNAME
     ssh_options: Dict[str, Tuple[str, str]] = field(
         default_factory=lambda: {
-            "ServerAliveInterval": ("30", "Interval in seconds for keepalive packets"),
-            "ServerAliveCountMax": (
-                "3",
-                "Number of keepalive packets before disconnect",
-            ),
-            "ConnectTimeout": ("10", "Connection timeout in seconds"),
+            "ServerAliveInterval": ("30", "Interval for keepalive packets (sec)"),
+            "ServerAliveCountMax": ("3", "Keepalive packet count before disconnect"),
+            "ConnectTimeout": ("10", "Connection timeout (sec)"),
             "StrictHostKeyChecking": ("accept-new", "Auto-accept new host keys"),
             "Compression": ("yes", "Enable compression"),
             "LogLevel": ("ERROR", "SSH logging level"),
@@ -209,19 +238,21 @@ class AppConfig:
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
-
 # ----------------------------------------------------------------
 # UI Helper Functions
 # ----------------------------------------------------------------
 def clear_screen() -> None:
+    """Clear the terminal screen."""
     console.clear()
 
 
 def get_prompt_style() -> PtStyle:
+    """Return the prompt style."""
     return PtStyle.from_dict({"prompt": f"bold {NordColors.PURPLE}"})
 
 
 def create_header() -> Panel:
+    """Create and return a styled header panel using Pyfiglet."""
     term_width = shutil.get_terminal_size((80, 24)).columns
     adjusted_width = min(term_width - 4, 80)
     fonts: List[str] = ["slant", "small", "mini", "digital"]
@@ -240,7 +271,7 @@ def create_header() -> Panel:
     for i, line in enumerate(ascii_lines):
         color = colors[i % len(colors)]
         styled_text += f"[bold {color}]{line}[/]\n"
-    header_panel = Panel(
+    return Panel(
         Text.from_markup(styled_text),
         border_style=NordColors.FROST_1,
         padding=(1, 2),
@@ -248,38 +279,42 @@ def create_header() -> Panel:
         title_align="right",
         box=box.ROUNDED,
     )
-    return header_panel
 
 
-def print_message(
-    text: str, style: str = NordColors.FROST_2, prefix: str = "•"
-) -> None:
+def print_message(text: str, style: str = NordColors.FROST_2, prefix: str = "•") -> None:
+    """Print a styled message to the console."""
     console.print(f"[{style}]{prefix} {text}[/{style}]")
 
 
 def print_success(message: str) -> None:
+    """Print a success message."""
     print_message(message, NordColors.GREEN, "✓")
 
 
 def print_warning(message: str) -> None:
+    """Print a warning message."""
     print_message(message, NordColors.YELLOW, "⚠")
 
 
 def print_error(message: str) -> None:
+    """Print an error message."""
     print_message(message, NordColors.RED, "✗")
 
 
 def print_step(message: str) -> None:
+    """Print a step-by-step instruction."""
     print_message(message, NordColors.FROST_2, "→")
 
 
 def print_section(title: str) -> None:
+    """Print a section header."""
     console.print()
     console.print(f"[bold {NordColors.FROST_3}]{title}[/]")
     console.print(f"[{NordColors.FROST_3}]{'─' * len(title)}[/]")
 
 
 def display_panel(title: str, message: str, style: str = NordColors.FROST_2) -> None:
+    """Display a styled panel with title and message."""
     panel = Panel(
         Text.from_markup(message),
         title=Text(title, style=f"bold {style}"),
@@ -289,11 +324,11 @@ def display_panel(title: str, message: str, style: str = NordColors.FROST_2) -> 
     )
     console.print(panel)
 
-
 # ----------------------------------------------------------------
 # Asynchronous Configuration Functions
 # ----------------------------------------------------------------
 async def ensure_config_directory() -> None:
+    """Ensure the configuration directory exists."""
     try:
         os.makedirs(CONFIG_DIR, exist_ok=True)
     except Exception as e:
@@ -301,6 +336,7 @@ async def ensure_config_directory() -> None:
 
 
 async def save_config(config: AppConfig) -> bool:
+    """Save the configuration asynchronously."""
     await ensure_config_directory()
     try:
         loop = asyncio.get_running_loop()
@@ -314,22 +350,21 @@ async def save_config(config: AppConfig) -> bool:
 
 
 async def load_config() -> AppConfig:
+    """Load configuration asynchronously; return default if missing."""
     try:
         if os.path.exists(CONFIG_FILE):
             loop = asyncio.get_running_loop()
-            data = await loop.run_in_executor(
-                None, lambda: json.load(open(CONFIG_FILE, "r"))
-            )
+            data = await loop.run_in_executor(None, lambda: json.load(open(CONFIG_FILE, "r")))
             return AppConfig(**data)
     except Exception as e:
         print_error(f"Failed to load configuration: {e}")
     return AppConfig()
 
-
 # ----------------------------------------------------------------
 # Asynchronous Core Functions
 # ----------------------------------------------------------------
 async def run_command_async(cmd: List[str]) -> Tuple[int, str]:
+    """Execute a command asynchronously and return (returncode, stdout)."""
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -337,9 +372,7 @@ async def run_command_async(cmd: List[str]) -> Tuple[int, str]:
             stderr=asyncio.subprocess.PIPE,
             text=True,
         )
-        stdout, stderr = await asyncio.wait_for(
-            proc.communicate(), timeout=OPERATION_TIMEOUT
-        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=OPERATION_TIMEOUT)
         if proc.returncode != 0:
             raise Exception(stderr.strip())
         return proc.returncode, stdout.strip()
@@ -348,6 +381,10 @@ async def run_command_async(cmd: List[str]) -> Tuple[int, str]:
 
 
 async def async_ping_device(ip_address: str) -> Tuple[bool, Optional[float]]:
+    """
+    Ping a device asynchronously.
+    Returns a tuple: (is_successful, response_time in ms or None).
+    """
     start_time = time.time()
     try:
         cmd = [
@@ -377,6 +414,7 @@ async def async_ping_device(ip_address: str) -> Tuple[bool, Optional[float]]:
 
 
 async def async_check_device_status(device: Device) -> None:
+    """Check a device's status and update its attributes."""
     success, response_time = await async_ping_device(device.ip_address)
     device.status = success
     device.response_time = response_time
@@ -384,9 +422,10 @@ async def async_check_device_status(device: Device) -> None:
 
 
 async def async_check_device_statuses(
-    devices: List[Device],
-    progress_callback: Optional[Callable[[int, Device], None]] = None,
+        devices: List[Device],
+        progress_callback: Optional[Callable[[int, Device], None]] = None,
 ) -> None:
+    """Check statuses for a list of devices asynchronously."""
     try:
         if progress_callback:
             for i, device in enumerate(devices):
@@ -399,19 +438,16 @@ async def async_check_device_statuses(
                 finally:
                     progress_callback(i, device)
         else:
-            tasks = [
-                asyncio.create_task(async_check_device_status(device))
-                for device in devices
-            ]
+            tasks = [asyncio.create_task(async_check_device_status(device)) for device in devices]
             await asyncio.gather(*tasks, return_exceptions=True)
     except Exception as e:
         print_error(f"Error during device status check: {e}")
-
 
 # ----------------------------------------------------------------
 # UI & Device Display Functions
 # ----------------------------------------------------------------
 def create_device_table(devices: List[Device], prefix: str, title: str) -> Table:
+    """Return a Rich table listing devices and their statuses."""
     table = Table(
         show_header=True,
         header_style=f"bold {NordColors.FROST_1}",
@@ -426,11 +462,7 @@ def create_device_table(devices: List[Device], prefix: str, title: str) -> Table
     table.add_column("Response", justify="right", width=10)
     table.add_column("Description", style=f"dim {NordColors.SNOW_STORM_1}", width=20)
     for idx, device in enumerate(devices, 1):
-        response_time = (
-            f"{device.response_time:.1f} ms"
-            if device.response_time is not None
-            else "—"
-        )
+        response_time = f"{device.response_time:.1f} ms" if device.response_time is not None else "—"
         table.add_row(
             f"{prefix}{idx}",
             device.name,
@@ -438,11 +470,12 @@ def create_device_table(devices: List[Device], prefix: str, title: str) -> Table
             device.get_status_indicator(),
             response_time,
             device.description or "",
-        )
+            )
     return table
 
 
 async def get_username_async(default_username: str) -> str:
+    """Prompt asynchronously for the SSH username."""
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
         None,
@@ -455,36 +488,37 @@ async def get_username_async(default_username: str) -> str:
 
 
 async def async_prompt(message: str) -> str:
+    """Asynchronously prompt for input."""
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
         None,
         lambda: pt_prompt(
-            message, history=FileHistory(COMMAND_HISTORY), style=get_prompt_style()
+            message,
+            history=FileHistory(COMMAND_HISTORY),
+            style=get_prompt_style(),
         ),
     )
 
 
 async def async_confirm(message: str, default: bool = False) -> bool:
+    """Asynchronously prompt for confirmation."""
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(
-        None, lambda: Confirm.ask(message, default=default)
-    )
+    return await loop.run_in_executor(None, lambda: Confirm.ask(message, default=default))
 
 
 async def simulate_progress(
-    progress, task_id: int, steps: List[Tuple[str, int]], delay: float = 0.3
+        progress: Progress, task_id: int, steps: List[Tuple[str, int]], delay: float = 0.3
 ) -> None:
+    """Simulate a progress bar with descriptive steps."""
     for step, pct in steps:
         await asyncio.sleep(delay)
         progress.update(task_id, description=step, completed=pct)
 
-
 # ----------------------------------------------------------------
 # SSH Connection Operations
 # ----------------------------------------------------------------
-async def connect_to_device_async(
-    device: Device, username: Optional[str] = None
-) -> None:
+async def connect_to_device_async(device: Device, username: Optional[str] = None) -> None:
+    """Establish an SSH connection to a device with a simulated progress display."""
     clear_screen()
     console.print(create_header())
     display_panel(
@@ -494,6 +528,7 @@ async def connect_to_device_async(
     )
     effective_username: str = username or device.username or DEFAULT_USERNAME
 
+    # Display device connection details
     details_table = Table(show_header=False, box=None, padding=(0, 3))
     details_table.add_column("Property", style=f"bold {NordColors.FROST_2}")
     details_table.add_column("Value", style=NordColors.SNOW_STORM_2)
@@ -511,16 +546,16 @@ async def connect_to_device_async(
 
     try:
         with Progress(
-            SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
-            TextColumn("[bold]{task.description}[/bold]"),
-            BarColumn(
-                bar_width=40,
-                style=NordColors.FROST_4,
-                complete_style=NordColors.FROST_2,
-            ),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            console=console,
+                SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
+                TextColumn("[bold]{task.description}[/bold]"),
+                BarColumn(
+                    bar_width=40,
+                    style=NordColors.FROST_4,
+                    complete_style=NordColors.FROST_2,
+                ),
+                TaskProgressColumn(),
+                TimeRemainingColumn(),
+                console=console,
         ) as progress:
             task_id = progress.add_task(
                 f"[{NordColors.FROST_2}]Establishing connection...", total=100
@@ -533,6 +568,7 @@ async def connect_to_device_async(
                 (f"[{NordColors.GREEN}]Connection established.", 100),
             ]
             await simulate_progress(progress, task_id, steps)
+        # Build SSH command with config options
         ssh_args: List[str] = [SSH_COMMAND]
         config = await load_config()
         for option, (value, _) in config.ssh_options.items():
@@ -551,12 +587,11 @@ async def connect_to_device_async(
         print_step("Check your SSH key configuration.")
         print_step("Try connecting with verbose output: ssh -v user@host")
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
-            None, lambda: Prompt.ask("Press Enter to return to the main menu")
-        )
+        await loop.run_in_executor(None, lambda: Prompt.ask("Press Enter to return to the main menu"))
 
 
 async def refresh_device_statuses_async(devices: List[Device]) -> None:
+    """Refresh statuses of all configured devices with progress feedback."""
     clear_screen()
     console.print(create_header())
     display_panel(
@@ -566,16 +601,16 @@ async def refresh_device_statuses_async(devices: List[Device]) -> None:
     )
     try:
         with Progress(
-            SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
-            TextColumn("[bold]{task.description}[/bold]"),
-            BarColumn(
-                bar_width=40,
-                style=NordColors.FROST_4,
-                complete_style=NordColors.FROST_2,
-            ),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            console=console,
+                SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
+                TextColumn("[bold]{task.description}[/bold]"),
+                BarColumn(
+                    bar_width=40,
+                    style=NordColors.FROST_4,
+                    complete_style=NordColors.FROST_2,
+                ),
+                TaskProgressColumn(),
+                TimeRemainingColumn(),
+                console=console,
         ) as progress:
             scan_task = progress.add_task(
                 f"[{NordColors.FROST_2}]Scanning", total=len(devices)
@@ -592,28 +627,23 @@ async def refresh_device_statuses_async(devices: List[Device]) -> None:
                 )
 
             await async_check_device_statuses(devices, update_progress)
-        online_count = sum(1 for d in devices if d.status is True)
-        offline_count = sum(1 for d in devices if d.status is False)
+        online_count = sum(1 for d in devices if d.status)
+        offline_count = sum(1 for d in devices if not d.status)
         print_success(f"Scan complete: {online_count} online, {offline_count} offline")
         config = await load_config()
         config.last_refresh = time.time()
         await save_config(config)
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
-            None, lambda: Prompt.ask("Press Enter to return to the main menu")
-        )
+        await loop.run_in_executor(None, lambda: Prompt.ask("Press Enter to return to the main menu"))
     except asyncio.CancelledError:
         print_warning("Refresh operation cancelled")
     except Exception as e:
         print_error(f"Error during refresh: {e}")
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
-            None, lambda: Prompt.ask("Press Enter to return to the main menu")
-        )
-
+        await loop.run_in_executor(None, lambda: Prompt.ask("Press Enter to return to the main menu"))
 
 # ----------------------------------------------------------------
-# Main Menu and Program Control
+# Main Menu & Program Control
 # ----------------------------------------------------------------
 # Sample static device lists
 STATIC_TAILSCALE_DEVICES: List[Device] = [
@@ -652,6 +682,7 @@ DEVICES: List[Device] = STATIC_TAILSCALE_DEVICES + STATIC_LOCAL_DEVICES
 
 
 async def main_menu_async() -> None:
+    """Main interactive menu loop."""
     devices = DEVICES
     print_message("Performing initial device scan...", NordColors.FROST_3)
     await async_check_device_statuses(devices)
@@ -673,9 +704,7 @@ async def main_menu_async() -> None:
             console.print(create_header())
             tailscale_devices = [d for d in devices if d.device_type == "tailscale"]
             local_devices = [d for d in devices if d.device_type == "local"]
-            console.print(
-                create_device_table(tailscale_devices, "", "Tailscale Devices")
-            )
+            console.print(create_device_table(tailscale_devices, "", "Tailscale Devices"))
             console.print()
             console.print(create_device_table(local_devices, "L", "Local Devices"))
             console.print()
@@ -700,14 +729,11 @@ async def main_menu_async() -> None:
                     idx = int(choice[1:]) - 1
                     if 0 <= idx < len(local_devices):
                         device = local_devices[idx]
-                        if device.status is False and not await async_confirm(
-                            f"This device appears offline. Connect anyway?",
-                            default=False,
+                        if not device.status and not await async_confirm(
+                                f"This device appears offline. Connect anyway?", default=False
                         ):
                             continue
-                        username = await get_username_async(
-                            device.username or DEFAULT_USERNAME
-                        )
+                        username = await get_username_async(device.username or DEFAULT_USERNAME)
                         await connect_to_device_async(device, username)
                     else:
                         print_error(f"Invalid device number: {choice}")
@@ -720,14 +746,11 @@ async def main_menu_async() -> None:
                     idx = int(choice) - 1
                     if 0 <= idx < len(tailscale_devices):
                         device = tailscale_devices[idx]
-                        if device.status is False and not await async_confirm(
-                            f"This device appears offline. Connect anyway?",
-                            default=False,
+                        if not device.status and not await async_confirm(
+                                f"This device appears offline. Connect anyway?", default=False
                         ):
                             continue
-                        username = await get_username_async(
-                            device.username or DEFAULT_USERNAME
-                        )
+                        username = await get_username_async(device.username or DEFAULT_USERNAME)
                         await connect_to_device_async(device, username)
                     else:
                         print_error(f"Invalid device number: {choice}")
@@ -746,11 +769,11 @@ async def main_menu_async() -> None:
             except asyncio.CancelledError:
                 pass
 
-
 # ----------------------------------------------------------------
 # Signal Handling and Cleanup
 # ----------------------------------------------------------------
 async def async_cleanup() -> None:
+    """Perform cleanup operations before exit."""
     try:
         for task in asyncio.all_tasks():
             if task is not asyncio.current_task():
@@ -764,6 +787,7 @@ async def async_cleanup() -> None:
 
 
 async def signal_handler_async(sig: int, frame: Any) -> None:
+    """Handle interrupt signals asynchronously."""
     try:
         sig_name = signal.Signals(sig).name
         print_warning(f"Process interrupted by {sig_name}")
@@ -778,6 +802,7 @@ async def signal_handler_async(sig: int, frame: Any) -> None:
 
 
 def setup_signal_handlers(loop: asyncio.AbstractEventLoop) -> None:
+    """Register signal handlers for graceful shutdown."""
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(
             sig, lambda sig=sig: asyncio.create_task(signal_handler_async(sig, None))
@@ -785,6 +810,7 @@ def setup_signal_handlers(loop: asyncio.AbstractEventLoop) -> None:
 
 
 async def proper_shutdown_async() -> None:
+    """Shutdown async tasks gracefully."""
     try:
         loop = asyncio.get_running_loop()
         tasks = [t for t in asyncio.all_tasks(loop) if t is not asyncio.current_task()]
@@ -797,6 +823,7 @@ async def proper_shutdown_async() -> None:
 
 
 def proper_shutdown() -> None:
+    """Shutdown the event loop and tasks gracefully."""
     try:
         try:
             loop = asyncio.get_event_loop()
@@ -814,11 +841,11 @@ def proper_shutdown() -> None:
 
 atexit.register(proper_shutdown)
 
-
 # ----------------------------------------------------------------
 # Main Program Entry
 # ----------------------------------------------------------------
 async def main_async() -> None:
+    """Main asynchronous entry point for the application."""
     try:
         await ensure_config_directory()
         await main_menu_async()
@@ -829,6 +856,7 @@ async def main_async() -> None:
 
 
 def main() -> None:
+    """Initialize the event loop and start the application."""
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
