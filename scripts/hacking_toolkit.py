@@ -78,7 +78,7 @@ install_rich_traceback(show_locals=True)
 console = Console()
 
 VERSION = "1.2.0"
-APP_NAME = "macOS Ethical Hacking Toolkit"
+APP_NAME = "Hacking Toolkit"
 APP_SUBTITLE = "Security Testing & Reconnaissance Suite"
 HOSTNAME = socket.gethostname()
 
