@@ -80,7 +80,7 @@ if not check_ffmpeg():
 install_rich_traceback(show_locals=True)
 console = Console()
 
-APP_NAME = "macOS Downloader"
+APP_NAME = "Downloader"
 VERSION = "1.1.0"
 DEFAULT_DOWNLOAD_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
 CONFIG_DIR = os.path.expanduser("~/.macos_downloader")
