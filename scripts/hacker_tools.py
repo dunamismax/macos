@@ -357,7 +357,8 @@ def run_command(
         timeout=DEFAULT_TIMEOUT,
         verbose=False,
         env=None,
-        use_sudo=False
+        use_sudo=False,
+        show_progress=True  # Add parameter to control progress display
 ):
     try:
         cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
@@ -370,12 +371,25 @@ def run_command(
         if verbose:
             print_step(f"Executing: {cmd_str}")
 
-        with Progress(
-                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]Running command..."),
-                console=console
-        ) as progress:
-            task = progress.add_task("", total=None)
+        # Avoid nested progress displays by skipping progress display when requested
+        if show_progress:
+            with Progress(
+                    SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+                    TextColumn(f"[bold {NordColors.FROST_2}]Running command..."),
+                    console=console
+            ) as progress:
+                task = progress.add_task("", total=None)
+                result = subprocess.run(
+                    cmd,
+                    shell=shell,
+                    check=check,
+                    text=True,
+                    capture_output=capture_output,
+                    timeout=timeout,
+                    env=env or os.environ.copy()
+                )
+        else:
+            # Run without progress display to avoid conflicts
             result = subprocess.run(
                 cmd,
                 shell=shell,
@@ -454,7 +468,7 @@ def update_homebrew():
         return True  # Return True to continue with installation
 
 
-def install_brew_package(tool_name, cask=False, verbose=False, use_sudo=False):
+def install_brew_package(tool_name, cask=False, verbose=False, use_sudo=False, show_progress=True):
     if not check_homebrew():
         print_error("Homebrew is not installed.")
         return False
@@ -464,7 +478,8 @@ def install_brew_package(tool_name, cask=False, verbose=False, use_sudo=False):
         result = run_command(
             [BREW_CMD, "list", tool_name],
             check=False,
-            verbose=verbose
+            verbose=verbose,
+            show_progress=False  # Don't show progress for checks
         )
 
         if result.returncode == 0:
@@ -478,7 +493,29 @@ def install_brew_package(tool_name, cask=False, verbose=False, use_sudo=False):
         cmd.append(tool_name)
 
         print_step(f"Installing {tool_name} via Homebrew{' (cask)' if cask else ''}...")
-        result = run_command(cmd, check=False, verbose=verbose, use_sudo=use_sudo)
+
+        # For GUI applications like Wireshark, use direct subprocess call to avoid live display issues
+        if tool_name in ["wireshark", "burp-suite", "ghidra", "autopsy"]:
+            result = subprocess.run(
+                cmd,
+                text=True,
+                capture_output=True,
+                check=False
+            )
+            if result.returncode == 0:
+                print_success(f"{tool_name} installed successfully via Homebrew.")
+                return True
+            else:
+                print_error(f"Failed to install {tool_name} via Homebrew.")
+                if verbose:
+                    if result.stdout:
+                        console.print(f"[dim]Output: {result.stdout.strip()}[/dim]")
+                    if result.stderr:
+                        console.print(f"[bold {NordColors.RED}]Error: {result.stderr.strip()}[/]")
+                return False
+        else:
+            # Normal installation with optional progress display
+            result = run_command(cmd, check=False, verbose=verbose, use_sudo=use_sudo, show_progress=show_progress)
 
         if result.returncode == 0:
             print_success(f"{tool_name} installed successfully via Homebrew.")
@@ -595,7 +632,7 @@ def install_git_repo(repo_url, tool_name, install_cmd=None, verbose=False):
             pass
 
 
-def install_tool(tool, verbose=False, use_sudo=False):
+def install_tool(tool, verbose=False, use_sudo=False, show_progress=True):
     print_step(f"Installing {tool.name}...")
 
     if tool.installed:
@@ -605,7 +642,7 @@ def install_tool(tool, verbose=False, use_sudo=False):
     # Install dependencies first
     for dep in tool.dependencies:
         print_step(f"Installing dependency: {dep}")
-        install_brew_package(dep, verbose=verbose, use_sudo=use_sudo)
+        install_brew_package(dep, verbose=verbose, use_sudo=use_sudo, show_progress=False)
 
     success = False
 
@@ -613,11 +650,12 @@ def install_tool(tool, verbose=False, use_sudo=False):
     for method, param in tool.install_methods:
         try:
             if method == InstallMethod.BREW:
-                if install_brew_package(param, verbose=verbose, use_sudo=use_sudo):
+                if install_brew_package(param, verbose=verbose, use_sudo=use_sudo, show_progress=show_progress):
                     success = True
                     break
             elif method == InstallMethod.BREW_CASK:
-                if install_brew_package(param, cask=True, verbose=verbose, use_sudo=use_sudo):
+                if install_brew_package(param, cask=True, verbose=verbose, use_sudo=use_sudo,
+                                        show_progress=show_progress):
                     success = True
                     break
             elif method == InstallMethod.PIP:
@@ -635,7 +673,8 @@ def install_tool(tool, verbose=False, use_sudo=False):
                     break
             elif method == InstallMethod.CUSTOM:
                 print_step(f"Running custom installation for {tool.name}...")
-                result = run_command(param, shell=True, check=False, verbose=verbose, use_sudo=use_sudo)
+                result = run_command(param, shell=True, check=False, verbose=verbose, use_sudo=use_sudo,
+                                     show_progress=show_progress)
                 if result.returncode == 0:
                     success = True
                     break
@@ -688,7 +727,11 @@ def get_tool_list():
             category=ToolCategory.NETWORK,
             description="Network protocol analyzer",
             install_methods=[
+                (InstallMethod.CUSTOM, "brew install --cask wireshark"),
                 (InstallMethod.BREW_CASK, "wireshark"),
+            ],
+            post_install=[
+                "echo 'Wireshark installed. You may need to run it from Applications folder.'",
             ],
             homepage="https://www.wireshark.org"
         ),
@@ -1328,15 +1371,11 @@ def show_tools_by_category(category, tools):
         verbose = Confirm.ask("Enable verbose output?", default=False)
         use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
 
-        with Progress(*NordColors.get_progress_columns(), console=console) as progress:
-            install_task = progress.add_task(f"Installing {category.name} tools", total=len(category_tools))
+        # Use the helper function to install all tools in this category
+        installed_count = install_multiple_tools(category_tools, verbose=verbose, use_sudo=use_sudo)
 
-            for tool in category_tools:
-                progress.update(install_task, description=f"Installing {tool.name}...")
-                install_tool(tool, verbose=verbose, use_sudo=use_sudo)
-                progress.advance(install_task)
-
-        print_success(f"Completed installation of {category.name} tools.")
+        print_success(
+            f"Completed installation of {installed_count} out of {len(category_tools)} {category.name} tools.")
         Prompt.ask("Press Enter to continue")
 
     elif choice == "S":
@@ -1357,15 +1396,10 @@ def show_tools_by_category(category, tools):
             verbose = Confirm.ask("Enable verbose output?", default=False)
             use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
 
-            with Progress(*NordColors.get_progress_columns(), console=console) as progress:
-                install_task = progress.add_task("Installing selected tools", total=len(selected_tools))
+            # Use the helper function to install selected tools
+            installed_count = install_multiple_tools(selected_tools, verbose=verbose, use_sudo=use_sudo)
 
-                for tool in selected_tools:
-                    progress.update(install_task, description=f"Installing {tool.name}...")
-                    install_tool(tool, verbose=verbose, use_sudo=use_sudo)
-                    progress.advance(install_task)
-
-            print_success("Completed installation of selected tools.")
+            print_success(f"Completed installation of {installed_count} out of {len(selected_tools)} selected tools.")
             Prompt.ask("Press Enter to continue")
 
     elif choice == "D":
@@ -1436,6 +1470,41 @@ def category_menu(tools):
                 Prompt.ask("Press Enter to continue")
 
 
+def install_multiple_tools(tools_to_install, verbose=False, use_sudo=False):
+    """Helper function to install multiple tools with proper handling of progress displays."""
+    installed_count = 0
+
+    # First, handle all non-GUI tools with a single progress bar
+    regular_tools = [t for t in tools_to_install if
+                     t.name not in ["wireshark", "burp-suite", "ghidra", "autopsy", "hopper-disassembler", "zap"]]
+    gui_tools = [t for t in tools_to_install if
+                 t.name in ["wireshark", "burp-suite", "ghidra", "autopsy", "hopper-disassembler", "zap"]]
+
+    if regular_tools:
+        with Progress(*NordColors.get_progress_columns(), console=console) as progress:
+            install_task = progress.add_task("Installing tools", total=len(regular_tools))
+
+            for tool in regular_tools:
+                progress.update(install_task, description=f"Installing {tool.name}...")
+                # Install without inner progress displays
+                if install_tool(tool, verbose=verbose, use_sudo=use_sudo, show_progress=False):
+                    installed_count += 1
+                progress.advance(install_task)
+
+    # Handle GUI tools separately, one by one
+    if gui_tools:
+        print_step(f"Installing {len(gui_tools)} GUI applications (these require special handling)...")
+        for tool in gui_tools:
+            print_step(f"Installing {tool.name}...")
+            # Allow progress display for GUI tools when installed individually
+            if install_tool(tool, verbose=verbose, use_sudo=use_sudo):
+                installed_count += 1
+            # Add a small delay between installations
+            time.sleep(1)
+
+    return installed_count
+
+
 def show_all_tools(tools):
     """Show and allow installation of all available tools."""
     clear_screen()
@@ -1496,15 +1565,10 @@ def show_all_tools(tools):
             verbose = Confirm.ask("Enable verbose output?", default=False)
             use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
 
-            with Progress(*NordColors.get_progress_columns(), console=console) as progress:
-                install_task = progress.add_task("Installing all tools", total=len(tools))
+            # Use the helper function to install all tools
+            installed_count = install_multiple_tools(tools, verbose=verbose, use_sudo=use_sudo)
 
-                for tool in tools:
-                    progress.update(install_task, description=f"Installing {tool.name}...")
-                    install_tool(tool, verbose=verbose, use_sudo=use_sudo)
-                    progress.advance(install_task)
-
-            print_success("Completed installation of all tools.")
+            print_success(f"Completed installation of {installed_count} out of {len(tools)} tools.")
             Prompt.ask("Press Enter to continue")
     elif choice == "C":
         category_menu(tools)
@@ -1564,15 +1628,10 @@ def show_core_tools(tools):
         verbose = Confirm.ask("Enable verbose output?", default=False)
         use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
 
-        with Progress(*NordColors.get_progress_columns(), console=console) as progress:
-            install_task = progress.add_task("Installing core tools", total=len(core_tools))
+        # Use the helper function to install core tools
+        installed_count = install_multiple_tools(core_tools, verbose=verbose, use_sudo=use_sudo)
 
-            for tool in core_tools:
-                progress.update(install_task, description=f"Installing {tool.name}...")
-                install_tool(tool, verbose=verbose, use_sudo=use_sudo)
-                progress.advance(install_task)
-
-        print_success("Completed installation of core tools.")
+        print_success(f"Completed installation of {installed_count} out of {len(core_tools)} core tools.")
         Prompt.ask("Press Enter to continue")
 
     elif choice == "S":
@@ -1593,15 +1652,10 @@ def show_core_tools(tools):
             verbose = Confirm.ask("Enable verbose output?", default=False)
             use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
 
-            with Progress(*NordColors.get_progress_columns(), console=console) as progress:
-                install_task = progress.add_task("Installing selected tools", total=len(selected_tools))
+            # Use the helper function to install selected tools
+            installed_count = install_multiple_tools(selected_tools, verbose=verbose, use_sudo=use_sudo)
 
-                for tool in selected_tools:
-                    progress.update(install_task, description=f"Installing {tool.name}...")
-                    install_tool(tool, verbose=verbose, use_sudo=use_sudo)
-                    progress.advance(install_task)
-
-            print_success("Completed installation of selected tools.")
+            print_success(f"Completed installation of {installed_count} out of {len(selected_tools)} selected tools.")
             Prompt.ask("Press Enter to continue")
 
 
@@ -1676,15 +1730,10 @@ def search_tools(tools):
         verbose = Confirm.ask("Enable verbose output?", default=False)
         use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
 
-        with Progress(*NordColors.get_progress_columns(), console=console) as progress:
-            install_task = progress.add_task("Installing matching tools", total=len(matching_tools))
+        # Use the helper function to install matching tools
+        installed_count = install_multiple_tools(matching_tools, verbose=verbose, use_sudo=use_sudo)
 
-            for tool in matching_tools:
-                progress.update(install_task, description=f"Installing {tool.name}...")
-                install_tool(tool, verbose=verbose, use_sudo=use_sudo)
-                progress.advance(install_task)
-
-        print_success("Completed installation of matching tools.")
+        print_success(f"Completed installation of {installed_count} out of {len(matching_tools)} matching tools.")
         Prompt.ask("Press Enter to continue")
 
     elif choice == "S":
@@ -1705,15 +1754,10 @@ def search_tools(tools):
             verbose = Confirm.ask("Enable verbose output?", default=False)
             use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
 
-            with Progress(*NordColors.get_progress_columns(), console=console) as progress:
-                install_task = progress.add_task("Installing selected tools", total=len(selected_tools))
+            # Use the helper function to install selected tools
+            installed_count = install_multiple_tools(selected_tools, verbose=verbose, use_sudo=use_sudo)
 
-                for tool in selected_tools:
-                    progress.update(install_task, description=f"Installing {tool.name}...")
-                    install_tool(tool, verbose=verbose, use_sudo=use_sudo)
-                    progress.advance(install_task)
-
-            print_success("Completed installation of selected tools.")
+            print_success(f"Completed installation of {installed_count} out of {len(selected_tools)} selected tools.")
             Prompt.ask("Press Enter to continue")
 
     elif choice == "D":
