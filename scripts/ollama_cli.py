@@ -1,205 +1,179 @@
 #!/usr/bin/env python3
-"""
-MacOS Ollama CLI
---------------------------------------------------
-An interactive, menu-driven CLI application to interact with Ollama models.
-This production-grade app uses Rich for stylish CLI output, Pyfiglet for dynamic ASCII banners,
-and prompt_toolkit for interactive command-line input. It provides a numbered model selection menu,
-maintains conversation history, and uses Rich spinners for all loading feedback.
 
-Core Libraries & Features:
-  • Dependency checks and auto-installation of required Python packages.
-  • macOS-specific configuration using Homebrew where applicable.
-  • Dynamic ASCII banners, rich menus, and spinners for loading feedback.
-  • Interact with the Ollama CLI to list available models and to send/receive messages.
-  • Numbered model selection so you can simply input the corresponding number.
-  • Robust error handling, signal cleanup, and modular design.
-Version: 1.0.0
-"""
-
-import atexit
 import os
 import sys
 import time
+import json
+import signal
 import socket
 import getpass
 import platform
-import signal
 import subprocess
 import shutil
-import json
 import re
+import atexit
 from dataclasses import dataclass, field
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
-from typing import List, Optional, Dict, Any
 from pathlib import Path
 
-# Ensure we are running on macOS
 if platform.system() != "Darwin":
     print("This script is tailored for macOS. Exiting.")
     sys.exit(1)
 
 
-# ----------------------------------------------------------------
-# Dependency Check and Installation
-# ----------------------------------------------------------------
 def install_dependencies():
-    """
-    Ensure required third-party packages are installed.
-    Uses pip (with --user if not run as root) to install:
-      - rich
-      - pyfiglet
-      - prompt_toolkit
-    """
     required_packages = ["rich", "pyfiglet", "prompt_toolkit"]
     user = os.environ.get("SUDO_USER", os.environ.get("USER", getpass.getuser()))
     try:
         if os.geteuid() != 0:
-            print(f"Installing dependencies for user: {user}")
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
-            )
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
         else:
-            print(f"Running as sudo. Installing dependencies for user: {user}")
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
-                + required_packages
-            )
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
 
 
-def check_homebrew():
-    """Ensure Homebrew is installed on macOS."""
-    if shutil.which("brew") is None:
-        print(
-            "Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun this script."
-        )
-        sys.exit(1)
-
-
 def check_ollama():
-    """
-    Check if the Ollama CLI is installed.
-    If not, inform the user and exit.
-    """
     if shutil.which("ollama") is None:
-        print(
-            "Ollama CLI not found. Please install and configure Ollama before running this script."
-        )
+        print("Ollama CLI not found. Please install Ollama from https://ollama.ai and rerun this script.")
         sys.exit(1)
 
 
-# ----------------------------------------------------------------
-# Attempt to Import Dependencies; Install if Missing
-# ----------------------------------------------------------------
 try:
     from rich.console import Console
-    from rich.text import Text
     from rich.panel import Panel
     from rich.prompt import Prompt, Confirm
     from rich.table import Table
-    from rich.progress import Progress, SpinnerColumn, TextColumn
-    from rich.align import Align
+    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
+    from rich.text import Text
+    from rich.traceback import install as install_rich_traceback
+    from rich.box import ROUNDED, HEAVY
     from rich.style import Style
-    from rich.live import Live
-    import pyfiglet
     from prompt_toolkit import prompt as pt_prompt
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-    from prompt_toolkit.styles import Style as PtStyle
+    from prompt_toolkit.styles import Style as PTStyle
+    import pyfiglet
 except ImportError:
-    print("Required libraries not found. Installing dependencies...")
     install_dependencies()
-    print("Dependencies installed. Restarting script...")
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
-# Check for Ollama CLI
 check_ollama()
-
-console: Console = Console()
-
-# Install Rich traceback for better error reporting
-from rich.traceback import install as install_rich_traceback
-
 install_rich_traceback(show_locals=True)
+console = Console()
 
-
-# ----------------------------------------------------------------
-# macOS Dark/Light Mode Detection (Optional)
-# ----------------------------------------------------------------
-def get_macos_theme() -> str:
-    """
-    Detect macOS appearance setting.
-    Returns 'dark' if Dark Mode is enabled, otherwise 'light'.
-    """
-    try:
-        result = subprocess.run(
-            ["defaults", "read", "-g", "AppleInterfaceStyle"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        if result.stdout.strip() == "Dark":
-            return "dark"
-    except Exception:
-        pass
-    return "light"
-
-
-THEME = get_macos_theme()
-
-# ----------------------------------------------------------------
-# Configuration & Constants (macOS tailored)
-# ----------------------------------------------------------------
-HOSTNAME: str = socket.gethostname()
-DEFAULT_USERNAME: str = (
-    os.environ.get("SUDO_USER") or os.environ.get("USER") or getpass.getuser()
-)
-VERSION: str = "1.0.0"
-APP_NAME: str = "Ollama CLI"
-APP_SUBTITLE: str = "Interactive CLI for Ollama Models"
-
-# Store history in a hidden folder in the user's home directory
+APP_NAME = "Ollama CLI"
+VERSION = "1.1.0"
 HISTORY_DIR = os.path.expanduser("~/.ollama_cli")
+CONFIG_DIR = HISTORY_DIR
 os.makedirs(HISTORY_DIR, exist_ok=True)
-COMMAND_HISTORY = os.path.join(HISTORY_DIR, "command_history")
-if not os.path.exists(COMMAND_HISTORY):
-    with open(COMMAND_HISTORY, "w") as f:
-        pass
+COMMAND_HISTORY = os.path.join(HISTORY_DIR, "command_history.txt")
+CHAT_HISTORY_FILE = os.path.join(HISTORY_DIR, "chat_history.json")
+HOSTNAME = socket.gethostname()
+USERNAME = os.environ.get("SUDO_USER", os.environ.get("USER", getpass.getuser()))
 
 
-# ----------------------------------------------------------------
-# Nord-Themed Colors
-# ----------------------------------------------------------------
 class NordColors:
-    POLAR_NIGHT_1: str = "#2E3440"
-    POLAR_NIGHT_2: str = "#3B4252"
-    POLAR_NIGHT_3: str = "#434C5E"
-    POLAR_NIGHT_4: str = "#4C566A"
-    SNOW_STORM_1: str = "#D8DEE9"
-    SNOW_STORM_2: str = "#E5E9F0"
-    SNOW_STORM_3: str = "#ECEFF4"  # Lightest color
-    FROST_1: str = "#8FBCBB"
-    FROST_2: str = "#88C0D0"
-    FROST_3: str = "#81A1C1"
-    FROST_4: str = "#5E81AC"
-    RED: str = "#BF616A"
-    ORANGE: str = "#D08770"
-    YELLOW: str = "#EBCB8B"
-    GREEN: str = "#A3BE8C"
-    PURPLE: str = "#B48EAD"
+    POLAR_NIGHT_1 = "#2E3440"
+    POLAR_NIGHT_2 = "#3B4252"
+    POLAR_NIGHT_3 = "#434C5E"
+    POLAR_NIGHT_4 = "#4C566A"
+    SNOW_STORM_1 = "#D8DEE9"
+    SNOW_STORM_2 = "#E5E9F0"
+    SNOW_STORM_3 = "#ECEFF4"
+    FROST_1 = "#8FBCBB"
+    FROST_2 = "#88C0D0"
+    FROST_3 = "#81A1C1"
+    FROST_4 = "#5E81AC"
+    RED = "#BF616A"
+    ORANGE = "#D08770"
+    YELLOW = "#EBCB8B"
+    GREEN = "#A3BE8C"
+    PURPLE = "#B48EAD"
+
+    SUCCESS = Style(color=GREEN, bold=True)
+    ERROR = Style(color=RED, bold=True)
+    WARNING = Style(color=YELLOW, bold=True)
+    INFO = Style(color=FROST_2, bold=True)
+    HEADER = Style(color=FROST_1, bold=True)
+    SUBHEADER = Style(color=FROST_3, bold=True)
+    ACCENT = Style(color=FROST_4, bold=True)
+    NORD_BOX = ROUNDED
+
+    @classmethod
+    def get_frost_gradient(cls, steps=4):
+        return [cls.FROST_1, cls.FROST_2, cls.FROST_3, cls.FROST_4][:steps]
+
+    @classmethod
+    def get_polar_gradient(cls, steps=4):
+        return [cls.POLAR_NIGHT_1, cls.POLAR_NIGHT_2, cls.POLAR_NIGHT_3, cls.POLAR_NIGHT_4][:steps]
 
 
-# ----------------------------------------------------------------
-# UI Helper Functions
-# ----------------------------------------------------------------
-def create_header() -> Panel:
+@dataclass
+class ChatHistory:
+    entries: List[Dict[str, Any]] = field(default_factory=list)
+
+    def add_entry(self, model: str, messages: List[Dict[str, str]]):
+        entry = {
+            "model": model,
+            "messages": messages,
+            "date": datetime.now().isoformat(),
+        }
+        self.entries.insert(0, entry)
+        self.entries = self.entries[:50]  # Keep last 50 conversations
+        self.save()
+
+    def save(self):
+        try:
+            with open(CHAT_HISTORY_FILE, "w") as f:
+                json.dump({"history": self.entries}, f, indent=2)
+        except Exception as e:
+            print_error(f"Failed to save chat history: {e}")
+
+    @classmethod
+    def load(cls):
+        try:
+            if os.path.exists(CHAT_HISTORY_FILE):
+                with open(CHAT_HISTORY_FILE, "r") as f:
+                    data = json.load(f)
+                return cls(entries=data.get("history", []))
+        except Exception as e:
+            print_error(f"Failed to load chat history: {e}")
+        return cls()
+
+
+@dataclass
+class ChatSession:
+    model: str
+    messages: List[Dict[str, str]] = field(default_factory=list)
+
+    def add_message(self, role: str, content: str):
+        self.messages.append({"role": role, "content": content, "timestamp": datetime.now().isoformat()})
+
+    def get_conversation_text(self) -> str:
+        text = ""
+        for msg in self.messages:
+            if msg["role"] == "user":
+                text += f"User: {msg['content']}\n"
+            elif msg["role"] == "assistant":
+                text += f"Assistant: {msg['content']}\n"
+        return text
+
+
+def clear_screen():
+    console.clear()
+
+
+def create_header():
     term_width = shutil.get_terminal_size().columns
     adjusted_width = min(term_width - 4, 80)
+
     fonts = ["slant", "big", "digital", "standard", "small"]
     ascii_art = ""
+
     for font in fonts:
         try:
             fig = pyfiglet.Figlet(font=font, width=adjusted_width)
@@ -208,281 +182,251 @@ def create_header() -> Panel:
                 break
         except Exception:
             continue
+
     ascii_lines = [line for line in ascii_art.splitlines() if line.strip()]
-    colors = [
-        NordColors.FROST_1,
-        NordColors.FROST_2,
-        NordColors.FROST_3,
-        NordColors.FROST_4,
-    ]
+    frost_colors = NordColors.get_frost_gradient(min(len(ascii_lines), 4))
+
     styled_text = ""
     for i, line in enumerate(ascii_lines):
-        color = colors[i % len(colors)]
+        color = frost_colors[i % len(frost_colors)]
         escaped_line = line.replace("[", "\\[").replace("]", "\\]")
         styled_text += f"[bold {color}]{escaped_line}[/]\n"
-    border = f"[{NordColors.FROST_3}]{'━' * (adjusted_width - 6)}[/]"
-    styled_text = border + "\n" + styled_text + border
-    header_panel = Panel(
+
+    border_style = NordColors.FROST_3
+    border_char = "═"
+    border_line = f"[{border_style}]{border_char * (adjusted_width - 8)}[/]"
+
+    styled_text = border_line + "\n" + styled_text + border_line
+
+    panel = Panel(
         Text.from_markup(styled_text),
-        border_style=Style(color=NordColors.FROST_1),
+        border_style=NordColors.FROST_1,
+        box=NordColors.NORD_BOX,
         padding=(1, 2),
-        title=f"[bold {NordColors.SNOW_STORM_2}]v{VERSION}[/]",
+        title=f"[bold {NordColors.SNOW_STORM_3}]v{VERSION}[/]",
         title_align="right",
-        subtitle=f"[bold {NordColors.SNOW_STORM_1}]{APP_SUBTITLE}[/]",
+        subtitle=f"[bold {NordColors.SNOW_STORM_1}]macOS Ollama Model Interface[/]",
         subtitle_align="center",
     )
-    return header_panel
+
+    return panel
 
 
-def print_message(
-    text: str, style: str = NordColors.FROST_2, prefix: str = "•"
-) -> None:
-    console.print(f"[{style}]{prefix} {text}[/{style}]")
+def print_message(text, style=NordColors.INFO, prefix="•"):
+    if isinstance(style, str):
+        console.print(f"[{style}]{prefix} {text}[/{style}]")
+    else:
+        console.print(f"{prefix} {text}", style=style)
 
 
-def print_success(message: str) -> None:
-    print_message(message, NordColors.GREEN, "✓")
+def print_error(message):
+    print_message(message, NordColors.ERROR, "✗")
 
 
-def print_warning(message: str) -> None:
-    print_message(message, NordColors.YELLOW, "⚠")
+def print_success(message):
+    print_message(message, NordColors.SUCCESS, "✓")
 
 
-def print_error(message: str) -> None:
-    print_message(message, NordColors.RED, "✗")
+def print_warning(message):
+    print_message(message, NordColors.WARNING, "⚠")
 
 
-def wait_for_key() -> None:
-    pt_prompt(
-        "Press Enter to continue...",
-        style=PtStyle.from_dict({"prompt": f"{NordColors.FROST_2}"}),
+def print_info(message):
+    print_message(message, NordColors.INFO, "ℹ")
+
+
+def display_panel(title, message, style=NordColors.INFO):
+    if isinstance(style, str):
+        panel = Panel(
+            Text.from_markup(message),
+            title=title,
+            border_style=style,
+            box=NordColors.NORD_BOX,
+            padding=(1, 2)
+        )
+    else:
+        panel = Panel(
+            Text(message),
+            title=title,
+            border_style=style,
+            box=NordColors.NORD_BOX,
+            padding=(1, 2)
+        )
+    console.print(panel)
+
+
+def create_menu_table(title, options):
+    table = Table(
+        show_header=True,
+        header_style=NordColors.HEADER,
+        box=ROUNDED,
+        title=title,
+        border_style=NordColors.FROST_3,
+        padding=(0, 1),
+        expand=True,
     )
 
+    table.add_column("#", style=NordColors.ACCENT, width=3, justify="right")
+    table.add_column("Option", style=NordColors.FROST_1)
+    table.add_column("Description", style=NordColors.SNOW_STORM_1)
 
-def get_prompt_style() -> PtStyle:
-    return PtStyle.from_dict({"prompt": f"bold {NordColors.PURPLE}"})
+    for opt in options:
+        table.add_row(*opt)
 
-
-# ----------------------------------------------------------------
-# Enhanced Spinner Manager (Spinners Only)
-# ----------------------------------------------------------------
-class SpinnerProgressManager:
-    """Manages Rich spinners for loading feedback."""
-
-    def __init__(self, title: str = "", auto_refresh: bool = True):
-        self.title = title
-        self.progress = Progress(
-            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-            TextColumn(f"[bold {NordColors.FROST_2}]{{task.description}}"),
-            auto_refresh=auto_refresh,
-            console=console,
-        )
-        self.live = None
-        self.tasks = {}
-        self.start_times = {}
-        self.is_started = False
-
-    def start(self):
-        if not self.is_started:
-            self.live = Live(self.progress, console=console, refresh_per_second=10)
-            self.live.start()
-            self.is_started = True
-
-    def stop(self):
-        if self.is_started and self.live:
-            self.live.stop()
-            self.is_started = False
-
-    def add_task(self, description: str) -> str:
-        task_id = f"task_{len(self.tasks)}"
-        self.start_times[task_id] = time.time()
-        self.tasks[task_id] = self.progress.add_task(description, total=0, visible=True)
-        return task_id
-
-    def update_task(self, task_id: str, description: str):
-        if task_id not in self.tasks:
-            return
-        task = self.tasks[task_id]
-        self.progress.update(task, description=description)
-
-    def complete_task(self, task_id: str, success: bool = True):
-        if task_id not in self.tasks:
-            return
-        status_text = "COMPLETED" if success else "FAILED"
-        self.update_task(task_id, status_text)
+    return table
 
 
-# ----------------------------------------------------------------
-# Helper Functions
-# ----------------------------------------------------------------
-def current_time_str() -> str:
+def get_prompt_style():
+    return PTStyle.from_dict({"prompt": f"bold {NordColors.PURPLE}"})
+
+
+def current_time_str():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-# ----------------------------------------------------------------
-# Interaction with Ollama CLI
-# ----------------------------------------------------------------
-def list_models_details() -> List[Dict[str, str]]:
-    """
-    List available models from Ollama.
-    Uses the 'ollama list' command and parses its output into a list of dictionaries.
-    Each dictionary contains keys: 'name', 'id', 'size', 'modified'.
-    Skips the header row if present.
-    """
+def list_ollama_models():
     try:
-        result = subprocess.run(
-            ["ollama", "list"], capture_output=True, text=True, check=True
-        )
+        with Progress(
+                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+                TextColumn(f"[bold {NordColors.FROST_2}]Fetching Ollama models..."),
+                console=console
+        ) as progress:
+            task = progress.add_task("", total=None)
+            result = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=True)
+
         lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-        if lines and "NAME" in lines[0].upper():
-            lines = lines[1:]
+
         models = []
+        if lines and "NAME" in lines[0].upper():
+            header = lines[0]
+            lines = lines[1:]
+
         for line in lines:
-            match = re.match(r"(\S+)\s+(\S+)\s+(\S+)\s+(.+)", line)
-            if match:
-                models.append(
-                    {
-                        "name": match.group(1),
-                        "id": match.group(2),
-                        "size": match.group(3),
-                        "modified": match.group(4),
-                    }
-                )
-            else:
-                models.append({"name": line, "id": "", "size": "", "modified": ""})
+            parts = re.split(r'\s{2,}', line)
+            if len(parts) >= 4:
+                models.append({
+                    "name": parts[0],
+                    "id": parts[1],
+                    "size": parts[2],
+                    "modified": parts[3]
+                })
+            elif len(parts) >= 1:
+                models.append({
+                    "name": parts[0],
+                    "id": "",
+                    "size": "",
+                    "modified": ""
+                })
+
         if not models:
+            print_warning("No models found. Returning default models.")
             models = [
                 {"name": "llama2", "id": "", "size": "", "modified": ""},
-                {"name": "stablelm", "id": "", "size": "", "modified": ""},
-                {"name": "alpaca", "id": "", "size": "", "modified": ""},
+                {"name": "mistral", "id": "", "size": "", "modified": ""},
+                {"name": "gemma", "id": "", "size": "", "modified": ""}
             ]
+
         return models
-    except subprocess.CalledProcessError:
-        print_warning(
-            "Failed to list models using Ollama CLI. Using default model list."
-        )
+    except subprocess.CalledProcessError as e:
+        print_error(f"Failed to list Ollama models: {e}")
         return [
             {"name": "llama2", "id": "", "size": "", "modified": ""},
-            {"name": "stablelm", "id": "", "size": "", "modified": ""},
-            {"name": "alpaca", "id": "", "size": "", "modified": ""},
+            {"name": "mistral", "id": "", "size": "", "modified": ""},
+            {"name": "gemma", "id": "", "size": "", "modified": ""}
         ]
 
 
-def get_model_response(model: str, conversation: str) -> str:
-    """
-    Send the conversation history to the model using the 'ollama run' command
-    and return the model's response.
-    """
-    spinner = SpinnerProgressManager("Model Response")
-    task_id = spinner.add_task("Waiting for response...")
-    spinner.start()
-    try:
-        result = subprocess.run(
-            ["ollama", "run", model],
-            input=conversation,
-            text=True,
-            capture_output=True,
-            check=True,
-        )
-        spinner.complete_task(task_id, True)
-        response = result.stdout.strip()
-        return response
-    except subprocess.CalledProcessError as e:
-        spinner.complete_task(task_id, False)
-        print_error(f"Error communicating with model: {e}")
-        return "Error: Unable to get response."
-    finally:
-        spinner.stop()
+def get_model_response(model, conversation):
+    with Progress(
+            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]Waiting for {model} response..."),
+            BarColumn(bar_width=None, style=NordColors.POLAR_NIGHT_3, complete_style=NordColors.FROST_2),
+            console=console
+    ) as progress:
+        task = progress.add_task("", total=None)
+        try:
+            result = subprocess.run(
+                ["ollama", "run", model],
+                input=conversation,
+                text=True,
+                capture_output=True,
+                check=True
+            )
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            print_error(f"Error communicating with model: {e}")
+            if e.stderr:
+                print_error(f"Error details: {e.stderr}")
+            return "Error: Unable to get response from the model."
 
 
-@dataclass
-class ChatSession:
-    """
-    Represents a chat session with a selected model.
-    Maintains conversation history.
-    """
-
-    model: str
-    conversation_history: List[Dict[str, str]] = field(default_factory=list)
-
-    def append_message(self, role: str, message: str):
-        self.conversation_history.append({"role": role, "message": message})
-
-    def get_conversation_text(self) -> str:
-        text = ""
-        for entry in self.conversation_history:
-            if entry["role"] == "user":
-                text += f"User: {entry['message']}\n"
-            elif entry["role"] == "assistant":
-                text += f"Assistant: {entry['message']}\n"
-        return text
-
-
-def interactive_chat(session: ChatSession) -> None:
-    """
-    Start an interactive chat session with the selected model.
-    Type 'exit' or 'quit' to end the session.
-    """
-    console.clear()
+def display_model_list():
+    clear_screen()
     console.print(create_header())
-    console.print(
-        f"[bold {NordColors.SNOW_STORM_3}]Chatting with model:[/] [bold {NordColors.SNOW_STORM_3}]{session.model}[/]"
-    )
-    console.print(f"[dim]Type 'exit' or 'quit' to end the chat session.[/dim]\n")
-    while True:
-        user_input = pt_prompt(
-            "You: ",
-            style=get_prompt_style(),
-            history=FileHistory(COMMAND_HISTORY),
-            auto_suggest=AutoSuggestFromHistory(),
-        )
-        if user_input.lower().strip() in ["exit", "quit"]:
-            print_warning("Exiting chat session.")
-            break
-        if not user_input.strip():
-            continue
-        session.append_message("user", user_input.strip())
-        conversation_text = session.get_conversation_text()
-        response = get_model_response(session.model, conversation_text)
-        session.append_message("assistant", response)
-        # Both user and assistant messages are now displayed with SNOW_STORM_3
-        console.print(
-            Panel(
-                f"[bold {NordColors.SNOW_STORM_3}]You:[/] {user_input}",
-                style=NordColors.SNOW_STORM_3,
-            )
-        )
-        console.print(
-            Panel(
-                f"[bold {NordColors.SNOW_STORM_3}]Assistant:[/] {response}",
-                style=NordColors.SNOW_STORM_3,
-            )
-        )
+    models = list_ollama_models()
 
-
-def choose_model_menu() -> str:
-    """
-    Present a numbered menu of available models (with details) and let the user choose one.
-    Returns the selected model name.
-    """
-    models = list_models_details()
     table = Table(
-        title="Available Ollama Models",
         show_header=True,
-        header_style=f"bold {NordColors.FROST_3}",
+        header_style=NordColors.HEADER,
+        box=ROUNDED,
+        title="Available Ollama Models",
+        border_style=NordColors.FROST_3,
+        expand=True
     )
-    table.add_column("No.", style="bold", width=4)
-    table.add_column("Model Name", style=NordColors.FROST_2)
-    table.add_column("ID", style=NordColors.FROST_2)
-    table.add_column("Size", style=NordColors.FROST_2)
-    table.add_column("Modified", style=NordColors.FROST_2)
+
+    table.add_column("#", style=NordColors.ACCENT, width=3)
+    table.add_column("Model Name", style=NordColors.FROST_1)
+    table.add_column("ID", style=NordColors.SNOW_STORM_1)
+    table.add_column("Size", style=NordColors.FROST_3)
+    table.add_column("Modified", style=NordColors.SNOW_STORM_1)
+
     for i, model in enumerate(models, 1):
         table.add_row(
-            str(i), model["name"], model["id"], model["size"], model["modified"]
+            str(i),
+            model["name"],
+            model["id"] or "N/A",
+            model["size"] or "N/A",
+            model["modified"] or "N/A"
         )
+
     console.print(table)
+    print_info(f"Total models available: {len(models)}")
+    Prompt.ask("Press Enter to return to the main menu")
+
+
+def select_model():
+    clear_screen()
+    console.print(create_header())
+    models = list_ollama_models()
+
+    table = Table(
+        show_header=True,
+        header_style=NordColors.HEADER,
+        box=ROUNDED,
+        title="Select an Ollama Model",
+        border_style=NordColors.FROST_3,
+        expand=True
+    )
+
+    table.add_column("#", style=NordColors.ACCENT, width=3)
+    table.add_column("Model Name", style=NordColors.FROST_1)
+    table.add_column("Size", style=NordColors.FROST_3)
+
+    for i, model in enumerate(models, 1):
+        table.add_row(
+            str(i),
+            model["name"],
+            model["size"] or "N/A"
+        )
+
+    console.print(table)
+
     while True:
-        choice = pt_prompt("Enter model number: ", style=get_prompt_style())
+        choice = pt_prompt(
+            "Enter model number: ",
+            style=get_prompt_style()
+        )
+
         if not choice.isdigit() or int(choice) < 1 or int(choice) > len(models):
             print_error("Invalid selection. Please enter a valid model number.")
         else:
@@ -491,71 +435,184 @@ def choose_model_menu() -> str:
             return selected_model
 
 
-def list_models_menu() -> None:
-    """
-    Display the full list of available Ollama models with details.
-    """
-    models = list_models_details()
+def interactive_chat():
+    model = select_model()
+    session = ChatSession(model=model)
+    history = ChatHistory.load()
+
+    if not os.path.exists(COMMAND_HISTORY):
+        with open(COMMAND_HISTORY, "w") as f:
+            pass
+
+    clear_screen()
+    console.print(create_header())
+    display_panel(
+        "Chat Session",
+        f"Model: [bold]{model}[/]\nType your messages and press Enter. Type 'exit' or 'quit' to end the session.",
+        NordColors.FROST_2
+    )
+
+    while True:
+        user_input = pt_prompt(
+            f"[You] > ",
+            history=FileHistory(COMMAND_HISTORY),
+            auto_suggest=AutoSuggestFromHistory(),
+            style=get_prompt_style()
+        )
+
+        if user_input.lower().strip() in ["exit", "quit"]:
+            break
+
+        if not user_input.strip():
+            continue
+
+        session.add_message("user", user_input)
+
+        conversation = session.get_conversation_text()
+        response = get_model_response(model, conversation)
+
+        session.add_message("assistant", response)
+
+        console.print(Panel(
+            user_input,
+            title=f"[bold {NordColors.SNOW_STORM_3}]You[/]",
+            border_style=NordColors.FROST_3,
+            box=NordColors.NORD_BOX
+        ))
+
+        console.print(Panel(
+            response,
+            title=f"[bold {NordColors.SNOW_STORM_3}]{model}[/]",
+            border_style=NordColors.FROST_1,
+            box=NordColors.NORD_BOX
+        ))
+
+    if len(session.messages) > 0:
+        history.add_entry(model, session.messages)
+        print_success(f"Chat session with {model} completed and saved to history.")
+
+
+def view_chat_history():
+    clear_screen()
+    console.print(create_header())
+    history = ChatHistory.load()
+
+    if not history.entries:
+        display_panel("Chat History", "No chat history found.", NordColors.FROST_3)
+        Prompt.ask("Press Enter to return to the main menu")
+        return
+
     table = Table(
-        title="Available Ollama Models",
         show_header=True,
-        header_style=f"bold {NordColors.FROST_3}",
+        header_style=NordColors.HEADER,
+        box=ROUNDED,
+        title="Chat History",
+        border_style=NordColors.FROST_3,
+        expand=True
     )
-    table.add_column("No.", style="bold", width=4)
-    table.add_column("Model Name", style=NordColors.FROST_2)
-    table.add_column("ID", style=NordColors.FROST_2)
-    table.add_column("Size", style=NordColors.FROST_2)
-    table.add_column("Modified", style=NordColors.FROST_2)
-    for i, model in enumerate(models, 1):
-        table.add_row(
-            str(i), model["name"], model["id"], model["size"], model["modified"]
-        )
+
+    table.add_column("#", style=NordColors.ACCENT, width=3)
+    table.add_column("Date", style=NordColors.FROST_2)
+    table.add_column("Model", style=NordColors.SNOW_STORM_1)
+    table.add_column("Messages", style=NordColors.FROST_3, justify="right")
+
+    for i, entry in enumerate(history.entries[:10], 1):
+        date_str = datetime.fromisoformat(entry["date"]).strftime("%Y-%m-%d %H:%M")
+        message_count = len(entry["messages"])
+        table.add_row(str(i), date_str, entry["model"], str(message_count))
+
     console.print(table)
-    wait_for_key()
 
+    options = [
+        ("1", "View Chat Details", "See a specific conversation"),
+        ("2", "Clear History", "Delete all chat history"),
+        ("3", "Return to Main Menu", "")
+    ]
 
-def start_chat_session() -> None:
-    """
-    Start an interactive chat session by letting the user choose a model from a numbered list.
-    """
-    selected_model = choose_model_menu()
-    session = ChatSession(model=selected_model)
-    interactive_chat(session)
-    wait_for_key()
+    console.print(create_menu_table("History Options", options))
+    choice = Prompt.ask("Select option", choices=["1", "2", "3"], default="3")
 
-
-def show_help() -> None:
-    help_text = f"""
-[bold]Available Commands:[/]
-
-[bold {NordColors.FROST_2}]1[/]: List available models
-[bold {NordColors.FROST_2}]2[/]: Start chat session (choose model by number)
-[bold {NordColors.FROST_2}]H[/]: Help screen
-[bold {NordColors.FROST_2}]0[/]: Exit application
-
-[bold]Chat Commands:[/]
-Type your message and press Enter.
-Type 'exit' or 'quit' to end the chat session.
-"""
-    console.print(
-        Panel(
-            Text.from_markup(help_text),
-            title=f"[bold {NordColors.FROST_1}]Help & Commands[/]",
-            border_style=Style(color=NordColors.FROST_3),
-            padding=(1, 2),
+    if choice == "1":
+        entry_num = Prompt.ask(
+            "Enter chat number to view",
+            choices=[str(i) for i in range(1, min(11, len(history.entries) + 1))],
+            show_choices=False
         )
-    )
-    wait_for_key()
+
+        entry = history.entries[int(entry_num) - 1]
+
+        clear_screen()
+        console.print(create_header())
+        display_panel(
+            f"Chat with {entry['model']}",
+            f"Date: {datetime.fromisoformat(entry['date']).strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"Messages: {len(entry['messages'])}",
+            NordColors.FROST_2
+        )
+
+        for msg in entry["messages"]:
+            if msg["role"] == "user":
+                console.print(Panel(
+                    msg["content"],
+                    title="You",
+                    border_style=NordColors.FROST_3,
+                    box=NordColors.NORD_BOX
+                ))
+            else:
+                console.print(Panel(
+                    msg["content"],
+                    title=entry["model"],
+                    border_style=NordColors.FROST_1,
+                    box=NordColors.NORD_BOX
+                ))
+
+        Prompt.ask("Press Enter to return to history menu")
+        view_chat_history()
+
+    elif choice == "2":
+        if Confirm.ask("Are you sure you want to clear all chat history?", default=False):
+            history.entries = []
+            history.save()
+            print_success("Chat history cleared")
+        view_chat_history()
 
 
-# ----------------------------------------------------------------
-# Signal Handling and Cleanup
-# ----------------------------------------------------------------
-def cleanup() -> None:
-    print_message("Cleaning up session resources...", NordColors.FROST_3)
+def show_help():
+    clear_screen()
+    console.print(create_header())
+
+    help_content = """
+[bold {NordColors.FROST_1}]Ollama CLI Help[/]
+
+[bold {NordColors.FROST_2}]Commands:[/]
+1. [bold]List Models[/] - View all available Ollama models on your system
+2. [bold]Chat with Model[/] - Start an interactive chat session with a selected model
+3. [bold]View History[/] - Browse previous chat sessions
+4. [bold]Help[/] - Display this help screen
+0. [bold]Exit[/] - Exit the application
+
+[bold {NordColors.FROST_2}]Chat Controls:[/]
+- Type your message and press Enter to send
+- Type 'exit' or 'quit' to end a chat session
+
+[bold {NordColors.FROST_2}]Usage Notes:[/]
+- Models must be installed using the Ollama CLI before they appear in the list
+- Install new models with: ollama pull modelname
+- System responses are streamed in real-time
+"""
+
+    display_panel("Help & Documentation", help_content, NordColors.FROST_2)
+    Prompt.ask("Press Enter to return to the main menu")
 
 
-def signal_handler(sig: int, frame: Any) -> None:
+def cleanup():
+    try:
+        print_message("Cleaning up resources...", NordColors.FROST_3)
+    except Exception as e:
+        pass
+
+
+def signal_handler(sig, frame):
     try:
         sig_name = signal.Signals(sig).name
         print_warning(f"Process interrupted by {sig_name}")
@@ -570,57 +627,88 @@ signal.signal(signal.SIGTERM, signal_handler)
 atexit.register(cleanup)
 
 
-# ----------------------------------------------------------------
-# Main Menu and Program Control
-# ----------------------------------------------------------------
-def main() -> None:
-    menu_options = [
-        ("1", "List Available Models", list_models_menu),
-        ("2", "Start Chat Session", start_chat_session),
-        ("H", "Help", show_help),
-        ("0", "Exit", lambda: sys.exit(0)),
-    ]
-    while True:
-        console.clear()
+def main():
+    try:
+        clear_screen()
         console.print(create_header())
-        console.print(
-            Align.center(
-                f"[{NordColors.SNOW_STORM_1}]Current Time: {current_time_str()}[/] | Host: {HOSTNAME}"
-            )
-        )
-        console.print(f"\n[bold {NordColors.PURPLE}]Ollama CLI Chat Menu[/]")
-        table = Table(
-            show_header=True, header_style=f"bold {NordColors.FROST_3}", expand=True
-        )
-        table.add_column("Option", style="bold", width=8)
-        table.add_column("Description", style="bold")
-        for option, description, _ in menu_options:
-            table.add_row(option, description)
-        console.print(table)
+
+        with Progress(
+                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+                TextColumn(f"[bold {NordColors.FROST_2}]Starting Ollama CLI..."),
+                console=console
+        ) as progress:
+            task = progress.add_task("", total=100)
+            progress.update(task, completed=30, description="Checking Ollama installation...")
+            progress.update(task, completed=60, description="Loading configuration...")
+            progress.update(task, completed=90, description="Initializing interface...")
+            progress.update(task, completed=100, description="Ready!")
+            time.sleep(0.5)
+
+        main_menu()
+
+    except KeyboardInterrupt:
+        print_warning("Operation cancelled by user")
+
+    except Exception as e:
+        print_error(f"An unexpected error occurred: {e}")
+        if Confirm.ask("Show detailed error information?", default=False):
+            console.print_exception()
+
+    finally:
+        cleanup()
+
+
+def main_menu():
+    while True:
+        clear_screen()
+        console.print(create_header())
+
+        # Display current time and host
+        console.print(f"[dim]Current Time: {current_time_str()} | Host: {HOSTNAME} | User: {USERNAME}[/dim]")
+
+        main_options = [
+            ("1", "List Models", "View all available Ollama models"),
+            ("2", "Chat with Model", "Start interactive chat with an Ollama model"),
+            ("3", "View History", "Browse previous chat sessions"),
+            ("4", "Help", "Show help and documentation"),
+            ("0", "Exit", "Exit the application")
+        ]
+
+        console.print(create_menu_table("Main Menu", main_options))
+
         choice = pt_prompt(
-            "Enter your choice: ",
-            history=FileHistory(COMMAND_HISTORY),
-            auto_suggest=AutoSuggestFromHistory(),
-            style=get_prompt_style(),
-        ).upper()
-        executed = False
-        for option, _, func in menu_options:
-            if choice == option:
-                func()
-                executed = True
-                break
-        if not executed:
+            "Select an option: ",
+            style=get_prompt_style()
+        )
+
+        if choice == "1":
+            display_model_list()
+        elif choice == "2":
+            interactive_chat()
+        elif choice == "3":
+            view_chat_history()
+        elif choice == "4":
+            show_help()
+        elif choice == "0":
+            clear_screen()
+            console.print(
+                Panel(
+                    Text.from_markup(
+                        "[bold]Thank you for using Ollama CLI![/]\n\n"
+                        "Developed with the Nord theme for a beautiful macOS experience."
+                    ),
+                    title="Goodbye!",
+                    title_align="center",
+                    border_style=NordColors.FROST_2,
+                    box=HEAVY,
+                    padding=(2, 4)
+                )
+            )
+            break
+        else:
             print_error(f"Invalid selection: {choice}")
-            wait_for_key()
+            time.sleep(1)
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print_warning("Operation cancelled by user")
-        sys.exit(0)
-    except Exception as e:
-        console.print_exception()
-        print_error(f"An unexpected error occurred: {e}")
-        sys.exit(1)
+    main()

@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-"""
-macOS VoIP Toolkit
---------------------------------------------------
-A comprehensive, menu‐driven CLI application for VoIP‐related tasks on macOS.
-This toolkit includes a SIP Checker (to detect if SIP ALG is enabled on your router),
-VoIP network information, a SIP port scanner, and a Bandwidth & QoS Monitor.
-
-Core Libraries & Features:
-  • Auto‐installation of required Python packages.
-  • macOS–specific configuration using Homebrew for package management.
-  • Dynamic Pyfiglet banners rendered with a Nord-themed rainbow using the “slant” font.
-  • Robust error handling, signal cleanup, and modular design.
-
-Version: 1.0.0
-"""
 
 import os
 import sys
@@ -27,114 +12,104 @@ import getpass
 import re
 from datetime import datetime
 from pathlib import Path
+from dataclasses import dataclass, field
+from typing import List, Optional, Any, Tuple, Dict, Union, Callable
 
-# Ensure we are running on macOS
 if platform.system() != "Darwin":
     print("This script is tailored for macOS. Exiting.")
     sys.exit(1)
 
 
-# ----------------------------------------------------------------
-# Dependency Check and Installation
-# ----------------------------------------------------------------
 def install_dependencies():
-    """
-    Ensure required third-party packages are installed.
-    Installs:
-      - rich
-      - pyfiglet
-      - prompt_toolkit
-    """
     required_packages = ["rich", "pyfiglet", "prompt_toolkit"]
     user = os.environ.get("SUDO_USER", os.environ.get("USER", getpass.getuser()))
     try:
         if os.geteuid() != 0:
-            print(f"Installing dependencies for user: {user}")
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
-            )
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
         else:
-            print(f"Running as sudo. Installing dependencies for user: {user}")
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
-                + required_packages
-            )
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
 
 
-def shutil_which(cmd):
-    """A simple wrapper around shutil.which (compatible with older Python versions)."""
-    from shutil import which
-
-    return which(cmd)
-
-
 def check_homebrew():
-    """Ensure Homebrew is installed on macOS."""
-    if not shutil_which("brew"):
-        print(
-            "Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun this script."
-        )
+    from shutil import which
+    if not which("brew"):
+        print("Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun this script.")
         sys.exit(1)
 
 
-# Attempt to import dependencies; if missing, install them.
 try:
     import pyfiglet
     from rich.console import Console
     from rich.text import Text
     from rich.panel import Panel
     from rich.table import Table
-    from rich.prompt import Prompt
-    from rich.progress import (
-        Progress,
-        SpinnerColumn,
-        TextColumn,
-        BarColumn,
-        TaskProgressColumn,
-        TimeRemainingColumn,
-    )
+    from rich.prompt import Prompt, Confirm
+    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
     from rich.align import Align
+    from rich.box import ROUNDED
+    from rich.style import Style
     from prompt_toolkit import prompt as pt_prompt
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
     from prompt_toolkit.styles import Style as PtStyle
 except ImportError:
-    print("Required libraries not found. Installing dependencies...")
     install_dependencies()
-    print("Dependencies installed. Restarting script...")
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
-console: Console = Console()
+console = Console()
 
-# ----------------------------------------------------------------
-# Global Constants and Paths
-# ----------------------------------------------------------------
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 APP_NAME = "macOS VoIP Toolkit"
 HISTORY_DIR = os.path.expanduser("~/.macos_voip_toolkit")
 os.makedirs(HISTORY_DIR, exist_ok=True)
 COMMAND_HISTORY = os.path.join(HISTORY_DIR, "command_history")
 
 
-# ----------------------------------------------------------------
-# Banner Rendering Helpers
-# ----------------------------------------------------------------
+class NordColors:
+    POLAR_NIGHT_1 = "#2E3440"
+    POLAR_NIGHT_2 = "#3B4252"
+    POLAR_NIGHT_3 = "#434C5E"
+    POLAR_NIGHT_4 = "#4C566A"
+    SNOW_STORM_1 = "#D8DEE9"
+    SNOW_STORM_2 = "#E5E9F0"
+    SNOW_STORM_3 = "#ECEFF4"
+    FROST_1 = "#8FBCBB"
+    FROST_2 = "#88C0D0"
+    FROST_3 = "#81A1C1"
+    FROST_4 = "#5E81AC"
+    RED = "#BF616A"
+    ORANGE = "#D08770"
+    YELLOW = "#EBCB8B"
+    GREEN = "#A3BE8C"
+    PURPLE = "#B48EAD"
+
+    SUCCESS = Style(color=GREEN, bold=True)
+    ERROR = Style(color=RED, bold=True)
+    WARNING = Style(color=YELLOW, bold=True)
+    INFO = Style(color=FROST_2, bold=True)
+    HEADER = Style(color=FROST_1, bold=True)
+    SUBHEADER = Style(color=FROST_3, bold=True)
+    ACCENT = Style(color=FROST_4, bold=True)
+    NORD_BOX = ROUNDED
+
+    @classmethod
+    def get_frost_gradient(cls, steps=4):
+        return [cls.FROST_1, cls.FROST_2, cls.FROST_3, cls.FROST_4][:steps]
+
+
 def render_banner(text: str, adjusted_width: int) -> str:
-    """
-    Render a banner using Pyfiglet with the 'slant' font and a Nord-themed rainbow.
-    Returns the rendered text with Rich markup.
-    """
     try:
         fig = pyfiglet.Figlet(font="slant", width=adjusted_width)
         ascii_art = fig.renderText(text)
     except Exception:
         ascii_art = text
 
-    # Nord theme colors
-    nord_colors = ["#BF616A", "#D08770", "#EBCB8B", "#A3BE8C", "#88C0D0", "#B48EAD"]
+    nord_colors = [NordColors.FROST_1, NordColors.FROST_2, NordColors.FROST_3, NordColors.FROST_4,
+                   NordColors.GREEN, NordColors.PURPLE]
     lines = ascii_art.splitlines()
     styled_lines = []
     for i, line in enumerate(lines):
@@ -145,106 +120,81 @@ def render_banner(text: str, adjusted_width: int) -> str:
     return "\n".join(styled_lines)
 
 
-def create_main_header() -> Panel:
-    """
-    Generate the main header banner using Pyfiglet with a Nord-themed rainbow.
-    This banner includes the application name, version, and subtitle.
-    """
+def create_header(title: str = None) -> Panel:
     term_width = os.get_terminal_size().columns
     adjusted_width = min(term_width - 4, 100)
-    banner_text = render_banner(APP_NAME, adjusted_width)
-    panel = Panel(
+    text = title or APP_NAME
+    banner_text = render_banner(text, adjusted_width)
+    return Panel(
         Text.from_markup(banner_text),
-        border_style="white",
+        border_style=NordColors.FROST_1,
+        box=NordColors.NORD_BOX,
         padding=(1, 2),
-        title=f"[bold white]v{VERSION}[/]",
+        title=f"[bold {NordColors.SNOW_STORM_3}]v{VERSION}[/]",
         title_align="right",
-        subtitle=f"[bold white]VoIP Toolkit[/]",
+        subtitle=f"[bold {NordColors.SNOW_STORM_1}]VoIP Toolkit[/]",
         subtitle_align="center",
     )
-    return panel
 
 
-def create_submenu_header(title: str) -> Panel:
-    """
-    Generate a submenu header banner using Pyfiglet with a Nord-themed rainbow.
-    The provided title (e.g., 'SIP Checker') is rendered using the same settings as the main header.
-    """
-    term_width = os.get_terminal_size().columns
-    adjusted_width = min(term_width - 4, 100)
-    banner_text = render_banner(title, adjusted_width)
-    panel = Panel(
-        Text.from_markup(banner_text),
-        border_style="white",
-        padding=(1, 2),
-        title=f"[bold white]{title}[/]",
-        title_align="right",
-        subtitle=f"[bold white]VoIP Toolkit[/]",
-        subtitle_align="center",
-    )
-    return panel
-
-
-# ----------------------------------------------------------------
-# Utility Functions
-# ----------------------------------------------------------------
 def get_default_gateway() -> str:
-    """
-    Retrieve the default gateway IP address using 'route -n get default'.
-    """
     try:
         result = subprocess.run(
             ["route", "-n", "get", "default"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True
         )
         for line in result.stdout.splitlines():
             if "gateway:" in line:
                 return line.split("gateway:")[-1].strip()
     except Exception as e:
-        console.print(f"[bold red]Error retrieving default gateway: {e}[/]")
+        console.print(f"[bold {NordColors.RED}]Error retrieving default gateway: {e}[/]")
     return ""
 
 
 def get_local_ip() -> str:
-    """
-    Retrieve the local IP address for interface en0 (typical on macOS).
-    """
     try:
-        ip = (
-            subprocess.check_output(
-                ["ipconfig", "getifaddr", "en0"], stderr=subprocess.DEVNULL
-            )
-            .strip()
-            .decode("utf-8")
-        )
+        ip = subprocess.check_output(["ipconfig", "getifaddr", "en0"], stderr=subprocess.DEVNULL).strip().decode(
+            "utf-8")
         return ip
     except Exception:
         return "127.0.0.1"
 
 
 def get_prompt_style() -> PtStyle:
-    return PtStyle.from_dict({"prompt": "bold cyan"})
+    return PtStyle.from_dict({"prompt": f"bold {NordColors.FROST_2}"})
 
 
 def wait_for_key() -> None:
     pt_prompt("Press Enter to continue...", style=get_prompt_style())
 
 
-# ----------------------------------------------------------------
-# Spinner Progress Manager (using Rich)
-# ----------------------------------------------------------------
-class SpinnerProgressManager:
-    """Manages Rich spinners with consistent styling."""
+def print_message(text, style=NordColors.INFO, prefix="•"):
+    if isinstance(style, str):
+        console.print(f"[{style}]{prefix} {text}[/{style}]")
+    else:
+        console.print(f"{prefix} {text}", style=style)
 
+
+def print_error(message):
+    print_message(message, NordColors.ERROR, "✗")
+
+
+def print_success(message):
+    print_message(message, NordColors.SUCCESS, "✓")
+
+
+def print_warning(message):
+    print_message(message, NordColors.WARNING, "⚠")
+
+
+class SpinnerProgressManager:
     def __init__(self, title: str = ""):
         self.progress = Progress(
-            SpinnerColumn(spinner_name="dots", style="bold cyan"),
-            TextColumn("[bold cyan]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
+            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]{{task.description}}"),
+            BarColumn(style=NordColors.POLAR_NIGHT_3, complete_style=NordColors.FROST_2,
+                      finished_style=NordColors.GREEN),
+            TaskProgressColumn(style=NordColors.SNOW_STORM_1),
             TimeRemainingColumn(),
             console=console,
             transient=True,
@@ -267,26 +217,15 @@ class SpinnerProgressManager:
             self.progress.update(self.task, completed=completed)
 
 
-# ----------------------------------------------------------------
-# SIP Checker Functionality
-# ----------------------------------------------------------------
 def sip_checker() -> None:
-    """
-    Check the network (default gateway) for SIP ALG behavior.
-    A minimal SIP OPTIONS message is sent to UDP port 5060.
-    If a SIP response is received, SIP is assumed enabled.
-    """
-    console.print(create_submenu_header("SIP Checker"))
+    console.print(create_header("SIP Checker"))
     gateway = get_default_gateway()
     if not gateway:
-        console.print(
-            "[bold red]Default gateway not found. Cannot perform SIP check.[/bold red]"
-        )
+        console.print(f"[bold {NordColors.RED}]Default gateway not found. Cannot perform SIP check.[/]")
         wait_for_key()
         return
     console.print(f"Default Gateway: [bold]{gateway}[/]")
 
-    # Use dynamic branch and Call-ID values for improved compatibility
     branch = f"z9hG4bK-{int(time.time())}"
     call_id = f"{int(time.time())}@{gateway}"
     sip_msg = (
@@ -301,75 +240,47 @@ def sip_checker() -> None:
     )
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # Increase timeout to allow for network delays (5 seconds)
     sock.settimeout(5)
     try:
-        # Send the SIP OPTIONS message to the default gateway
         sock.sendto(sip_msg.encode("utf-8"), (gateway, 5060))
-
-        # Collect responses until the socket times out
         responses = []
-        while True:
-            try:
+        try:
+            while True:
                 response, addr = sock.recvfrom(2048)
                 responses.append((response, addr))
-            except socket.timeout:
-                break
+        except socket.timeout:
+            pass
 
         if responses:
-            # Check each response for a SIP status line
             sip_detected = any(b"SIP/2.0" in resp for resp, _ in responses)
             if sip_detected:
-                console.print("[bold red]SIP Enabled[/bold red]")
+                console.print(f"[bold {NordColors.RED}]SIP Enabled[/]")
             else:
-                console.print(
-                    "[bold yellow]SIP Enabled (response received but unrecognized format)[/bold yellow]"
-                )
+                console.print(f"[bold {NordColors.YELLOW}]SIP Enabled (response received but unrecognized format)[/]")
         else:
-            console.print("[bold green]SIP Not Detected[/bold green]")
+            console.print(f"[bold {NordColors.GREEN}]SIP Not Detected[/]")
     except Exception as e:
-        console.print(f"[bold red]Error during SIP check: {e}[/bold red]")
+        console.print(f"[bold {NordColors.RED}]Error during SIP check: {e}[/]")
     finally:
         sock.close()
     wait_for_key()
 
 
-# ----------------------------------------------------------------
-# VoIP Network Information
-# ----------------------------------------------------------------
 def voip_network_info() -> None:
-    """
-    Display VoIP-related network information, including:
-      • The local IP address.
-      • The default gateway.
-      • The external (public) IP address.
-      • The system hostname.
-      • Configured DNS servers.
-      • The current Wi-Fi SSID (if connected).
-    """
-    console.print(create_submenu_header("VoIP Network Info"))
-
-    # Retrieve local network information
+    console.print(create_header("Network Info"))
     local_ip = get_local_ip()
     gateway = get_default_gateway()
 
-    # Retrieve external IP using an online service
     try:
-        external_ip = (
-            subprocess.check_output(["curl", "-s", "https://api.ipify.org"])
-            .strip()
-            .decode("utf-8")
-        )
+        external_ip = subprocess.check_output(["curl", "-s", "https://api.ipify.org"]).strip().decode("utf-8")
     except Exception:
         external_ip = "Not found"
 
-    # Get system hostname
     try:
         hostname = socket.gethostname()
     except Exception:
         hostname = "Not found"
 
-    # Retrieve DNS servers from /etc/resolv.conf
     dns_servers = []
     try:
         with open("/etc/resolv.conf", "r") as resolv:
@@ -379,17 +290,14 @@ def voip_network_info() -> None:
                     if len(parts) > 1:
                         dns_servers.append(parts[1])
     except Exception:
-        dns_servers = ["Not found"]
+        pass
     dns_servers_str = ", ".join(dns_servers) if dns_servers else "Not found"
 
-    # Attempt to get the current Wi-Fi SSID (only applicable if using Wi-Fi)
     wifi_ssid = "N/A"
     airport_path = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
     if os.path.exists(airport_path):
         try:
-            result = subprocess.run(
-                [airport_path, "-I"], capture_output=True, text=True, check=True
-            )
+            result = subprocess.run([airport_path, "-I"], capture_output=True, text=True, check=True)
             for line in result.stdout.splitlines():
                 if "SSID:" in line:
                     wifi_ssid = line.split("SSID:")[-1].strip()
@@ -399,12 +307,10 @@ def voip_network_info() -> None:
     else:
         wifi_ssid = "Unavailable"
 
-    # Build a table to display the collected network information
-    info_table = Table(
-        title="Network Information", show_header=True, header_style="bold cyan"
-    )
+    info_table = Table(title="Network Information", show_header=True, header_style=NordColors.HEADER,
+                       box=NordColors.NORD_BOX)
     info_table.add_column("Property", style="bold")
-    info_table.add_column("Value", style="cyan")
+    info_table.add_column("Value", style=f"{NordColors.FROST_2}")
     info_table.add_row("Local IP", local_ip)
     info_table.add_row("Default Gateway", gateway if gateway else "Not found")
     info_table.add_row("External IP", external_ip)
@@ -416,21 +322,11 @@ def voip_network_info() -> None:
     wait_for_key()
 
 
-# ----------------------------------------------------------------
-# SIP Port Scanner
-# ----------------------------------------------------------------
 def sip_port_scanner() -> None:
-    """
-    Scan the local subnet for devices with TCP port 5060 (commonly used for SIP).
-    This improved version uses parallel scanning for better performance,
-    tracks progress with a spinner, and reports the scan duration.
-    """
-    console.print(create_submenu_header("SIP Port Scanner"))
+    console.print(create_header("Port Scanner"))
     local_ip = get_local_ip()
     if local_ip == "127.0.0.1":
-        console.print(
-            "[bold red]Unable to determine local IP address from en0.[/bold red]"
-        )
+        console.print(f"[bold {NordColors.RED}]Unable to determine local IP address from en0.[/]")
         wait_for_key()
         return
 
@@ -442,7 +338,6 @@ def sip_port_scanner() -> None:
     found_devices = []
     start_time = time.time()
 
-    # Function to scan a single IP address
     def scan_ip(i: int) -> str:
         target_ip = f"{subnet_prefix}{i}"
         try:
@@ -461,83 +356,45 @@ def sip_port_scanner() -> None:
     with SpinnerProgressManager("Scanning...") as spinner:
         task_id = spinner.add_task("Scanning hosts", total=total_hosts)
         completed = 0
-        # Use a thread pool to scan IPs concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            futures = {
-                executor.submit(scan_ip, i): i for i in range(1, total_hosts + 1)
-            }
+            futures = {executor.submit(scan_ip, i): i for i in range(1, total_hosts + 1)}
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
                 if result:
                     found_devices.append(result)
                 completed += 1
-                # Update spinner progress based on number of completed scans
                 spinner.update(completed * 100 // total_hosts)
 
     elapsed_time = time.time() - start_time
 
     if found_devices:
-        # Sort found IP addresses for better readability
         found_devices.sort(key=lambda ip: list(map(int, ip.split("."))))
-        table = Table(
-            title="SIP Devices Detected", show_header=True, header_style="bold red"
-        )
-        table.add_column("IP Address", style="bold red")
+        table = Table(title="SIP Devices Detected", show_header=True, header_style=NordColors.HEADER,
+                      box=NordColors.NORD_BOX)
+        table.add_column("IP Address", style=f"bold {NordColors.RED}")
         for ip in found_devices:
             table.add_row(ip)
         console.print(table)
-        console.print(
-            f"[bold cyan]Scan completed in {elapsed_time:.2f} seconds.[/bold cyan]"
-        )
     else:
-        console.print(
-            "[bold green]No devices with SIP port 5060 detected.[/bold green]"
-        )
-        console.print(
-            f"[bold cyan]Scan completed in {elapsed_time:.2f} seconds.[/bold cyan]"
-        )
+        console.print(f"[bold {NordColors.GREEN}]No devices with SIP port 5060 detected.[/]")
 
+    console.print(f"[bold {NordColors.FROST_2}]Scan completed in {elapsed_time:.2f} seconds.[/]")
     wait_for_key()
 
 
-# ----------------------------------------------------------------
-# Bandwidth & QoS Monitor
-# ----------------------------------------------------------------
 def bandwidth_qos_monitor() -> None:
-    """
-    Perform an extensive network test that includes:
-      • A ping test to measure average, minimum, maximum, and standard deviation of latency,
-        as well as packet loss.
-      • A download speed test using curl (download link remains unchanged).
-      • Checking the macOS Application Firewall status.
-      • Checking PF (Packet Filter) firewall status.
-      • Retrieving DSCP configuration via sysctl.
-      • A traceroute test to count the number of hops to google.com.
-      • A DNS resolution time test for google.com.
-      • Reporting the total duration of the tests.
-    The results are presented in a formatted summary table.
-    """
-    console.print(create_submenu_header("BW & QoS Monitor"))
-
-    # Start overall timer for the test suite.
+    console.print(create_header("BW & QoS"))
     start_time = time.time()
 
-    # -------------------------------
-    # Ping Test
-    # -------------------------------
     try:
         ping_cmd = ["ping", "-c", "10", "google.com"]
         result = subprocess.run(ping_cmd, capture_output=True, text=True, check=True)
         ping_output = result.stdout
 
-        # Parse packet loss
         packet_loss_match = re.search(r"(\d+(?:\.\d+)?)% packet loss", ping_output)
         packet_loss = packet_loss_match.group(1) if packet_loss_match else "N/A"
 
-        # Parse latency values (min/avg/max/stddev if available)
-        latency_match = re.search(
-            r"round-trip.* = ([\d\.]+)/([\d\.]+)/([\d\.]+)/([\d\.]+) ms", ping_output
-        )
+        latency_match = re.search(r"round-trip.* = ([\d\.]+)/([\d\.]+)/([\d\.]+)/([\d\.]+) ms", ping_output)
         if latency_match:
             min_latency, avg_latency, max_latency, stddev = latency_match.groups()
         else:
@@ -545,17 +402,9 @@ def bandwidth_qos_monitor() -> None:
     except Exception:
         avg_latency = min_latency = max_latency = stddev = packet_loss = "Error"
 
-    # -------------------------------
-    # Download Speed Test
-    # -------------------------------
     try:
         curl_cmd = [
-            "curl",
-            "-o",
-            "/dev/null",
-            "-s",
-            "-w",
-            "%{size_download} %{time_total}",
+            "curl", "-o", "/dev/null", "-s", "-w", "%{size_download} %{time_total}",
             "https://nbg1-speed.hetzner.com/100MB.bin",
         ]
         result = subprocess.run(curl_cmd, capture_output=True, text=True, check=True)
@@ -568,9 +417,6 @@ def bandwidth_qos_monitor() -> None:
     except Exception:
         download_speed = "Error"
 
-    # -------------------------------
-    # macOS Application Firewall Test
-    # -------------------------------
     try:
         fw_cmd = ["socketfilterfw", "--getglobalstate"]
         result = subprocess.run(fw_cmd, capture_output=True, text=True, check=True)
@@ -578,65 +424,37 @@ def bandwidth_qos_monitor() -> None:
     except Exception:
         try:
             result = subprocess.run(
-                [
-                    "defaults",
-                    "read",
-                    "/Library/Preferences/com.apple.alf",
-                    "globalstate",
-                ],
-                capture_output=True,
-                text=True,
-                check=True,
+                ["defaults", "read", "/Library/Preferences/com.apple.alf", "globalstate"],
+                capture_output=True, text=True, check=True
             )
             state_val = result.stdout.strip()
             firewall_state = "Enabled" if state_val != "0" else "Disabled"
         except Exception:
             firewall_state = "Unknown"
 
-    # -------------------------------
-    # PF (Packet Filter) Firewall Test
-    # -------------------------------
     try:
-        result = subprocess.run(
-            ["pfctl", "-s", "info"], capture_output=True, text=True, check=True
-        )
+        result = subprocess.run(["pfctl", "-s", "info"], capture_output=True, text=True, check=True)
         pf_info = result.stdout
         pf_state = "Enabled" if "Status: Enabled" in pf_info else "Disabled"
     except Exception:
         pf_state = "Error"
 
-    # -------------------------------
-    # DSCP Configuration Test
-    # -------------------------------
     try:
-        result = subprocess.run(
-            ["sysctl", "net.inet.ip.dscp"], capture_output=True, text=True, check=True
-        )
+        result = subprocess.run(["sysctl", "net.inet.ip.dscp"], capture_output=True, text=True, check=True)
         dscp_output = result.stdout.strip()
-        dscp_value = (
-            dscp_output.split(":")[-1].strip() if ":" in dscp_output else dscp_output
-        )
+        dscp_value = dscp_output.split(":")[-1].strip() if ":" in dscp_output else dscp_output
     except Exception:
-        dscp_value = "Not Configured / Error"
+        dscp_value = "Not Configured"
 
-    # -------------------------------
-    # Traceroute Test (Additional Feature)
-    # -------------------------------
     try:
         traceroute_cmd = ["traceroute", "google.com"]
-        result = subprocess.run(
-            traceroute_cmd, capture_output=True, text=True, check=True
-        )
+        result = subprocess.run(traceroute_cmd, capture_output=True, text=True, check=True)
         traceroute_lines = result.stdout.strip().splitlines()
-        # Exclude the header line to count the hops
         num_hops = len(traceroute_lines) - 1 if len(traceroute_lines) > 1 else "N/A"
         traceroute_result = f"{num_hops} hops"
     except Exception:
         traceroute_result = "Error"
 
-    # -------------------------------
-    # DNS Resolution Test (Additional Feature)
-    # -------------------------------
     try:
         dns_start = time.time()
         socket.gethostbyname("google.com")
@@ -645,19 +463,12 @@ def bandwidth_qos_monitor() -> None:
     except Exception:
         dns_resolution_time = "Error"
 
-    # -------------------------------
-    # Calculate Total Test Duration
-    # -------------------------------
     total_duration = time.time() - start_time
 
-    # -------------------------------
-    # Build and Display the Results Table
-    # -------------------------------
-    result_table = Table(
-        title="Network Test Summary", show_header=True, header_style="bold cyan"
-    )
+    result_table = Table(title="Network Test Summary", show_header=True, header_style=NordColors.HEADER,
+                         box=NordColors.NORD_BOX)
     result_table.add_column("Test", style="bold", justify="left")
-    result_table.add_column("Result", style="cyan", justify="right")
+    result_table.add_column("Result", style=f"{NordColors.FROST_2}", justify="right")
 
     result_table.add_row("Ping (Avg Latency)", f"{avg_latency} ms")
     result_table.add_row("Ping (Min Latency)", f"{min_latency} ms")
@@ -676,46 +487,38 @@ def bandwidth_qos_monitor() -> None:
     wait_for_key()
 
 
-# ----------------------------------------------------------------
-# Help / About
-# ----------------------------------------------------------------
 def show_help() -> None:
-    """
-    Display help and available commands.
-    """
-    console.print(create_submenu_header("Help"))
+    console.print(create_header("Help"))
     help_text = (
-        "[bold cyan]Available Commands:[/]\n\n"
-        "[bold cyan]1[/]: SIP Checker (check for SIP ALG on your router)\n"
-        "[bold cyan]2[/]: VoIP Network Info (display local IP and default gateway)\n"
-        "[bold cyan]3[/]: SIP Port Scanner (scan local subnet for SIP devices)\n"
-        "[bold cyan]4[/]: Bandwidth & QoS Monitor (test network latency, bandwidth, firewall, and DSCP settings)\n"
-        "[bold cyan]H[/]: Help\n"
-        "[bold cyan]0[/]: Exit\n"
+        f"[bold {NordColors.FROST_2}]Available Commands:[/]\n\n"
+        f"[bold {NordColors.FROST_2}]1[/]: SIP Checker (check for SIP ALG on your router)\n"
+        f"[bold {NordColors.FROST_2}]2[/]: VoIP Network Info (display local IP and default gateway)\n"
+        f"[bold {NordColors.FROST_2}]3[/]: SIP Port Scanner (scan local subnet for SIP devices)\n"
+        f"[bold {NordColors.FROST_2}]4[/]: Bandwidth & QoS Monitor (test network performance)\n"
+        f"[bold {NordColors.FROST_2}]H[/]: Help\n"
+        f"[bold {NordColors.FROST_2}]0[/]: Exit\n"
     )
     console.print(
         Panel(
             Text.from_markup(help_text),
-            title="[bold cyan]Help[/bold cyan]",
-            border_style="cyan",
+            title=f"[bold {NordColors.FROST_2}]Help[/]",
+            border_style=NordColors.FROST_1,
+            box=NordColors.NORD_BOX,
         )
     )
     wait_for_key()
 
 
-# ----------------------------------------------------------------
-# Signal Handling and Cleanup
-# ----------------------------------------------------------------
 def cleanup() -> None:
-    console.print("[bold cyan]Cleaning up session resources...[/bold cyan]")
+    console.print(f"[bold {NordColors.FROST_2}]Cleaning up session resources...[/]")
 
 
 def signal_handler(sig, frame) -> None:
     try:
         sig_name = signal.Signals(sig).name
-        console.print(f"[bold yellow]Process interrupted by {sig_name}[/bold yellow]")
+        console.print(f"[bold {NordColors.YELLOW}]Process interrupted by {sig_name}[/]")
     except Exception:
-        console.print(f"[bold yellow]Process interrupted by signal {sig}[/bold yellow]")
+        console.print(f"[bold {NordColors.YELLOW}]Process interrupted by signal {sig}[/]")
     cleanup()
     sys.exit(128 + sig)
 
@@ -725,19 +528,18 @@ signal.signal(signal.SIGTERM, signal_handler)
 atexit.register(cleanup)
 
 
-# ----------------------------------------------------------------
-# Main Menu and Program Control
-# ----------------------------------------------------------------
 def main_menu() -> None:
     while True:
         console.clear()
-        console.print(create_main_header())
+        console.print(create_header())
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        console.print(Align.center(f"[bold cyan]Current Time: {current_time}[/]"))
+        console.print(Align.center(f"[bold {NordColors.FROST_2}]Current Time: {current_time}[/]"))
         console.print()
-        table = Table(show_header=True, header_style="bold cyan")
+
+        table = Table(show_header=True, header_style=NordColors.HEADER, box=NordColors.NORD_BOX)
         table.add_column("Option", style="bold", width=8)
-        table.add_column("Description", style="bold cyan")
+        table.add_column("Description", style=f"bold {NordColors.FROST_2}")
+
         menu_options = [
             ("1", "SIP Checker", sip_checker),
             ("2", "VoIP Network Info", voip_network_info),
@@ -746,22 +548,25 @@ def main_menu() -> None:
             ("H", "Help", show_help),
             ("0", "Exit", None),
         ]
+
         for option, desc, _ in menu_options:
             table.add_row(option, desc)
+
         console.print(table)
+
         choice = pt_prompt(
             "Enter your choice: ",
             history=FileHistory(COMMAND_HISTORY),
             auto_suggest=AutoSuggestFromHistory(),
             style=get_prompt_style(),
         ).upper()
+
         if choice == "0":
             console.print(
                 Panel(
-                    Text(
-                        "Thank you for using the macOS VoIP Toolkit!", style="bold cyan"
-                    ),
-                    border_style="cyan",
+                    Text("Thank you for using the macOS VoIP Toolkit!", style=f"bold {NordColors.FROST_2}"),
+                    border_style=NordColors.FROST_1,
+                    box=NordColors.NORD_BOX,
                 )
             )
             sys.exit(0)
@@ -773,7 +578,7 @@ def main_menu() -> None:
                     func()
                     break
             if not matched:
-                console.print(f"[bold red]Invalid selection: {choice}[/bold red]")
+                console.print(f"[bold {NordColors.RED}]Invalid selection: {choice}[/]")
                 wait_for_key()
 
 
@@ -786,9 +591,9 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        console.print("[bold yellow]Operation cancelled by user[/bold yellow]")
+        console.print(f"[bold {NordColors.YELLOW}]Operation cancelled by user[/]")
         sys.exit(0)
     except Exception as e:
         console.print_exception()
-        console.print(f"[bold red]An unexpected error occurred: {e}[/bold red]")
+        console.print(f"[bold {NordColors.RED}]An unexpected error occurred: {e}[/]")
         sys.exit(1)

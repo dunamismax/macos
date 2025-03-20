@@ -1,24 +1,4 @@
 #!/usr/bin/env python3
-"""
-Python Development Environment Setup for macOS
---------------------------------------------------
-
-This automated tool sets up a complete Python development environment on macOS.
-It installs:
-  • Essential system packages (via Homebrew) for building Python
-  • pyenv (via Homebrew) for Python version management
-  • The latest Python version via pyenv and sets it as the global default,
-    making its pip the default pip
-  • pipx for isolated tool installation (installed via Homebrew or pip)
-  • A suite of essential Python development tools installed via pipx
-
-All required PATH modifications (pyenv shims for Python and pip) are appended
-to your shell configuration files (~/.zshrc and/or ~/.bash_profile).
-
-This script is intended to be run as your regular user (NOT as root) on macOS.
-
-Version: 2.3.0-macos
-"""
 
 import atexit
 import getpass
@@ -31,7 +11,6 @@ import subprocess
 import sys
 import time
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import pyfiglet
@@ -50,72 +29,30 @@ from rich.table import Table
 from rich.text import Text
 from rich.traceback import install as install_rich_traceback
 
-# Install rich traceback handler for improved error reporting
 install_rich_traceback(show_locals=True)
 
-# ----------------------------------------------------------------
-# Configuration & Constants
-# ----------------------------------------------------------------
-VERSION: str = "2.3.0-macos"
-APP_NAME: str = "PyDev Setup"
-APP_SUBTITLE: str = "macOS Development Environment Installer"
+VERSION = "2.3.1-macos"
+APP_NAME = "PyDev Setup"
+APP_SUBTITLE = "macOS Development Environment"
+DEFAULT_TIMEOUT = 3600
+PYTHON_BUILD_TIMEOUT = 7200
+ORIGINAL_USER = getpass.getuser()
+HOME_DIR = os.path.expanduser("~")
+BREW_CMD = "brew"
+PYENV_SHIMS = os.path.join(HOME_DIR, ".pyenv", "shims")
 
-# Timeouts (in seconds)
-DEFAULT_TIMEOUT: int = 3600  # 1 hour for general operations
-PYTHON_BUILD_TIMEOUT: int = 7200  # 2 hours for building Python
-
-# For macOS, do not run as root – use your normal user account.
-ORIGINAL_USER: str = getpass.getuser()
-HOME_DIR: str = os.path.expanduser("~")
-
-# We will use Homebrew for system dependencies.
-BREW_CMD: str = "brew"
-
-# Define the pyenv install location. When installed via brew, pyenv is available in PATH.
-# However, we still want to add its shims to your shell configuration.
-PYENV_SHIMS: str = os.path.join(HOME_DIR, ".pyenv", "shims")
-
-# List of Homebrew packages (dependencies) required for building Python and other tools.
-SYSTEM_DEPENDENCIES: List[str] = [
-    "openssl",
-    "readline",
-    "sqlite3",
-    "xz",
-    "zlib",
-    "git",
-    "curl",
-    "wget",
+SYSTEM_DEPENDENCIES = [
+    "openssl", "readline", "sqlite3", "xz", "zlib", "git", "curl", "wget"
 ]
 
-# pipx tools to install via pipx
-PIPX_TOOLS: List[str] = [
-    "black",
-    "isort",
-    "flake8",
-    "mypy",
-    "pytest",
-    "pre-commit",
-    "ipython",
-    "cookiecutter",
-    "pylint",
-    "sphinx",
-    "httpie",
-    "ruff",
-    "yt-dlp",
-    "bandit",
-    "pipenv",
-    "pip-audit",
-    "nox",
-    "awscli",
-    "dvc",
-    "uv",
-    "pyupgrade",
-    "watchfiles",
-    "bump2version",
+PIPX_TOOLS = [
+    "black", "isort", "flake8", "mypy", "pytest", "pre-commit", "ipython",
+    "cookiecutter", "pylint", "sphinx", "httpie", "ruff", "yt-dlp", "bandit",
+    "pipenv", "pip-audit", "nox", "awscli", "dvc", "uv", "pyupgrade",
+    "watchfiles", "bump2version"
 ]
 
-# Tool descriptions for display in summary
-TOOL_DESCRIPTIONS: Dict[str, str] = {
+TOOL_DESCRIPTIONS = {
     "black": "Code formatter that adheres to PEP 8",
     "isort": "Import statement organizer",
     "flake8": "Style guide enforcement tool",
@@ -142,34 +79,39 @@ TOOL_DESCRIPTIONS: Dict[str, str] = {
 }
 
 
-# ----------------------------------------------------------------
-# Nord-Themed Colors & Console Setup
-# ----------------------------------------------------------------
 class NordColors:
-    """Nord color palette for consistent theming."""
+    POLAR_NIGHT_1 = "#2E3440"
+    POLAR_NIGHT_4 = "#4C566A"
+    SNOW_STORM_1 = "#D8DEE9"
+    SNOW_STORM_2 = "#E5E9F0"
+    FROST_1 = "#8FBCBB"
+    FROST_2 = "#88C0D0"
+    FROST_3 = "#81A1C1"
+    FROST_4 = "#5E81AC"
+    RED = "#BF616A"
+    ORANGE = "#D08770"
+    YELLOW = "#EBCB8B"
+    GREEN = "#A3BE8C"
 
-    POLAR_NIGHT_1: str = "#2E3440"
-    POLAR_NIGHT_4: str = "#4C566A"
-    SNOW_STORM_1: str = "#D8DEE9"
-    SNOW_STORM_2: str = "#E5E9F0"
-    FROST_1: str = "#8FBCBB"
-    FROST_2: str = "#88C0D0"
-    FROST_3: str = "#81A1C1"
-    FROST_4: str = "#5E81AC"
-    RED: str = "#BF616A"
-    ORANGE: str = "#D08770"
-    YELLOW: str = "#EBCB8B"
-    GREEN: str = "#A3BE8C"
+    @classmethod
+    def get_frost_gradient(cls, steps=4):
+        return [cls.FROST_1, cls.FROST_2, cls.FROST_3, cls.FROST_4][:steps]
+
+    @classmethod
+    def get_progress_columns(cls):
+        return [
+            SpinnerColumn(spinner_name="dots", style=f"bold {cls.FROST_1}"),
+            TextColumn(f"[bold {cls.FROST_2}]{{task.description}}[/]"),
+            BarColumn(bar_width=40, style=cls.FROST_4, complete_style=cls.FROST_2),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeRemainingColumn(),
+        ]
 
 
-console: Console = Console()
+console = Console()
 
 
-# ----------------------------------------------------------------
-# Utility Functions
-# ----------------------------------------------------------------
-def create_header() -> Panel:
-    """Create a styled ASCII art header using Pyfiglet and Nord colors."""
+def create_header():
     try:
         fig = pyfiglet.Figlet(font="slant", width=60)
         ascii_art = fig.renderText(APP_NAME)
@@ -177,20 +119,17 @@ def create_header() -> Panel:
         ascii_art = APP_NAME
 
     ascii_lines = [line for line in ascii_art.splitlines() if line.strip()]
-    colors = [
-        NordColors.FROST_1,
-        NordColors.FROST_2,
-        NordColors.FROST_3,
-        NordColors.FROST_4,
-    ]
+    colors = NordColors.get_frost_gradient()
     styled_text = ""
+
     for i, line in enumerate(ascii_lines):
         color = colors[i % len(colors)]
         styled_text += f"[bold {color}]{line}[/]\n"
+
     border = f"[{NordColors.FROST_3}]" + "━" * 50 + "[/]"
     styled_text = border + "\n" + styled_text + border
 
-    header_panel = Panel(
+    return Panel(
         Text.from_markup(styled_text),
         border_style=Style(color=NordColors.FROST_1),
         padding=(1, 2),
@@ -199,24 +138,36 @@ def create_header() -> Panel:
         subtitle=f"[bold {NordColors.SNOW_STORM_1}]{APP_SUBTITLE}[/]",
         subtitle_align="center",
     )
-    return header_panel
 
 
-def print_message(
-    text: str, style: str = NordColors.FROST_2, prefix: str = "•"
-) -> None:
+def print_message(text, style=NordColors.FROST_2, prefix="•"):
     console.print(f"[{style}]{prefix} {text}[/{style}]")
 
 
+def print_error(message):
+    print_message(message, NordColors.RED, "✗")
+
+
+def print_success(message):
+    print_message(message, NordColors.GREEN, "✓")
+
+
+def print_warning(message):
+    print_message(message, NordColors.YELLOW, "⚠")
+
+
+def print_step(message):
+    print_message(message, NordColors.FROST_3, "➜")
+
+
 def run_command(
-    cmd: Union[List[str], str],
-    shell: bool = False,
-    check: bool = True,
-    capture_output: bool = True,
-    timeout: int = DEFAULT_TIMEOUT,
-    env: Optional[Dict[str, str]] = None,
-) -> subprocess.CompletedProcess:
-    """Execute a system command and return its result."""
+        cmd,
+        shell=False,
+        check=True,
+        capture_output=True,
+        timeout=DEFAULT_TIMEOUT,
+        env=None
+):
     cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
     print_message(
         f"Running: {cmd_str[:80]}{'...' if len(cmd_str) > 80 else ''}",
@@ -235,49 +186,28 @@ def run_command(
     return result
 
 
-def append_to_shell_rc(shell_rc: str, content: str) -> None:
-    """Append content to the given shell RC file if it doesn't already include it."""
+def append_to_shell_rc(shell_rc, content):
     if os.path.exists(shell_rc):
         with open(shell_rc, "r") as f:
             current = f.read()
         if "pyenv init" not in current:
             with open(shell_rc, "a") as f:
                 f.write(content)
-            print_message(
-                f"Added pyenv initialization to {shell_rc}.", NordColors.GREEN, "✓"
-            )
+            print_success(f"Added pyenv initialization to {shell_rc}.")
 
 
-# ----------------------------------------------------------------
-# Core Setup Functions
-# ----------------------------------------------------------------
-def check_system() -> bool:
-    """
-    Check system compatibility and required tools for macOS.
-    Verifies you are NOT running as root, that the OS is macOS,
-    and that Homebrew is installed.
-    """
+def check_system():
     with console.status("[bold blue]Checking system compatibility...", spinner="dots"):
         if os.geteuid() == 0:
-            print_message(
-                "Do not run this script as root on macOS. Please run as your regular user.",
-                NordColors.RED,
-                "✗",
-            )
+            print_error("Do not run this script as root on macOS. Please run as your regular user.")
             return False
 
         if platform.system().lower() != "darwin":
-            print_message(
-                "This script is intended for macOS (Darwin).", NordColors.RED, "✗"
-            )
+            print_error("This script is intended for macOS (Darwin).")
             return False
 
         if not shutil.which(BREW_CMD):
-            print_message(
-                "Homebrew is not installed. Please install it from https://brew.sh",
-                NordColors.RED,
-                "✗",
-            )
+            print_error("Homebrew is not installed. Please install it from https://brew.sh")
             return False
 
         table = Table(
@@ -289,6 +219,7 @@ def check_system() -> bool:
         table.add_row("Operating System", platform.platform())
         table.add_row("Running as", ORIGINAL_USER)
         table.add_row("User Home Directory", HOME_DIR)
+
         console.print(
             Panel(
                 table,
@@ -297,73 +228,45 @@ def check_system() -> bool:
                 padding=(1, 2),
             )
         )
-        print_message("System compatibility check passed.", NordColors.GREEN, "✓")
+        print_success("System compatibility check passed.")
         return True
 
 
-def install_system_dependencies() -> bool:
-    """
-    Update Homebrew and install required system packages.
-    Uses a Rich progress bar for feedback.
-    """
+def install_system_dependencies():
     try:
         with console.status("[bold blue]Updating Homebrew...", spinner="dots"):
             run_command([BREW_CMD, "update"])
-        print_message("Homebrew updated.", NordColors.GREEN, "✓")
+        print_success("Homebrew updated.")
 
-        with Progress(
-            SpinnerColumn("dots", style=f"bold {NordColors.FROST_1}"),
-            TextColumn(f"[bold {NordColors.FROST_2}]Installing system packages"),
-            BarColumn(
-                bar_width=40,
-                style=NordColors.FROST_4,
-                complete_style=NordColors.FROST_2,
-            ),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TimeRemainingColumn(),
-            console=console,
-        ) as progress:
+        with Progress(*NordColors.get_progress_columns(), console=console) as progress:
             task = progress.add_task("Installing", total=len(SYSTEM_DEPENDENCIES))
             for package in SYSTEM_DEPENDENCIES:
-                # Check if the package is already installed via brew
                 result = run_command([BREW_CMD, "list", package], check=False)
                 if result.returncode != 0:
                     try:
                         run_command([BREW_CMD, "install", package], check=True)
                     except Exception as e:
-                        print_message(
-                            f"Error installing {package}: {e}", NordColors.YELLOW, "⚠"
-                        )
+                        print_warning(f"Error installing {package}: {e}")
                 else:
-                    print_message(
-                        f"{package} is already installed.", NordColors.GREEN, "✓"
-                    )
+                    print_success(f"{package} is already installed.")
                 progress.advance(task)
-        print_message(
-            "System dependencies installed successfully.", NordColors.GREEN, "✓"
-        )
+
+        print_success("System dependencies installed successfully.")
         return True
     except Exception as e:
-        print_message(
-            f"Failed to install system dependencies: {e}", NordColors.RED, "✗"
-        )
+        print_error(f"Failed to install system dependencies: {e}")
         return False
 
 
-def install_pyenv() -> bool:
-    """
-    Install pyenv for Python version management using Homebrew.
-    If already installed, it is skipped.
-    Also appends pyenv initialization to shell RC files.
-    """
+def install_pyenv():
     try:
         result = run_command([BREW_CMD, "list", "pyenv"], check=False)
         if result.returncode == 0:
-            print_message("pyenv is already installed.", NordColors.GREEN, "✓")
+            print_success("pyenv is already installed.")
         else:
-            print_message("Installing pyenv via Homebrew...", NordColors.FROST_3, "➜")
+            print_step("Installing pyenv via Homebrew...")
             run_command([BREW_CMD, "install", "pyenv"])
-        # Add pyenv initialization to shell RC files (e.g. .zshrc and .bash_profile)
+
         pyenv_init = (
             "\n# pyenv initialization\n"
             'export PYENV_ROOT="$HOME/.pyenv"\n'
@@ -373,52 +276,41 @@ def install_pyenv() -> bool:
             '  eval "$(pyenv init -)"\n'
             "fi\n"
         )
+
         shell_rc_files = [
             os.path.join(HOME_DIR, ".zshrc"),
             os.path.join(HOME_DIR, ".bash_profile"),
         ]
+
         for rc in shell_rc_files:
             append_to_shell_rc(rc, pyenv_init)
-        print_message(
-            "pyenv installed and configured successfully.", NordColors.GREEN, "✓"
-        )
+
+        print_success("pyenv installed and configured successfully.")
         return True
     except Exception as e:
-        print_message(f"Error installing pyenv: {e}", NordColors.RED, "✗")
+        print_error(f"Error installing pyenv: {e}")
         return False
 
 
-def install_latest_python_with_pyenv() -> bool:
-    """
-    Install the latest available Python version using pyenv
-    and set it as the global default.
-    """
-    # Ensure the pyenv command is available
+def install_latest_python_with_pyenv():
     pyenv_cmd = shutil.which("pyenv")
     if not pyenv_cmd:
-        print_message(
-            "pyenv command not found. Aborting Python installation.",
-            NordColors.RED,
-            "✗",
-        )
+        print_error("pyenv command not found. Aborting Python installation.")
         return False
 
     try:
-        with console.status(
-            "[bold blue]Fetching available Python versions...", spinner="dots"
-        ):
+        with console.status("[bold blue]Fetching available Python versions...", spinner="dots"):
             versions_output = run_command([pyenv_cmd, "install", "--list"]).stdout
+
         versions = re.findall(r"^\s*(\d+\.\d+\.\d+)$", versions_output, re.MULTILINE)
         if not versions:
-            print_message(
-                "Could not find any Python versions to install.", NordColors.RED, "✗"
-            )
+            print_error("Could not find any Python versions to install.")
             return False
+
         sorted_versions = sorted(versions, key=lambda v: [int(i) for i in v.split(".")])
         latest_version = sorted_versions[-1]
-        print_message(
-            f"Latest Python version found: {latest_version}", NordColors.GREEN, "✓"
-        )
+        print_success(f"Latest Python version found: {latest_version}")
+
         console.print(
             Panel(
                 f"Installing Python {latest_version}.\nThis process may take 20-60 minutes.",
@@ -426,76 +318,56 @@ def install_latest_python_with_pyenv() -> bool:
                 title="Python Installation",
             )
         )
+
         install_cmd = [pyenv_cmd, "install", "--skip-existing", latest_version]
-        with console.status(
-            f"[bold blue]Building Python {latest_version}...", spinner="dots"
-        ):
+        with console.status(f"[bold blue]Building Python {latest_version}...", spinner="dots"):
             run_command(install_cmd, timeout=PYTHON_BUILD_TIMEOUT)
-        print_message(
-            f"Setting Python {latest_version} as the global default...",
-            NordColors.FROST_3,
-            "➜",
-        )
+
+        print_step(f"Setting Python {latest_version} as the global default...")
         run_command([pyenv_cmd, "global", latest_version])
-        # (Optional) Upgrade pip in the installed Python
-        python_path = os.path.join(
-            HOME_DIR, ".pyenv", "versions", latest_version, "bin", "python"
-        )
+
+        python_path = os.path.join(HOME_DIR, ".pyenv", "versions", latest_version, "bin", "python")
         if os.path.exists(python_path):
             run_command([python_path, "-m", "pip", "install", "--upgrade", "pip"])
             version_info = run_command([python_path, "--version"]).stdout.strip()
-            print_message(
-                f"Successfully installed {version_info}", NordColors.GREEN, "✓"
-            )
+            print_success(f"Successfully installed {version_info}")
             return True
         else:
-            print_message("Python installation with pyenv failed.", NordColors.RED, "✗")
+            print_error("Python installation with pyenv failed.")
             return False
     except Exception as e:
-        print_message(f"Error installing Python with pyenv: {e}", NordColors.RED, "✗")
+        print_error(f"Error installing Python with pyenv: {e}")
         return False
 
 
-def install_pipx() -> bool:
-    """
-    Ensure pipx is installed for the user.
-    First tries Homebrew, then falls back to pip installation.
-    """
+def install_pipx():
     if shutil.which("pipx"):
-        print_message("pipx is already installed.", NordColors.GREEN, "✓")
+        print_success("pipx is already installed.")
         return True
     try:
-        # Try installing pipx via Homebrew
         result = run_command([BREW_CMD, "list", "pipx"], check=False)
         if result.returncode != 0:
-            print_message("Installing pipx via Homebrew...", NordColors.FROST_3, "➜")
+            print_step("Installing pipx via Homebrew...")
             run_command([BREW_CMD, "install", "pipx"])
-        # Ensure pipx’s bin is on the PATH
+
         run_command(["pipx", "ensurepath"])
         if shutil.which("pipx"):
-            print_message("pipx installed successfully.", NordColors.GREEN, "✓")
+            print_success("pipx installed successfully.")
             return True
         else:
-            print_message(
-                "pipx installation completed but may not be in PATH.",
-                NordColors.YELLOW,
-                "⚠",
-            )
+            print_warning("pipx installation completed but may not be in PATH.")
             return True
     except Exception as e:
-        print_message(f"Error installing pipx: {e}", NordColors.RED, "✗")
+        print_error(f"Error installing pipx: {e}")
         return False
 
 
-def install_pipx_tools() -> bool:
-    """
-    Install essential Python development tools via pipx.
-    Displays progress using a Rich progress bar.
-    """
+def install_pipx_tools():
     pipx_cmd = shutil.which("pipx")
     if not pipx_cmd:
-        print_message("Could not find pipx executable.", NordColors.RED, "✗")
+        print_error("Could not find pipx executable.")
         return False
+
     console.print(
         Panel(
             f"Automatically installing {len(PIPX_TOOLS)} Python development tools.",
@@ -503,19 +375,12 @@ def install_pipx_tools() -> bool:
             title="Development Tools",
         )
     )
+
     env = os.environ.copy()
     installed_tools = []
     failed_tools = []
-    with Progress(
-        SpinnerColumn("dots", style=f"bold {NordColors.FROST_1}"),
-        TextColumn(f"[bold {NordColors.FROST_2}]Installing Python tools"),
-        BarColumn(
-            bar_width=40, style=NordColors.FROST_4, complete_style=NordColors.FROST_2
-        ),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        TimeRemainingColumn(),
-        console=console,
-    ) as progress:
+
+    with Progress(*NordColors.get_progress_columns(), console=console) as progress:
         task = progress.add_task("Installing", total=len(PIPX_TOOLS))
         for tool in PIPX_TOOLS:
             try:
@@ -525,23 +390,16 @@ def install_pipx_tools() -> bool:
                 else:
                     failed_tools.append(tool)
             except Exception as e:
-                print_message(f"Failed to install {tool}: {e}", NordColors.YELLOW, "⚠")
+                print_warning(f"Failed to install {tool}: {e}")
                 failed_tools.append(tool)
             finally:
                 progress.advance(task)
+
     if installed_tools:
-        print_message(
-            f"Successfully installed {len(installed_tools)} tools.",
-            NordColors.GREEN,
-            "✓",
-        )
+        print_success(f"Successfully installed {len(installed_tools)} tools.")
     if failed_tools:
-        print_message(
-            f"Failed to install {len(failed_tools)} tools: {', '.join(failed_tools)}",
-            NordColors.RED,
-            "✗",
-        )
-    # Display a summary table of installed tools
+        print_warning(f"Failed to install {len(failed_tools)} tools: {', '.join(failed_tools)}")
+
     tools_table = Table(
         show_header=True,
         header_style=f"bold {NordColors.FROST_1}",
@@ -549,26 +407,21 @@ def install_pipx_tools() -> bool:
         title=f"[bold {NordColors.FROST_2}]Installed Python Tools[/]",
         title_justify="center",
     )
+
     tools_table.add_column("Tool", style=f"bold {NordColors.FROST_2}")
     tools_table.add_column("Status", style=NordColors.SNOW_STORM_1)
     tools_table.add_column("Description", style=NordColors.SNOW_STORM_1)
+
     for tool in PIPX_TOOLS:
-        status = (
-            "[green]✓ Installed[/]" if tool in installed_tools else "[red]× Failed[/]"
-        )
+        status = "[green]✓ Installed[/]" if tool in installed_tools else "[red]× Failed[/]"
         desc = TOOL_DESCRIPTIONS.get(tool, "")
         tools_table.add_row(tool, status, desc)
+
     console.print(tools_table)
     return len(installed_tools) > 0
 
 
-# ----------------------------------------------------------------
-# Setup Components Execution & Summary
-# ----------------------------------------------------------------
-def run_setup_components() -> List[str]:
-    """
-    Execute all setup components sequentially and return the list of successful installations.
-    """
+def run_setup_components():
     components = [
         ("System Dependencies", install_system_dependencies),
         ("pyenv", install_pyenv),
@@ -576,24 +429,23 @@ def run_setup_components() -> List[str]:
         ("pipx", install_pipx),
         ("Python Tools", install_pipx_tools),
     ]
+
     successes = []
     for name, func in components:
-        print_message(f"Installing {name}...", NordColors.FROST_3, "➜")
+        print_step(f"Installing {name}...")
         try:
             if func():
-                print_message(f"{name} installed successfully.", NordColors.GREEN, "✓")
+                print_success(f"{name} installed successfully.")
                 successes.append(name)
             else:
-                print_message(f"Failed to install {name}.", NordColors.RED, "✗")
+                print_error(f"Failed to install {name}.")
         except Exception as e:
-            print_message(f"Error installing {name}: {e}", NordColors.RED, "✗")
+            print_error(f"Error installing {name}: {e}")
+
     return successes
 
 
-def display_summary(successes: List[str]) -> None:
-    """
-    Display a summary table showing the installation status of each component.
-    """
+def display_summary(successes):
     table = Table(
         show_header=True,
         header_style=f"bold {NordColors.FROST_1}",
@@ -603,8 +455,10 @@ def display_summary(successes: List[str]) -> None:
         title_justify="center",
         expand=True,
     )
+
     table.add_column("Component", style=f"bold {NordColors.FROST_2}")
     table.add_column("Status", style=NordColors.SNOW_STORM_1)
+
     components = [
         "System Dependencies",
         "pyenv",
@@ -612,32 +466,27 @@ def display_summary(successes: List[str]) -> None:
         "pipx",
         "Python Tools",
     ]
+
     for comp in components:
         status = "[green]✓ Installed[/]" if comp in successes else "[red]× Failed[/]"
         table.add_row(comp, status)
+
     console.print("\n")
     console.print(Panel(table, border_style=NordColors.FROST_1, padding=(1, 2)))
-    # Reminder: After installation, you may need to restart your terminal
+
     shell = os.path.basename(os.environ.get("SHELL", "bash"))
     console.print("\n[bold]Next Steps:[/bold]")
-    console.print(
-        f"Restart your terminal or run: [bold {NordColors.FROST_3}]source ~/.{shell}rc[/]"
-    )
+    console.print(f"Restart your terminal or run: [bold {NordColors.FROST_3}]source ~/.{shell}rc[/]")
     console.print("\n[bold green]✓ Setup process completed![/bold green]")
 
 
-# ----------------------------------------------------------------
-# Signal Handling and Cleanup
-# ----------------------------------------------------------------
-def cleanup() -> None:
-    """Perform cleanup tasks before exiting."""
+def cleanup():
     print_message("Cleaning up...", NordColors.FROST_3)
 
 
-def signal_handler(sig: int, frame: Any) -> None:
-    """Handle termination signals gracefully."""
+def signal_handler(sig, frame):
     sig_name = signal.Signals(sig).name
-    print_message(f"Process interrupted by {sig_name}", NordColors.YELLOW, "⚠")
+    print_warning(f"Process interrupted by {sig_name}")
     cleanup()
     sys.exit(128 + sig)
 
@@ -647,36 +496,33 @@ signal.signal(signal.SIGTERM, signal_handler)
 atexit.register(cleanup)
 
 
-# ----------------------------------------------------------------
-# Main Entry Point
-# ----------------------------------------------------------------
-def main() -> None:
-    """
-    Main entry point for the automated setup process.
-    Displays the header, checks system compatibility, runs all installation components,
-    and then displays a summary.
-    """
+def main():
     console.print("\n")
     console.print(create_header())
+
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     hostname = platform.node()
+
     console.print(
         Align.center(
             f"[{NordColors.SNOW_STORM_1}]Current Time: {current_time}[/] | [{NordColors.SNOW_STORM_1}]Host: {hostname}[/]"
         )
     )
+
     console.print("\n")
+
     if not check_system():
-        print_message("System check failed. Aborting setup.", NordColors.RED, "✗")
+        print_error("System check failed. Aborting setup.")
         sys.exit(1)
+
     console.print(
         Panel(
-            "Welcome to the Automated Python Development Environment Setup for macOS!\n\n"
-            "The tool will now automatically install all required components.",
+            "Setting up a complete Python development environment for macOS.",
             style=NordColors.FROST_3,
             title="Welcome",
         )
     )
+
     successes = run_setup_components()
     display_summary(successes)
 

@@ -1,16 +1,4 @@
 #!/usr/bin/env python3
-"""
-Unattended Security Tools Installer for macOS
---------------------------------------------------
-A fully automated system configuration tool that installs and configures
-security, analysis, development, and intrusion detection tools on macOS.
-This script runs completely unattended with no interactive menu or prompts.
-
-Usage:
-  Run with sudo if required: sudo python3 security_installer.py
-
-Version: 1.1.0-macos
-"""
 
 import os
 import sys
@@ -25,7 +13,22 @@ import platform
 import shutil
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Optional, Tuple, Any, Union
+from dataclasses import dataclass, field
+
+if platform.system() != "Darwin":
+    print("This script is tailored for macOS. Exiting.")
+    sys.exit(1)
+
+
+def install_dependencies():
+    required_packages = ["rich", "pyfiglet"]
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to install dependencies: {e}")
+        sys.exit(1)
+
 
 try:
     import pyfiglet
@@ -34,52 +37,37 @@ try:
     from rich.table import Table
     from rich.panel import Panel
     from rich.progress import (
-        Progress,
-        SpinnerColumn,
-        TextColumn,
-        BarColumn,
-        TimeRemainingColumn,
+        Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn,
+        TimeRemainingColumn, TransferSpeedColumn, MofNCompleteColumn
     )
     from rich.align import Align
     from rich.style import Style
     from rich.logging import RichHandler
     from rich.traceback import install as install_rich_traceback
+    from rich.box import ROUNDED
 except ImportError:
-    print("This script requires the 'rich' and 'pyfiglet' libraries.")
-    print("Installing required dependencies...")
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "rich", "pyfiglet"],
-            check=True,
-            capture_output=True,
-        )
-        print("Dependencies installed. Please run the script again.")
-    except subprocess.SubprocessError:
-        print("Failed to install dependencies. Please install manually with:")
-        print("pip install rich pyfiglet")
-    sys.exit(1)
+    install_dependencies()
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 install_rich_traceback(show_locals=True)
+console = Console()
 
-# ----------------------------------------------------------------
-# Configuration & Constants
-# ----------------------------------------------------------------
-VERSION: str = "1.1.0-macos"
-APP_NAME: str = "Unattended Security Tools Installer"
-APP_SUBTITLE: str = "Automated macOS Security Configuration via Homebrew"
+VERSION = "1.1.0"
+APP_NAME = "Security Tools Installer"
+APP_SUBTITLE = "macOS Security Configuration Suite"
 DEFAULT_LOG_DIR = Path.home() / "security_setup_logs"
 DEFAULT_REPORT_DIR = DEFAULT_LOG_DIR / "reports"
-OPERATION_TIMEOUT: int = 600  # 10 minutes timeout for long operations
+OPERATION_TIMEOUT = 600
 
 
-# ----------------------------------------------------------------
-# Nord-Themed Colors
-# ----------------------------------------------------------------
 class NordColors:
     POLAR_NIGHT_1 = "#2E3440"
+    POLAR_NIGHT_2 = "#3B4252"
+    POLAR_NIGHT_3 = "#434C5E"
     POLAR_NIGHT_4 = "#4C566A"
     SNOW_STORM_1 = "#D8DEE9"
     SNOW_STORM_2 = "#E5E9F0"
+    SNOW_STORM_3 = "#ECEFF4"
     FROST_1 = "#8FBCBB"
     FROST_2 = "#88C0D0"
     FROST_3 = "#81A1C1"
@@ -88,50 +76,54 @@ class NordColors:
     ORANGE = "#D08770"
     YELLOW = "#EBCB8B"
     GREEN = "#A3BE8C"
+    PURPLE = "#B48EAD"
+
+    SUCCESS = Style(color=GREEN, bold=True)
+    ERROR = Style(color=RED, bold=True)
+    WARNING = Style(color=YELLOW, bold=True)
+    INFO = Style(color=FROST_2, bold=True)
+    HEADER = Style(color=FROST_1, bold=True)
+    SUBHEADER = Style(color=FROST_3, bold=True)
+    ACCENT = Style(color=FROST_4, bold=True)
+    NORD_BOX = ROUNDED
+
+    @classmethod
+    def get_frost_gradient(cls, steps=4):
+        return [cls.FROST_1, cls.FROST_2, cls.FROST_3, cls.FROST_4][:steps]
+
+    @classmethod
+    def get_polar_gradient(cls, steps=4):
+        return [cls.POLAR_NIGHT_1, cls.POLAR_NIGHT_2, cls.POLAR_NIGHT_3, cls.POLAR_NIGHT_4][:steps]
+
+    @classmethod
+    def get_progress_columns(cls):
+        return [
+            SpinnerColumn(spinner_name="dots", style=f"bold {cls.FROST_1}"),
+            TextColumn(f"[bold {cls.FROST_2}]{{task.description}}[/]"),
+            BarColumn(bar_width=None, style=cls.POLAR_NIGHT_3, complete_style=cls.FROST_2, finished_style=cls.GREEN),
+            TaskProgressColumn(style=cls.SNOW_STORM_1),
+            MofNCompleteColumn(),
+            TimeRemainingColumn(compact=True),
+        ]
 
 
-# ----------------------------------------------------------------
-# Security Tools Categories
-# ----------------------------------------------------------------
-SECURITY_TOOLS: Dict[str, List[str]] = {
+SECURITY_TOOLS = {
     "Network Analysis": [
-        "wireshark",
-        "nmap",
-        "tcpdump",
-        "netcat",
-        "iftop",
-        "ettercap",
-        "dsniff",
-        "termshark",
-        "masscan",
-        "arp-scan",
-        "darkstat",
+        "wireshark", "nmap", "tcpdump", "netcat", "iftop", "ettercap",
+        "termshark", "masscan", "arp-scan", "darkstat"
     ],
-    "Vulnerability Assessment": ["nikto", "sqlmap", "dirb", "gobuster", "whatweb"],
-    "Forensics": ["sleuthkit", "testdisk", "foremost", "scalpel", "photorec"],
+    "Vulnerability Assessment": ["nikto", "sqlmap", "gobuster", "whatweb"],
+    "Forensics": ["sleuthkit", "testdisk", "foremost", "photorec"],
     "System Hardening": ["lynis", "rkhunter", "chkrootkit", "aide", "clamav"],
     "Password & Crypto": ["john", "hashcat", "hydra", "medusa", "gnupg", "ccrypt"],
-    "Wireless Security": ["aircrack-ng", "wifite", "reaver", "pixiewps"],
-    "Development Tools": [
-        "git",
-        "gdb",
-        "cmake",
-        "meson",
-        "python3",
-        "radare2",
-        "binwalk",
-    ],
+    "Wireless Security": ["aircrack-ng", "reaver", "pixiewps"],
+    "Development Tools": ["git", "gdb", "cmake", "meson", "python3", "radare2", "binwalk"],
     "Container Security": ["docker", "docker-compose", "podman"],
     "Malware Analysis": ["clamav", "yara", "ssdeep", "radare2"],
     "Privacy & Anonymity": ["tor", "torbrowser-launcher", "openvpn", "wireguard-tools"],
 }
 
-# ----------------------------------------------------------------
-# Brew Package Type Mapping
-# ----------------------------------------------------------------
-# Specify for certain packages whether they should be installed as a cask
-# or skipped because they are unavailable on macOS.
-BREW_PACKAGE_TYPE: Dict[str, str] = {
+BREW_PACKAGE_TYPE = {
     "docker": "cask",
     "wireshark": "cask",
     "torbrowser-launcher": "cask",
@@ -141,23 +133,28 @@ BREW_PACKAGE_TYPE: Dict[str, str] = {
     "photorec": "skip",
     "dirb": "skip",
     "wifite": "skip",
-    # All others default to "formula"
 }
 
-# ----------------------------------------------------------------
-# Console Setup
-# ----------------------------------------------------------------
-console: Console = Console()
+
+@dataclass
+class InstallationStats:
+    start_time: datetime = field(default_factory=datetime.now)
+    successful_packages: List[str] = field(default_factory=list)
+    failed_packages: List[str] = field(default_factory=list)
+    skipped_packages: List[str] = field(default_factory=list)
+    end_time: Optional[datetime] = None
+
+    @property
+    def elapsed_time(self) -> str:
+        end = self.end_time or datetime.now()
+        seconds = (end - self.start_time).total_seconds()
+        minutes, seconds = divmod(seconds, 60)
+        return f"{int(minutes)}m {int(seconds)}s"
 
 
-# ----------------------------------------------------------------
-# Logging and Console Helpers
-# ----------------------------------------------------------------
 def setup_logging(log_dir: Path, verbose: bool = False) -> logging.Logger:
     log_dir.mkdir(exist_ok=True, parents=True)
-    log_file = (
-        log_dir / f"security_setup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-    )
+    log_file = log_dir / f"security_setup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     log_level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
@@ -173,74 +170,100 @@ def setup_logging(log_dir: Path, verbose: bool = False) -> logging.Logger:
 
 
 def create_header() -> Panel:
-    fonts = ["small", "slant", "digital", "chunky", "standard"]
+    term_width = shutil.get_terminal_size().columns
+    adjusted_width = min(term_width - 4, 80)
+    fonts = ["slant", "small_slant", "standard", "big", "digital", "small"]
     ascii_art = ""
+
     for font in fonts:
         try:
-            fig = pyfiglet.Figlet(font=font, width=80)
+            fig = pyfiglet.Figlet(font=font, width=adjusted_width)
             ascii_art = fig.renderText(APP_NAME)
             if ascii_art.strip():
                 break
         except Exception:
             continue
-    if not ascii_art.strip():
-        ascii_art = APP_NAME
-    ascii_lines = [line for line in ascii_art.split("\n") if line.strip()]
-    colors = [
-        NordColors.FROST_1,
-        NordColors.FROST_2,
-        NordColors.FROST_3,
-        NordColors.FROST_2,
-    ]
+
+    ascii_lines = [line for line in ascii_art.splitlines() if line.strip()]
+    frost_colors = NordColors.get_frost_gradient(min(len(ascii_lines), 4))
+
     styled_text = ""
     for i, line in enumerate(ascii_lines):
-        color = colors[i % len(colors)]
-        styled_text += f"[bold {color}]{line}[/]\n"
-    border = f"[{NordColors.FROST_3}]" + "━" * 80 + "[/]"
-    styled_text = border + "\n" + styled_text + border
+        color = frost_colors[i % len(frost_colors)]
+        escaped_line = line.replace("[", "\\[").replace("]", "\\]")
+        styled_text += f"[bold {color}]{escaped_line}[/]\n"
+
+    border_style = NordColors.FROST_3
+    border_char = "═"
+    border_line = f"[{border_style}]{border_char * (adjusted_width - 8)}[/]"
+
+    styled_text = border_line + "\n" + styled_text + border_line
+
     return Panel(
         Text.from_markup(styled_text),
-        border_style=Style(color=NordColors.FROST_1),
+        border_style=NordColors.FROST_1,
+        box=NordColors.NORD_BOX,
         padding=(1, 2),
-        title=f"[bold {NordColors.SNOW_STORM_1}]v{VERSION}[/]",
+        title=f"[bold {NordColors.SNOW_STORM_3}]v{VERSION}[/]",
         title_align="right",
-        subtitle=f"[bold {NordColors.SNOW_STORM_2}]{APP_SUBTITLE}[/]",
+        subtitle=f"[bold {NordColors.SNOW_STORM_1}]{APP_SUBTITLE}[/]",
         subtitle_align="center",
     )
 
 
-def print_message(
-    text: str,
-    style: str = NordColors.FROST_2,
-    prefix: str = "•",
-    logger: Optional[logging.Logger] = None,
-) -> None:
-    console.print(f"[{style}]{prefix} {text}[/{style}]")
+def print_message(message: str, style=NordColors.INFO, prefix="•", logger=None):
+    if isinstance(style, str):
+        console.print(f"[{style}]{prefix} {message}[/{style}]")
+    else:
+        console.print(f"{prefix} {message}", style=style)
+
     if logger:
         if style == NordColors.RED:
-            logger.error(f"{prefix} {text}")
+            logger.error(f"{prefix} {message}")
         elif style == NordColors.YELLOW:
-            logger.warning(f"{prefix} {text}")
+            logger.warning(f"{prefix} {message}")
         else:
-            logger.info(f"{prefix} {text}")
+            logger.info(f"{prefix} {message}")
 
 
-def display_panel(
-    message: str, style: str = NordColors.FROST_2, title: Optional[str] = None
-) -> None:
-    panel = Panel(
-        Text.from_markup(f"[bold {style}]{message}[/]"),
-        border_style=Style(color=style),
-        padding=(1, 2),
-        title=f"[bold {style}]{title}[/]" if title else None,
-    )
+def print_error(message, logger=None):
+    print_message(message, NordColors.ERROR, "✗", logger)
+
+
+def print_success(message, logger=None):
+    print_message(message, NordColors.SUCCESS, "✓", logger)
+
+
+def print_warning(message, logger=None):
+    print_message(message, NordColors.WARNING, "⚠", logger)
+
+
+def print_info(message, logger=None):
+    print_message(message, NordColors.INFO, "ℹ", logger)
+
+
+def display_panel(message: str, style=NordColors.INFO, title=None):
+    if isinstance(style, str):
+        panel = Panel(
+            Text.from_markup(f"[bold {style}]{message}[/]"),
+            border_style=style,
+            box=NordColors.NORD_BOX,
+            padding=(1, 2),
+            title=f"[bold {style}]{title}[/]" if title else None,
+        )
+    else:
+        panel = Panel(
+            Text(message),
+            title=title,
+            border_style=style,
+            box=NordColors.NORD_BOX,
+            padding=(1, 2)
+        )
     console.print(panel)
 
 
-def cleanup(logger: Optional[logging.Logger] = None) -> None:
-    print_message(
-        "Cleaning up temporary resources...", NordColors.FROST_3, logger=logger
-    )
+def cleanup(logger=None):
+    print_message("Cleaning up temporary resources...", NordColors.FROST_3, logger=logger)
     for temp_file in glob.glob("/tmp/security_setup_*"):
         try:
             os.remove(temp_file)
@@ -251,27 +274,23 @@ def cleanup(logger: Optional[logging.Logger] = None) -> None:
                 logger.debug(f"Failed to remove temporary file: {temp_file}")
 
 
-def signal_handler(
-    sig: int, frame: Any, logger: Optional[logging.Logger] = None
-) -> None:
+def signal_handler(sig, frame, logger=None):
     try:
         sig_name = signal.Signals(sig).name
     except Exception:
         sig_name = f"Signal {sig}"
-    print_message(
-        f"Process interrupted by {sig_name}", NordColors.YELLOW, "⚠", logger=logger
-    )
+    print_message(f"Process interrupted by {sig_name}", NordColors.YELLOW, "⚠", logger=logger)
     cleanup(logger)
     sys.exit(128 + sig)
 
 
 def run_command(
-    cmd: List[str],
-    env: Optional[Dict[str, str]] = None,
-    check: bool = True,
-    capture_output: bool = True,
-    timeout: int = OPERATION_TIMEOUT,
-    logger: Optional[logging.Logger] = None,
+        cmd: List[str],
+        env=None,
+        check=True,
+        capture_output=True,
+        timeout=OPERATION_TIMEOUT,
+        logger=None
 ) -> subprocess.CompletedProcess:
     cmd_str = " ".join(cmd)
     if logger:
@@ -289,96 +308,53 @@ def run_command(
             logger.debug(f"Command output: {result.stdout.strip()}")
         return result
     except subprocess.CalledProcessError as e:
-        print_message(f"Command failed: {cmd_str}", NordColors.RED, "✗", logger=logger)
+        print_error(f"Command failed: {cmd_str}", logger)
         if logger:
-            logger.error(
-                f"Command error output: {e.stderr.strip() if e.stderr else ''}"
-            )
+            logger.error(f"Command error output: {e.stderr.strip() if e.stderr else ''}")
         raise
     except subprocess.TimeoutExpired:
-        print_message(
-            f"Command timed out after {timeout} seconds: {cmd_str}",
-            NordColors.RED,
-            "✗",
-            logger=logger,
-        )
+        print_error(f"Command timed out after {timeout} seconds: {cmd_str}", logger)
         if logger:
             logger.error(f"Timeout expired for command: {cmd_str}")
         raise
     except Exception as e:
-        print_message(
-            f"Error executing command: {cmd_str} - {e}",
-            NordColors.RED,
-            "✗",
-            logger=logger,
-        )
+        print_error(f"Error executing command: {cmd_str} - {e}", logger)
         if logger:
             logger.exception(f"Error executing command: {cmd_str}")
         raise
 
 
-# ----------------------------------------------------------------
-# System Setup Class (macOS using Homebrew)
-# ----------------------------------------------------------------
-class SystemSetup:
-    """
-    Handles Homebrew-based package management and service configuration on macOS.
-    Groups packages by installation type and skips unavailable packages.
-    """
-
-    def __init__(
-        self,
-        simulate: bool = False,
-        verbose: bool = False,
-        logger: Optional[logging.Logger] = None,
-    ):
+class SecurityInstaller:
+    def __init__(self, simulate=False, verbose=False, logger=None):
         self.simulate = simulate
         self.verbose = verbose
         self.logger = logger
-        self.failed_packages: List[str] = []
-        self.successful_packages: List[str] = []
-        self.skipped_packages: List[str] = []
-        self.start_time = datetime.now()
+        self.stats = InstallationStats()
 
     def get_target_packages(self) -> List[Tuple[str, str]]:
-        """
-        Returns a list of tuples (package, type) where type is 'formula', 'cask', or 'skip'.
-        """
         packages = []
         for tools in SECURITY_TOOLS.values():
             for pkg in tools:
                 pkg_type = BREW_PACKAGE_TYPE.get(pkg, "formula")
                 packages.append((pkg, pkg_type))
-        # Remove duplicates while preserving the installation type.
+
         unique = {}
         for pkg, typ in packages:
             unique[pkg] = typ
         return list(unique.items())
 
-    def log_operation(
-        self, message: str, level: str = "info", prefix: str = "•"
-    ) -> None:
-        style_map = {
-            "info": NordColors.FROST_2,
-            "warning": NordColors.YELLOW,
-            "error": NordColors.RED,
-            "success": NordColors.GREEN,
-        }
-        print_message(
-            message, style_map.get(level, NordColors.FROST_2), prefix, self.logger
-        )
-
     def cleanup_package_system(self) -> bool:
         try:
             if self.simulate:
-                self.log_operation("Simulating Homebrew cleanup...", "warning")
+                print_warning("Simulating Homebrew cleanup...", self.logger)
                 time.sleep(1)
                 return True
-            self.log_operation("Running 'brew cleanup'...")
+
+            print_info("Running 'brew cleanup'...", self.logger)
             run_command(["brew", "cleanup"], logger=self.logger)
-            self.log_operation("Homebrew cleanup completed", "success", "✓")
+            print_success("Homebrew cleanup completed", self.logger)
             return True
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             if self.logger:
                 self.logger.error(f"Cleanup failed: {e}")
             return False
@@ -386,158 +362,128 @@ class SystemSetup:
     def setup_package_manager(self) -> bool:
         try:
             if self.simulate:
-                self.log_operation("Simulating Homebrew update/upgrade...", "warning")
+                print_warning("Simulating Homebrew update/upgrade...", self.logger)
                 time.sleep(1)
                 return True
+
             if shutil.which("brew") is None:
-                self.log_operation(
-                    "Homebrew is not installed. Please install Homebrew from https://brew.sh",
-                    "error",
-                    "✗",
-                )
+                print_error("Homebrew is not installed. Please install Homebrew from https://brew.sh", self.logger)
                 sys.exit(1)
-            self.log_operation("Updating Homebrew...")
+
+            print_info("Updating Homebrew...", self.logger)
             run_command(["brew", "update"], logger=self.logger)
-            self.log_operation("Upgrading installed formulae...")
+            print_info("Upgrading installed formulae...", self.logger)
             run_command(["brew", "upgrade"], logger=self.logger)
-            self.log_operation("Homebrew update and upgrade completed", "success", "✓")
+            print_success("Homebrew update and upgrade completed", self.logger)
             return True
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             if self.logger:
                 self.logger.error(f"Package manager setup failed: {e}")
             return False
 
-    def install_packages(
-        self,
-        packages: List[Tuple[str, str]],
-        progress_callback=None,
-        skip_failed: bool = True,
-    ) -> Tuple[bool, List[str]]:
+    def install_packages(self, packages, progress_callback=None, skip_failed=True) -> Tuple[bool, List[str]]:
         try:
             if self.simulate:
-                self.log_operation(
-                    f"Simulating installation of {len(packages)} packages", "warning"
-                )
+                print_warning(f"Simulating installation of {len(packages)} packages", self.logger)
                 time.sleep(2)
                 return True, []
+
             failed_packages = []
-            # Group packages by type
+
             formula_packages = [pkg for pkg, typ in packages if typ == "formula"]
             cask_packages = [pkg for pkg, typ in packages if typ == "cask"]
             skip_packages = [pkg for pkg, typ in packages if typ == "skip"]
-            # Log skipped packages
-            if skip_packages:
-                for pkg in skip_packages:
-                    self.log_operation(
-                        f"Skipping unavailable package: {pkg}", "warning", "⚠"
-                    )
-                    self.skipped_packages.append(pkg)
-            # Install formula packages in chunks
+
+            for pkg in skip_packages:
+                print_warning(f"Skipping unavailable package: {pkg}", self.logger)
+                self.stats.skipped_packages.append(pkg)
+
             chunk_size = 10
             for i in range(0, len(formula_packages), chunk_size):
-                chunk = formula_packages[i : i + chunk_size]
+                chunk = formula_packages[i:i + chunk_size]
                 desc = f"Installing formula packages {i + 1}-{min(i + chunk_size, len(formula_packages))} of {len(formula_packages)}"
+
                 if progress_callback:
                     progress_callback(desc, i, len(formula_packages))
                 else:
-                    self.log_operation(desc)
+                    print_info(desc, self.logger)
+
                 try:
                     run_command(["brew", "install"] + chunk, logger=self.logger)
-                    self.successful_packages.extend(chunk)
+                    self.stats.successful_packages.extend(chunk)
                 except subprocess.CalledProcessError:
-                    self.log_operation(
-                        "Retrying individual formula packages...", "warning"
-                    )
+                    print_warning("Retrying individual formula packages...", self.logger)
                     for package in chunk:
-                        if package not in self.successful_packages:
+                        if package not in self.stats.successful_packages:
                             try:
-                                run_command(
-                                    ["brew", "install", package], logger=self.logger
-                                )
-                                self.successful_packages.append(package)
+                                run_command(["brew", "install", package], logger=self.logger)
+                                self.stats.successful_packages.append(package)
                             except subprocess.CalledProcessError:
                                 failed_packages.append(package)
                                 if self.logger:
                                     self.logger.error(f"Failed to install: {package}")
-            # Install cask packages in chunks
+
             for i in range(0, len(cask_packages), chunk_size):
-                chunk = cask_packages[i : i + chunk_size]
+                chunk = cask_packages[i:i + chunk_size]
                 desc = f"Installing cask packages {i + 1}-{min(i + chunk_size, len(cask_packages))} of {len(cask_packages)}"
+
                 if progress_callback:
                     progress_callback(desc, i, len(cask_packages))
                 else:
-                    self.log_operation(desc)
+                    print_info(desc, self.logger)
+
                 try:
-                    run_command(
-                        ["brew", "install", "--cask"] + chunk, logger=self.logger
-                    )
-                    self.successful_packages.extend(chunk)
+                    run_command(["brew", "install", "--cask"] + chunk, logger=self.logger)
+                    self.stats.successful_packages.extend(chunk)
                 except subprocess.CalledProcessError:
-                    self.log_operation(
-                        "Retrying individual cask packages...", "warning"
-                    )
+                    print_warning("Retrying individual cask packages...", self.logger)
                     for package in chunk:
-                        if package not in self.successful_packages:
+                        if package not in self.stats.successful_packages:
                             try:
-                                run_command(
-                                    ["brew", "install", "--cask", package],
-                                    logger=self.logger,
-                                )
-                                self.successful_packages.append(package)
+                                run_command(["brew", "install", "--cask", package], logger=self.logger)
+                                self.stats.successful_packages.append(package)
                             except subprocess.CalledProcessError:
                                 failed_packages.append(package)
                                 if self.logger:
                                     self.logger.error(f"Failed to install: {package}")
+
             if failed_packages:
-                self.failed_packages = failed_packages
+                self.stats.failed_packages = failed_packages
                 if skip_failed:
-                    self.log_operation(
-                        f"Completed with {len(failed_packages)} failures, continuing...",
-                        "warning",
-                        "⚠",
-                    )
+                    print_warning(f"Completed with {len(failed_packages)} failures, continuing...", self.logger)
                     return True, failed_packages
                 else:
-                    self.log_operation(
-                        f"Installation failed for {len(failed_packages)} packages",
-                        "error",
-                        "✗",
-                    )
+                    print_error(f"Installation failed for {len(failed_packages)} packages", self.logger)
                     return False, failed_packages
-            self.log_operation(
-                f"Successfully installed {len(self.successful_packages)} packages",
-                "success",
-                "✓",
-            )
+
+            print_success(f"Successfully installed {len(self.stats.successful_packages)} packages", self.logger)
             return True, []
         except Exception as e:
             if self.logger:
                 self.logger.exception("Installation failed")
-            self.failed_packages = [pkg for pkg, _ in packages]
-            self.log_operation(f"Installation failed: {e}", "error", "✗")
+            self.stats.failed_packages = [pkg for pkg, _ in packages]
+            print_error(f"Installation failed: {e}", self.logger)
             return False, [pkg for pkg, _ in packages]
 
     def configure_installed_services(self) -> bool:
         try:
             if self.simulate:
-                self.log_operation("Simulating service configuration...", "warning")
+                print_warning("Simulating service configuration...", self.logger)
                 time.sleep(1)
                 return True
-            # Most Homebrew-installed CLI tools require no further configuration on macOS.
-            self.log_operation(
-                "No additional service configuration required on macOS", "info"
-            )
+
+            print_info("No additional service configuration required on macOS", self.logger)
             return True
         except Exception as e:
-            self.log_operation(f"Service configuration failed: {e}", "error", "✗")
+            print_error(f"Service configuration failed: {e}", self.logger)
             if self.logger:
                 self.logger.exception("Service configuration failed")
             return False
 
     def save_installation_report(self, report_dir: Path) -> str:
         report_dir.mkdir(exist_ok=True, parents=True)
-        elapsed = datetime.now() - self.start_time
-        elapsed_str = f"{int(elapsed.total_seconds() // 60)}m {int(elapsed.total_seconds() % 60)}s"
+        self.stats.end_time = datetime.now()
+
         system_info = {
             "hostname": platform.node(),
             "system": platform.system(),
@@ -546,51 +492,51 @@ class SystemSetup:
             "processor": platform.processor(),
             "python_version": platform.python_version(),
         }
+
         report = {
             "timestamp": datetime.now().isoformat(),
             "system_info": system_info,
-            "duration": elapsed_str,
-            "successful_packages": sorted(self.successful_packages),
-            "failed_packages": sorted(self.failed_packages),
-            "skipped_packages": sorted(self.skipped_packages),
+            "duration": self.stats.elapsed_time,
+            "successful_packages": sorted(self.stats.successful_packages),
+            "failed_packages": sorted(self.stats.failed_packages),
+            "skipped_packages": sorted(self.stats.skipped_packages),
             "simulation_mode": self.simulate,
-            "total_packages_attempted": len(self.successful_packages)
-            + len(self.failed_packages)
-            + len(self.skipped_packages),
+            "total_packages_attempted": len(self.stats.successful_packages) +
+                                        len(self.stats.failed_packages) +
+                                        len(self.stats.skipped_packages),
         }
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         report_file = report_dir / f"installation_report_{timestamp}.json"
         report_txt = report_dir / f"installation_report_{timestamp}.txt"
+
         with open(report_file, "w") as f:
             json.dump(report, f, indent=2)
+
         with open(report_txt, "w") as f:
             f.write("Security Tools Installation Report\n")
             f.write("================================\n\n")
             f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Duration: {elapsed_str}\n")
+            f.write(f"Duration: {self.stats.elapsed_time}\n")
             f.write(f"Simulation Mode: {'Yes' if self.simulate else 'No'}\n\n")
             f.write("System Information:\n")
             for key, value in system_info.items():
                 f.write(f"  {key}: {value}\n")
             f.write("\nInstallation Summary:\n")
-            f.write(
-                f"  Successfully installed: {len(self.successful_packages)} packages\n"
-            )
-            f.write(f"  Failed packages: {len(self.failed_packages)}\n")
-            f.write(f"  Skipped packages: {len(self.skipped_packages)}\n")
+            f.write(f"  Successfully installed: {len(self.stats.successful_packages)} packages\n")
+            f.write(f"  Failed packages: {len(self.stats.failed_packages)}\n")
+            f.write(f"  Skipped packages: {len(self.stats.skipped_packages)}\n")
             f.write(f"  Total attempted: {report['total_packages_attempted']}\n\n")
-            if self.failed_packages:
+            if self.stats.failed_packages:
                 f.write("Failed Packages:\n")
-                for pkg in sorted(self.failed_packages):
+                for pkg in sorted(self.stats.failed_packages):
                     f.write(f"  - {pkg}\n")
-        self.log_operation(f"Installation report saved to {report_file}", "info")
+
+        print_info(f"Installation report saved to {report_file}", self.logger)
         return str(report_file)
 
 
-# ----------------------------------------------------------------
-# Main Application Function (Fully Automated for macOS)
-# ----------------------------------------------------------------
-def main() -> None:
+def main():
     simulate = False
     verbose = False
     skip_failed = True
@@ -621,9 +567,8 @@ def main() -> None:
     )
     console.print()
 
-    setup = SystemSetup(simulate=simulate, verbose=verbose, logger=logger)
+    installer = SecurityInstaller(simulate=simulate, verbose=verbose, logger=logger)
 
-    # Display installation plan summary.
     table = Table(
         show_header=True,
         header_style=f"bold {NordColors.FROST_1}",
@@ -639,6 +584,7 @@ def main() -> None:
             table, title="[bold]Installation Plan[/]", border_style=NordColors.FROST_2
         )
     )
+
     total_unique = len({pkg for tools in SECURITY_TOOLS.values() for pkg in tools})
     console.print(
         f"Installing [bold {NordColors.FROST_1}]{total_unique}[/] unique packages from all {len(SECURITY_TOOLS)} categories"
@@ -646,14 +592,14 @@ def main() -> None:
     console.print()
 
     with Progress(
-        SpinnerColumn(style=f"{NordColors.FROST_1}"),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(
-            bar_width=40, style=NordColors.FROST_4, complete_style=NordColors.FROST_2
-        ),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        TimeRemainingColumn(),
-        console=console,
+            SpinnerColumn(style=f"{NordColors.FROST_1}"),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(
+                bar_width=40, style=NordColors.FROST_4, complete_style=NordColors.FROST_2
+            ),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeRemainingColumn(),
+            console=console,
     ) as progress:
         main_task = progress.add_task("[cyan]Overall Progress", total=100)
         sub_task = progress.add_task("Initializing...", total=100, visible=False)
@@ -669,11 +615,9 @@ def main() -> None:
             completed=0,
             description=f"[{NordColors.FROST_2}]Cleaning Homebrew cache",
         )
-        if not setup.cleanup_package_system():
-            print_message(
+        if not installer.cleanup_package_system():
+            print_warning(
                 "Homebrew cleanup failed; continuing as requested...",
-                NordColors.YELLOW,
-                "⚠",
                 logger,
             )
         progress.update(main_task, completed=20)
@@ -689,11 +633,9 @@ def main() -> None:
             completed=0,
             description=f"[{NordColors.FROST_2}]Updating Homebrew",
         )
-        if not setup.setup_package_manager():
-            print_message(
+        if not installer.setup_package_manager():
+            print_warning(
                 "Homebrew update/upgrade failed; continuing as requested...",
-                NordColors.YELLOW,
-                "⚠",
                 logger,
             )
         progress.update(main_task, completed=40)
@@ -709,7 +651,7 @@ def main() -> None:
             completed=0,
             description=f"[{NordColors.FROST_2}]Installing security tools",
         )
-        target_packages = setup.get_target_packages()
+        target_packages = installer.get_target_packages()
 
         def update_progress(desc, current, total):
             percent = min(100, int((current / total) * 100))
@@ -717,7 +659,7 @@ def main() -> None:
                 sub_task, description=f"[{NordColors.FROST_2}]{desc}", completed=percent
             )
 
-        success, failed = setup.install_packages(
+        success, failed = installer.install_packages(
             target_packages, progress_callback=update_progress, skip_failed=skip_failed
         )
         if failed and not skip_failed and not simulate:
@@ -751,7 +693,7 @@ def main() -> None:
             completed=0,
             description=f"[{NordColors.FROST_2}]Configuring services",
         )
-        setup.configure_installed_services()
+        installer.configure_installed_services()
         progress.update(sub_task, completed=100)
         progress.update(
             main_task,
@@ -760,15 +702,15 @@ def main() -> None:
         )
         progress.update(sub_task, visible=False)
 
-    report_file = setup.save_installation_report(report_dir)
+    report_file = installer.save_installation_report(report_dir)
     console.print()
-    if setup.failed_packages:
+    if installer.stats.failed_packages:
         console.print(
             Panel(
                 f"[bold]Installation completed with some failures[/]\n\n"
-                f"Successfully installed: {len(setup.successful_packages)} packages\n"
-                f"Failed packages: {len(setup.failed_packages)}\n\n"
-                f"Failed: {', '.join(setup.failed_packages[:10])}{'...' if len(setup.failed_packages) > 10 else ''}",
+                f"Successfully installed: {len(installer.stats.successful_packages)} packages\n"
+                f"Failed packages: {len(installer.stats.failed_packages)}\n\n"
+                f"Failed: {', '.join(installer.stats.failed_packages[:10])}{'...' if len(installer.stats.failed_packages) > 10 else ''}",
                 title="[bold yellow]Installation Summary[/]",
                 border_style=NordColors.YELLOW,
             )
@@ -777,7 +719,7 @@ def main() -> None:
         console.print(
             Panel(
                 f"[bold]Installation completed successfully![/]\n\n"
-                f"Installed: {len(setup.successful_packages)} security tools",
+                f"Installed: {len(installer.stats.successful_packages)} security tools",
                 title="[bold green]Installation Complete[/]",
                 border_style=NordColors.GREEN,
             )
@@ -787,11 +729,7 @@ def main() -> None:
     if latest_log:
         console.print(f"\nDetailed logs available at: [bold]{latest_log}[/]")
         console.print(f"Installation report saved to: [bold]{report_file}[/]")
-    finish_time = datetime.now()
-    elapsed = finish_time - setup.start_time
-    console.print(
-        f"\nTotal installation time: [bold]{int(elapsed.total_seconds() // 60)} minutes, {int(elapsed.total_seconds() % 60)} seconds[/]"
-    )
+    console.print(f"\nTotal installation time: [bold]{installer.stats.elapsed_time}[/]")
 
 
 if __name__ == "__main__":

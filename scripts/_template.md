@@ -2,19 +2,6 @@
 
 ```python
 #!/usr/bin/env python3
-"""
-macOS Downloader
---------------------------------------------------
-A macOS-specific downloader for web files and YouTube videos.
-Features:
-  • Dynamic ASCII banners with Pyfiglet and Rich.
-  • Interactive, menu-driven CLI with prompt_toolkit.
-  • Dependency management using Homebrew (for ffmpeg) and pip.
-  • High-quality file downloads with progress tracking.
-  • YouTube downloads that always select the best video and audio
-    streams and merge them into an MP4.
-Version: 1.1.0
-"""
 
 import os
 import sys
@@ -30,59 +17,30 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Any, Tuple, Dict, Union
 from datetime import datetime
 
-# Ensure we are running on macOS
 if platform.system() != "Darwin":
     print("This script is tailored for macOS. Exiting.")
     sys.exit(1)
 
-
-# ----------------------------------------------------------------
-# Dependency Check and Installation (macOS-specific)
-# ----------------------------------------------------------------
-def install_dependencies() -> None:
-    """
-    Install required Python packages using pip (with --user flag).
-    Required packages: rich, pyfiglet, prompt_toolkit, requests, yt-dlp
-    """
+def install_dependencies():
     required_packages = ["rich", "pyfiglet", "prompt_toolkit", "requests", "yt-dlp"]
     user = os.environ.get("SUDO_USER", os.environ.get("USER"))
     try:
         if os.geteuid() != 0:
-            print(f"Installing dependencies for user: {user}")
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
-            )
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
         else:
-            print(f"Running as sudo. Installing dependencies for user: {user}")
-            subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
-                + required_packages
-            )
+            subprocess.check_call(["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
 
-
-def check_homebrew() -> None:
-    """Ensure Homebrew is installed on macOS."""
+def check_homebrew():
     if shutil.which("brew") is None:
-        print(
-            "Homebrew is not installed. Please install Homebrew from https://brew.sh and rerun this script."
-        )
+        print("Homebrew is not installed. Please install Homebrew from https://brew.sh and rerun this script.")
         sys.exit(1)
 
-
-def check_ffmpeg() -> bool:
-    """
-    Check if FFmpeg is installed. If missing, attempt to install it using Homebrew.
-    """
+def check_ffmpeg():
     try:
-        subprocess.run(
-            ["ffmpeg", "-version"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
-        )
+        subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         return True
     except Exception:
         print("FFmpeg not found. Attempting to install FFmpeg via Homebrew...")
@@ -95,39 +53,26 @@ def check_ffmpeg() -> bool:
             print(f"Failed to install FFmpeg: {e}")
             return False
 
-
-# Attempt to import dependencies; install if missing.
 try:
     import pyfiglet
     from rich.console import Console
     from rich.panel import Panel
     from rich.progress import (
-        Progress,
-        SpinnerColumn,
-        TextColumn,
-        BarColumn,
-        TaskProgressColumn,
-        TimeRemainingColumn,
-        DownloadColumn,
-        TransferSpeedColumn,
-        MofNCompleteColumn,
+        Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn,
+        TimeRemainingColumn, TransferSpeedColumn, MofNCompleteColumn
     )
     from rich.prompt import Prompt, Confirm
     from rich.table import Table
     from rich.text import Text
     from rich.traceback import install as install_rich_traceback
-    from rich.align import Align
-    from rich.layout import Layout
+    from rich.box import ROUNDED, HEAVY
     from rich.style import Style
-    from rich.live import Live
-    from rich.box import Box, ROUNDED, DOUBLE, HEAVY
     from prompt_toolkit import prompt as pt_prompt
     from prompt_toolkit.completion import WordCompleter
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.styles import Style as PTStyle
     import requests
 except ImportError:
-    print("Required libraries not found. Installing dependencies...")
     install_dependencies()
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
@@ -136,85 +81,65 @@ if not check_ffmpeg():
     sys.exit(1)
 
 install_rich_traceback(show_locals=True)
-console: Console = Console()
+console = Console()
 
-# ----------------------------------------------------------------
-# Configuration & Constants (macOS tailored)
-# ----------------------------------------------------------------
-APP_NAME: str = "macOS Downloader"
-VERSION: str = "1.1.0"
-DEFAULT_DOWNLOAD_DIR: str = os.path.join(os.path.expanduser("~"), "Downloads")
-CONFIG_DIR: str = os.path.expanduser("~/.macos_downloader")
-CONFIG_FILE: str = os.path.join(CONFIG_DIR, "config.json")
-HISTORY_FILE: str = os.path.join(CONFIG_DIR, "history.json")
-DOWNLOAD_TIMEOUT: int = 3600  # 1 hour timeout for downloads
-DEFAULT_TIMEOUT: int = 120  # 2 minutes default timeout for commands
-CHUNK_SIZE: int = 16384  # 16KB chunks for smoother progress updates
+APP_NAME = "macOS Downloader"
+VERSION = "1.1.0"
+DEFAULT_DOWNLOAD_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
+CONFIG_DIR = os.path.expanduser("~/.macos_downloader")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")
+DOWNLOAD_TIMEOUT = 3600
+DEFAULT_TIMEOUT = 120
+CHUNK_SIZE = 16384
 
-
-# ----------------------------------------------------------------
-# Nord-Themed Colors
-# ----------------------------------------------------------------
 class NordColors:
-    POLAR_NIGHT_1: str = "#2E3440"
-    POLAR_NIGHT_2: str = "#3B4252"
-    POLAR_NIGHT_3: str = "#434C5E"
-    POLAR_NIGHT_4: str = "#4C566A"
-    SNOW_STORM_1: str = "#D8DEE9"
-    SNOW_STORM_2: str = "#E5E9F0"
-    SNOW_STORM_3: str = "#ECEFF4"
-    FROST_1: str = "#8FBCBB"
-    FROST_2: str = "#88C0D0"
-    FROST_3: str = "#81A1C1"
-    FROST_4: str = "#5E81AC"
-    RED: str = "#BF616A"
-    ORANGE: str = "#D08770"
-    YELLOW: str = "#EBCB8B"
-    GREEN: str = "#A3BE8C"
-    PURPLE: str = "#B48EAD"
+    POLAR_NIGHT_1 = "#2E3440"
+    POLAR_NIGHT_2 = "#3B4252"
+    POLAR_NIGHT_3 = "#434C5E"
+    POLAR_NIGHT_4 = "#4C566A"
+    SNOW_STORM_1 = "#D8DEE9"
+    SNOW_STORM_2 = "#E5E9F0"
+    SNOW_STORM_3 = "#ECEFF4"
+    FROST_1 = "#8FBCBB"
+    FROST_2 = "#88C0D0"
+    FROST_3 = "#81A1C1"
+    FROST_4 = "#5E81AC"
+    RED = "#BF616A"
+    ORANGE = "#D08770"
+    YELLOW = "#EBCB8B"
+    GREEN = "#A3BE8C"
+    PURPLE = "#B48EAD"
 
-    # Custom styles for enhanced UI
-    SUCCESS: Style = Style(color=GREEN, bold=True)
-    ERROR: Style = Style(color=RED, bold=True)
-    WARNING: Style = Style(color=YELLOW, bold=True)
-    INFO: Style = Style(color=FROST_2, bold=True)
-    HEADER: Style = Style(color=FROST_1, bold=True)
-    SUBHEADER: Style = Style(color=FROST_3, bold=True)
-    ACCENT: Style = Style(color=FROST_4, bold=True)
-    
-    # Use a predefined box from Rich instead of creating a custom one
+    SUCCESS = Style(color=GREEN, bold=True)
+    ERROR = Style(color=RED, bold=True)
+    WARNING = Style(color=YELLOW, bold=True)
+    INFO = Style(color=FROST_2, bold=True)
+    HEADER = Style(color=FROST_1, bold=True)
+    SUBHEADER = Style(color=FROST_3, bold=True)
+    ACCENT = Style(color=FROST_4, bold=True)
     NORD_BOX = ROUNDED
 
     @classmethod
-    def get_frost_gradient(cls, steps: int = 4) -> List[str]:
+    def get_frost_gradient(cls, steps=4):
         return [cls.FROST_1, cls.FROST_2, cls.FROST_3, cls.FROST_4][:steps]
     
     @classmethod
-    def get_polar_gradient(cls, steps: int = 4) -> List[str]:
+    def get_polar_gradient(cls, steps=4):
         return [cls.POLAR_NIGHT_1, cls.POLAR_NIGHT_2, cls.POLAR_NIGHT_3, cls.POLAR_NIGHT_4][:steps]
     
     @classmethod
-    def get_progress_columns(cls) -> List[Any]:
-        """Return consistently styled progress columns for all progress bars"""
+    def get_progress_columns(cls):
         return [
             SpinnerColumn(spinner_name="dots", style=f"bold {cls.FROST_1}"),
             TextColumn(f"[bold {cls.FROST_2}]{{task.description}}[/]"),
-            BarColumn(
-                bar_width=None,
-                style=cls.POLAR_NIGHT_3,
-                complete_style=cls.FROST_2,
-                finished_style=cls.GREEN
-            ),
+            BarColumn(bar_width=None, style=cls.POLAR_NIGHT_3, complete_style=cls.FROST_2, finished_style=cls.GREEN),
             TaskProgressColumn(style=cls.SNOW_STORM_1),
             MofNCompleteColumn(),
             TransferSpeedColumn(style=cls.FROST_3),
             TimeRemainingColumn(compact=True),
         ]
 
-
-# ----------------------------------------------------------------
-# Data Structures
-# ----------------------------------------------------------------
 @dataclass
 class DownloadSource:
     url: str
@@ -222,40 +147,34 @@ class DownloadSource:
     size: int = 0
     content_type: str = ""
 
-    def __post_init__(self) -> None:
+    def __post_init__(self):
         if not self.name:
             self.name = self.get_filename_from_url()
 
-    def get_filename_from_url(self) -> str:
+    def get_filename_from_url(self):
         try:
             path = urllib.parse.urlsplit(self.url).path
             filename = os.path.basename(path)
             return urllib.parse.unquote(filename) if filename else "downloaded_file"
         except Exception:
             return "downloaded_file"
-    
-    def get_file_info(self) -> Dict[str, Any]:
+
+    def get_file_info(self):
         try:
             response = requests.head(self.url, timeout=10, allow_redirects=True)
             self.size = int(response.headers.get("content-length", 0))
             self.content_type = response.headers.get("content-type", "")
             
-            # Try to get a better filename from Content-Disposition if available
             if "content-disposition" in response.headers:
                 import re
                 filename_match = re.search(r'filename="?([^";]+)', response.headers["content-disposition"])
                 if filename_match and filename_match.group(1):
                     self.name = filename_match.group(1)
             
-            return {
-                "size": self.size,
-                "content_type": self.content_type,
-                "filename": self.name
-            }
+            return {"size": self.size, "content_type": self.content_type, "filename": self.name}
         except Exception as e:
             print_error(f"Could not determine file info: {e}")
             return {"size": 0, "content_type": "", "filename": self.name}
-
 
 @dataclass
 class DownloadStats:
@@ -266,50 +185,41 @@ class DownloadStats:
     rate_history: List[float] = field(default_factory=list)
     last_update_time: float = field(default_factory=time.time)
     last_bytes: int = 0
-    
-    # For smoother rate calculation
-    window_size: int = 20  # Keep last 20 rate samples
-    smoothing_factor: float = 0.3  # For exponential moving average
+    window_size: int = 20
+    smoothing_factor: float = 0.3
 
     @property
-    def is_complete(self) -> bool:
-        return self.end_time is not None or (
-            self.total_size > 0 and self.bytes_downloaded >= self.total_size
-        )
+    def is_complete(self):
+        return self.end_time is not None or (self.total_size > 0 and self.bytes_downloaded >= self.total_size)
 
     @property
-    def progress_percentage(self) -> float:
+    def progress_percentage(self):
         if self.total_size <= 0:
             return 0.0
         return min(100.0, (self.bytes_downloaded / self.total_size) * 100)
 
     @property
-    def elapsed_time(self) -> float:
+    def elapsed_time(self):
         return (self.end_time or time.time()) - self.start_time
 
     @property
-    def average_rate(self) -> float:
-        """Calculate smoothed download rate"""
+    def average_rate(self):
         if not self.rate_history:
             if self.elapsed_time > 0:
                 return self.bytes_downloaded / self.elapsed_time
             return 0.0
         
-        # Return exponential moving average for smoother rate display
         if len(self.rate_history) >= 3:
-            # Use more sophisticated calculation for smoother rates
             recent_rates = self.rate_history[-5:]
-            # Remove outliers (rates that are more than 2x the median)
             median_rate = sorted(recent_rates)[len(recent_rates) // 2]
             filtered_rates = [r for r in recent_rates if r <= median_rate * 2.5]
             if filtered_rates:
                 return sum(filtered_rates) / len(filtered_rates)
         
-        return self.rate_history[-1]  # Return most recent rate
+        return self.rate_history[-1]
 
     @property
-    def estimated_time_remaining(self) -> float:
-        """Estimate time remaining to complete the download"""
+    def estimated_time_remaining(self):
         if self.is_complete:
             return 0.0
         
@@ -319,21 +229,14 @@ class DownloadStats:
         remaining_bytes = self.total_size - self.bytes_downloaded
         return remaining_bytes / self.average_rate
 
-    def update_progress(self, new_bytes: int) -> None:
-        """
-        Update download progress with improved rate calculation.
-        
-        Args:
-            new_bytes: Number of new bytes received since last update
-        """
+    def update_progress(self, new_bytes):
         now = time.time()
         time_diff = now - self.last_update_time
         
-        if time_diff > 0.1:  # Only update if at least 100ms has passed
+        if time_diff > 0.1:
             self.bytes_downloaded += new_bytes
             current_rate = new_bytes / time_diff
             
-            # Add to rate history with limit to window size
             self.rate_history.append(current_rate)
             if len(self.rate_history) > self.window_size:
                 self.rate_history.pop(0)
@@ -345,17 +248,16 @@ class DownloadStats:
                 self.bytes_downloaded = self.total_size
                 self.end_time = now
 
-
 @dataclass
 class AppConfig:
     default_download_dir: str = DEFAULT_DOWNLOAD_DIR
     recent_downloads: List[str] = field(default_factory=list)
-    theme: str = "dark"  # Default theme is dark nord
-    language: str = "en"  # Default language is English
-    max_concurrent_downloads: int = 1  # Default to single download at a time
-    auto_close_completed: bool = False  # Don't auto close completed downloads
+    theme: str = "dark"
+    language: str = "en"
+    max_concurrent_downloads: int = 1
+    auto_close_completed: bool = False
 
-    def save(self) -> None:
+    def save(self):
         ensure_config_directory()
         try:
             with open(CONFIG_FILE, "w") as f:
@@ -364,7 +266,7 @@ class AppConfig:
             print_error(f"Failed to save configuration: {e}")
 
     @classmethod
-    def load(cls) -> "AppConfig":
+    def load(cls):
         try:
             if os.path.exists(CONFIG_FILE):
                 with open(CONFIG_FILE, "r") as f:
@@ -374,14 +276,11 @@ class AppConfig:
             print_error(f"Failed to load configuration: {e}")
         return cls()
 
-
 @dataclass
 class DownloadHistory:
     entries: List[Dict[str, Any]] = field(default_factory=list)
     
-    def add_entry(self, url: str, filename: str, output_path: str, 
-                  size: int, success: bool, elapsed_time: float) -> None:
-        """Add a download to history"""
+    def add_entry(self, url, filename, output_path, size, success, elapsed_time):
         entry = {
             "url": url,
             "filename": filename,
@@ -391,12 +290,11 @@ class DownloadHistory:
             "date": datetime.now().isoformat(),
             "elapsed_time": elapsed_time
         }
-        self.entries.insert(0, entry)  # Add to beginning
-        self.entries = self.entries[:50]  # Keep only the last 50 entries
+        self.entries.insert(0, entry)
+        self.entries = self.entries[:50]
         self.save()
     
-    def save(self) -> None:
-        """Save history to file"""
+    def save(self):
         ensure_config_directory()
         try:
             with open(HISTORY_FILE, "w") as f:
@@ -405,8 +303,7 @@ class DownloadHistory:
             print_error(f"Failed to save history: {e}")
     
     @classmethod
-    def load(cls) -> "DownloadHistory":
-        """Load history from file"""
+    def load(cls):
         try:
             if os.path.exists(HISTORY_FILE):
                 with open(HISTORY_FILE, "r") as f:
@@ -416,21 +313,13 @@ class DownloadHistory:
             print_error(f"Failed to load history: {e}")
         return cls()
 
-
-# ----------------------------------------------------------------
-# Enhanced UI Functions
-# ----------------------------------------------------------------
-def clear_screen() -> None:
-    """Clear the terminal screen"""
+def clear_screen():
     console.clear()
 
-
-def create_header() -> Panel:
-    """Create an enhanced header with Nord theme styling"""
+def create_header():
     term_width = shutil.get_terminal_size().columns
     adjusted_width = min(term_width - 4, 80)
     
-    # Try different fonts for the ASCII art
     fonts = ["slant", "small_slant", "standard", "big", "digital", "small"]
     ascii_art = ""
     
@@ -446,21 +335,18 @@ def create_header() -> Panel:
     ascii_lines = [line for line in ascii_art.splitlines() if line.strip()]
     frost_colors = NordColors.get_frost_gradient(min(len(ascii_lines), 4))
     
-    # Create gradient effect for header
     styled_text = ""
     for i, line in enumerate(ascii_lines):
         color = frost_colors[i % len(frost_colors)]
         escaped_line = line.replace("[", "\\[").replace("]", "\\]")
         styled_text += f"[bold {color}]{escaped_line}[/]\n"
     
-    # Add fancy borders
     border_style = NordColors.FROST_3
     border_char = "═"
     border_line = f"[{border_style}]{border_char * (adjusted_width - 8)}[/]"
     
     styled_text = border_line + "\n" + styled_text + border_line
     
-    # Create the panel with enhanced styling
     panel = Panel(
         Text.from_markup(styled_text),
         border_style=NordColors.FROST_1,
@@ -474,44 +360,28 @@ def create_header() -> Panel:
     
     return panel
 
-
-def print_message(
-    text: str, style: Union[str, Style] = NordColors.INFO, prefix: str = "•"
-) -> None:
-    """Print a styled message to the console"""
+def print_message(text, style=NordColors.INFO, prefix="•"):
     if isinstance(style, str):
         console.print(f"[{style}]{prefix} {text}[/{style}]")
     else:
         console.print(f"{prefix} {text}", style=style)
 
-
-def print_error(message: str) -> None:
-    """Print an error message"""
+def print_error(message):
     print_message(message, NordColors.ERROR, "✗")
 
-
-def print_success(message: str) -> None:
-    """Print a success message"""
+def print_success(message):
     print_message(message, NordColors.SUCCESS, "✓")
 
-
-def print_warning(message: str) -> None:
-    """Print a warning message"""
+def print_warning(message):
     print_message(message, NordColors.WARNING, "⚠")
 
-
-def print_step(message: str) -> None:
-    """Print a step message"""
+def print_step(message):
     print_message(message, NordColors.INFO, "→")
 
-
-def print_info(message: str) -> None:
-    """Print an informational message"""
+def print_info(message):
     print_message(message, NordColors.INFO, "ℹ")
 
-
-def display_panel(title: str, message: str, style: Union[str, Style] = NordColors.INFO) -> None:
-    """Display a styled panel with content"""
+def display_panel(title, message, style=NordColors.INFO):
     if isinstance(style, str):
         panel = Panel(
             Text.from_markup(message),
@@ -530,9 +400,7 @@ def display_panel(title: str, message: str, style: Union[str, Style] = NordColor
         )
     console.print(panel)
 
-
-def format_size(num_bytes: float) -> str:
-    """Format byte size to human-readable format"""
+def format_size(num_bytes):
     if num_bytes < 0:
         return "0 B"
     
@@ -544,9 +412,7 @@ def format_size(num_bytes: float) -> str:
         num_bytes /= 1024
     return f"{num_bytes:.2f} PB"
 
-
-def format_time(seconds: float) -> str:
-    """Format seconds to human-readable time format"""
+def format_time(seconds):
     if seconds < 0 or seconds == float('inf'):
         return "unknown"
     
@@ -563,9 +429,7 @@ def format_time(seconds: float) -> str:
         remaining_minutes = (seconds % 3600) / 60
         return f"{int(hours)}h {int(remaining_minutes)}m"
 
-
-def create_menu_table(title: str, options: List[Tuple[str, str, str]]) -> Table:
-    """Create a styled table for menu options"""
+def create_menu_table(title, options):
     table = Table(
         show_header=True,
         header_style=NordColors.HEADER,
@@ -585,39 +449,24 @@ def create_menu_table(title: str, options: List[Tuple[str, str, str]]) -> Table:
         
     return table
 
-
-# ----------------------------------------------------------------
-# Core Functionality
-# ----------------------------------------------------------------
-def ensure_config_directory() -> None:
-    """Ensure the config directory exists"""
+def ensure_config_directory():
     try:
         os.makedirs(CONFIG_DIR, exist_ok=True)
     except Exception as e:
         print_error(f"Could not create config directory: {e}")
 
-
-def run_command(
-    cmd: List[str],
-    check: bool = True,
-    timeout: int = DEFAULT_TIMEOUT,
-    verbose: bool = False,
-) -> subprocess.CompletedProcess:
-    """Run a shell command with proper handling"""
+def run_command(cmd, check=True, timeout=DEFAULT_TIMEOUT, verbose=False):
     try:
         if verbose:
             print_step(f"Executing: {' '.join(cmd)}")
             
-        # Create a progress spinner for long-running commands
         with Progress(
             SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
             TextColumn(f"[bold {NordColors.FROST_2}]Running command..."),
             console=console
         ) as progress:
             task = progress.add_task("", total=None)
-            result = subprocess.run(
-                cmd, check=check, text=True, capture_output=True, timeout=timeout
-            )
+            result = subprocess.run(cmd, check=check, text=True, capture_output=True, timeout=timeout)
             
         return result
     except subprocess.CalledProcessError as e:
@@ -634,114 +483,19 @@ def run_command(
         print_error(f"Error executing command: {e}")
         raise
 
-
-async def download_file_with_progress(url: str, output_path: str) -> bool:
-    """
-    Download a file with enhanced progress tracking and Nord-themed progress bar.
-    
-    Args:
-        url: The URL to download
-        output_path: Where to save the file
-        
-    Returns:
-        bool: True if download succeeded, False otherwise
-    """
-    source = DownloadSource(url=url)
-    source.get_file_info()  # Get file size and content type
-    stats = DownloadStats(total_size=source.size)
-    safe_url = urllib.parse.quote(url, safe=":/?&=")
-    
-    try:
-        # Create an enhanced progress display with Nord theme
-        with Progress(
-            *NordColors.get_progress_columns(),
-            console=console,
-        ) as progress:
-            download_task = progress.add_task(
-                "Starting download...",
-                total=source.size if source.size > 0 else None
-            )
-            
-            with requests.get(
-                safe_url, stream=True, timeout=DOWNLOAD_TIMEOUT
-            ) as response:
-                response.raise_for_status()
-                
-                # If we didn't get content length from HEAD request, try again from GET
-                if stats.total_size <= 0 and "content-length" in response.headers:
-                    content_length = response.headers.get("content-length")
-                    if content_length and content_length.isdigit():
-                        stats.total_size = int(content_length)
-                        progress.update(download_task, total=stats.total_size)
-                
-                with open(output_path, "wb") as f:
-                    for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
-                        if chunk:
-                            f.write(chunk)
-                            chunk_size = len(chunk)
-                            stats.update_progress(chunk_size)
-                            
-                            # Update progress with improved rate display
-                            speed_text = f"{format_size(stats.average_rate)}/s"
-                            time_left = stats.estimated_time_remaining
-                            progress_desc = f"Downloading: {source.name}"
-                            
-                            progress.update(
-                                download_task,
-                                completed=stats.bytes_downloaded,
-                                description=progress_desc,
-                                refresh=True
-                            )
-                            
-                            # For unknown size files, show animated progress
-                            if source.size <= 0:
-                                progress.update(download_task, advance=len(chunk) / CHUNK_SIZE)
-        
-        return True
-    except requests.exceptions.RequestException as e:
-        print_error(f"Download failed: {str(e)}")
-        if os.path.exists(output_path):
-            os.unlink(output_path)  # Remove partial file
-        return False
-    except IOError as e:
-        print_error(f"File I/O error: {str(e)}")
-        if os.path.exists(output_path):
-            os.unlink(output_path)  # Remove partial file
-        return False
-    except Exception as e:
-        print_error(f"Unexpected error: {str(e)}")
-        if os.path.exists(output_path):
-            os.unlink(output_path)  # Remove partial file
-        return False
-
-
-def ensure_directory(path: str) -> None:
-    """Ensure a directory exists, creating it if necessary"""
+def ensure_directory(path):
     try:
         os.makedirs(path, exist_ok=True)
     except Exception as e:
         print_error(f"Failed to create directory '{path}': {e}")
         raise
 
-
-def download_file(url: str, output_dir: str, verbose: bool = False) -> bool:
-    """
-    Download a file from a URL with enhanced UI and progress tracking.
-    
-    Args:
-        url: The URL to download
-        output_dir: The directory to save the file in
-        verbose: Whether to show verbose output
-        
-    Returns:
-        bool: True if download succeeded, False otherwise
-    """
+def download_file(url, output_dir, verbose=False):
     try:
         ensure_directory(output_dir)
         source = DownloadSource(url=url)
-        source.get_file_info()  # Get file size, type, and better filename
+        source.get_file_info()
         
-        # Get a filename that doesn't conflict with existing files
         base_filename = source.name
         filename = base_filename
         counter = 1
@@ -753,7 +507,6 @@ def download_file(url: str, output_dir: str, verbose: bool = False) -> bool:
             
         output_path = os.path.join(output_dir, filename)
         
-        # Show download information in a panel
         display_panel(
             "Download Information",
             f"URL: {url}\n"
@@ -764,11 +517,9 @@ def download_file(url: str, output_dir: str, verbose: bool = False) -> bool:
             NordColors.FROST_2
         )
         
-        # Start the download
         start_time = time.time()
-        
-        # Use non-async approach instead of mixing async/sync code
         success = False
+        
         try:
             with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT) as response:
                 response.raise_for_status()
@@ -777,11 +528,7 @@ def download_file(url: str, output_dir: str, verbose: bool = False) -> bool:
                 with Progress(
                     SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
                     TextColumn(f"[bold {NordColors.FROST_2}]Downloading"),
-                    BarColumn(
-                        style=NordColors.POLAR_NIGHT_3,
-                        complete_style=NordColors.FROST_2,
-                        finished_style=NordColors.GREEN
-                    ),
+                    BarColumn(style=NordColors.POLAR_NIGHT_3, complete_style=NordColors.FROST_2, finished_style=NordColors.GREEN),
                     TaskProgressColumn(),
                     TransferSpeedColumn(),
                     TimeRemainingColumn(compact=True),
@@ -795,13 +542,8 @@ def download_file(url: str, output_dir: str, verbose: bool = False) -> bool:
                             if chunk:
                                 f.write(chunk)
                                 downloaded += len(chunk)
-                                progress.update(
-                                    task, 
-                                    completed=downloaded,
-                                    description=f"Downloading: {filename}"
-                                )
+                                progress.update(task, completed=downloaded, description=f"Downloading: {filename}")
                                 
-                                # For unknown size files, show animated progress
                                 if total_size == 0:
                                     progress.update(task, advance=len(chunk) / CHUNK_SIZE)
             
@@ -819,18 +561,10 @@ def download_file(url: str, output_dir: str, verbose: bool = False) -> bool:
             file_size = file_stats.st_size
             download_speed = file_size / max(download_time, 0.1)
             
-            # Add to download history
             history = DownloadHistory.load()
-            history.add_entry(
-                url=url,
-                filename=filename,
-                output_path=output_path,
-                size=file_size,
-                success=True,
-                elapsed_time=download_time
-            )
+            history.add_entry(url=url, filename=filename, output_path=output_path, size=file_size, 
+                             success=True, elapsed_time=download_time)
             
-            # Show success panel with detailed stats
             display_panel(
                 "Download Complete",
                 f"✅ Downloaded: [bold]{filename}[/]\n"
@@ -842,21 +576,13 @@ def download_file(url: str, output_dir: str, verbose: bool = False) -> bool:
             )
             return True
         else:
-            # Add failed download to history
             history = DownloadHistory.load()
-            history.add_entry(
-                url=url,
-                filename=filename,
-                output_path=output_path,
-                size=0,
-                success=False,
-                elapsed_time=download_time
-            )
+            history.add_entry(url=url, filename=filename, output_path=output_path, size=0,
+                             success=False, elapsed_time=download_time)
             
             display_panel(
                 "Download Failed",
-                f"❌ Failed to download: {filename}\n"
-                f"🔗 URL: {url}",
+                f"❌ Failed to download: {filename}\n🔗 URL: {url}",
                 NordColors.RED
             )
             return False
@@ -866,24 +592,11 @@ def download_file(url: str, output_dir: str, verbose: bool = False) -> bool:
             console.print_exception()
         return False
 
-
-def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
-    """
-    Download a YouTube video with enhanced progress display.
-    
-    Args:
-        url: YouTube URL
-        output_dir: Directory to save the video
-        verbose: Whether to display verbose output
-        
-    Returns:
-        bool: True if download succeeded, False otherwise
-    """
+def download_youtube(url, output_dir, verbose=False):
     try:
         ensure_directory(output_dir)
         output_template = os.path.join(output_dir, "%(title)s.%(ext)s")
         
-        # Display YouTube download information
         display_panel(
             "YouTube Download",
             f"URL: {url}\n"
@@ -893,13 +606,12 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
             NordColors.FROST_2
         )
         
-        # Build yt-dlp command
         cmd = [
             "yt-dlp",
             "-f", "bestvideo+bestaudio/best",
             "--merge-output-format", "mp4",
             "-o", output_template,
-            "--newline",  # For better progress parsing
+            "--newline",
             url,
         ]
         
@@ -908,15 +620,10 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
         
         start_time = time.time()
         
-        # Enhanced progress display with Nord theme
         with Progress(
             SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
             TextColumn(f"[bold {NordColors.FROST_2}]{{task.description}}"),
-            BarColumn(
-                style=NordColors.POLAR_NIGHT_3,
-                complete_style=NordColors.FROST_2,
-                finished_style=NordColors.GREEN
-            ),
+            BarColumn(style=NordColors.POLAR_NIGHT_3, complete_style=NordColors.FROST_2, finished_style=NordColors.GREEN),
             TaskProgressColumn(style=NordColors.SNOW_STORM_1),
             TimeRemainingColumn(),
             console=console,
@@ -925,15 +632,8 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
             download_task = progress.add_task("Starting YouTube download...", total=1000)
             video_title = "video"
             
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
-            )
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
             
-            # Variable to track current stage
             current_stage = "Initializing"
             progress_value = 0.0
             
@@ -950,19 +650,16 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
                 if verbose:
                     console.log(line, style="dim")
                 
-                # Parse and update progress based on yt-dlp output
                 if "[download]" in line and "%" in line:
                     try:
-                        # Extract percentage and update progress
                         percent_str = line.split("%")[0].split()[-1]
                         if percent_str.replace('.', '', 1).isdigit():
                             percent = float(percent_str)
-                            progress_value = percent * 10  # Scale to 0-1000
+                            progress_value = percent * 10
                             progress.update(download_task, completed=progress_value)
                     except (ValueError, IndexError):
                         pass
                     
-                    # Update description with current task
                     progress.update(download_task, description=line.strip())
                     
                 elif "[ExtractAudio]" in line or "Extracting audio" in line:
@@ -972,7 +669,6 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
                 elif "Merging formats into" in line:
                     current_stage = "Merging Formats"
                     progress.update(download_task, description=current_stage)
-                    # Extract filename
                     try:
                         video_title = line.split("Merging formats into")[1].strip().strip('"')
                     except (IndexError, AttributeError):
@@ -988,12 +684,9 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
                     current_stage = "Finalizing Video"
                     progress.update(download_task, description=current_stage)
                 
-                # Keep progress bar moving for operations without percent indicators
                 if "%" not in line and progress_value < 990:
-                    # Advance slightly to show activity
                     progress.advance(download_task, advance=0.5)
             
-            # Set to completed when done
             progress.update(download_task, completed=1000, description="Download Complete")
             
         end_time = time.time()
@@ -1001,29 +694,22 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
         return_code = process.returncode
         
         if return_code == 0:
-            # Allow a small delay for file operations to complete
             time.sleep(0.5)
             
-            # Find the most recently downloaded file - use a more thorough approach
             downloaded_file = None
             newest_time = 0
             
-            # Check both the output directory and any subdirectories
             for root, dirs, files in os.walk(output_dir):
                 for file in files:
-                    # Only consider media files
                     if file.endswith(('.mp4', '.mkv', '.webm', '.mp3', '.m4a')):
                         file_path = os.path.join(root, file)
                         try:
                             file_stats = os.stat(file_path)
-                            # Check both modification and creation time
                             file_time = max(file_stats.st_mtime, file_stats.st_ctime)
                             
-                            # If file was modified after we started downloading and is newer than our current candidate
                             if file_time > start_time - 1 and file_time > newest_time:
                                 newest_time = file_time
                                 downloaded_file = file
-                                # Store full path if in subdirectory
                                 if root != output_dir:
                                     downloaded_file = os.path.relpath(file_path, output_dir)
                         except Exception as e:
@@ -1035,16 +721,9 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
                 file_path = os.path.join(output_dir, downloaded_file)
                 file_size = os.path.getsize(file_path)
                 
-                # Add to download history
                 history = DownloadHistory.load()
-                history.add_entry(
-                    url=url,
-                    filename=downloaded_file,
-                    output_path=file_path,
-                    size=file_size,
-                    success=True,
-                    elapsed_time=download_time
-                )
+                history.add_entry(url=url, filename=downloaded_file, output_path=file_path, 
+                                 size=file_size, success=True, elapsed_time=download_time)
                 
                 display_panel(
                     "YouTube Download Complete",
@@ -1059,21 +738,13 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
                 print_warning("Download may have succeeded but file not found")
                 return True
         else:
-            # Add failed download to history
             history = DownloadHistory.load()
-            history.add_entry(
-                url=url,
-                filename=video_title,
-                output_path=output_dir,
-                size=0,
-                success=False,
-                elapsed_time=download_time
-            )
+            history.add_entry(url=url, filename=video_title, output_path=output_dir,
+                             size=0, success=False, elapsed_time=download_time)
             
             display_panel(
                 "YouTube Download Failed",
-                f"❌ Failed to download: {url}\n"
-                f"📂 Check {output_dir} for any partial downloads",
+                f"❌ Failed to download: {url}\n📂 Check {output_dir} for any partial downloads",
                 NordColors.RED
             )
             return False
@@ -1083,12 +754,7 @@ def download_youtube(url: str, output_dir: str, verbose: bool = False) -> bool:
             console.print_exception()
         return False
 
-
-# ----------------------------------------------------------------
-# Signal Handling and Cleanup
-# ----------------------------------------------------------------
-def cleanup() -> None:
-    """Perform cleanup operations before exit"""
+def cleanup():
     try:
         config = AppConfig.load()
         config.save()
@@ -1096,9 +762,7 @@ def cleanup() -> None:
     except Exception as e:
         print_error(f"Error during cleanup: {e}")
 
-
-def signal_handler(sig: int, frame: Any) -> None:
-    """Handle interrupt signals"""
+def signal_handler(sig, frame):
     try:
         sig_name = signal.Signals(sig).name
         print_warning(f"Process interrupted by {sig_name}")
@@ -1107,17 +771,11 @@ def signal_handler(sig: int, frame: Any) -> None:
     cleanup()
     sys.exit(128 + sig)
 
-
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 atexit.register(cleanup)
 
-
-# ----------------------------------------------------------------
-# Enhanced Menu Functions
-# ----------------------------------------------------------------
-def file_download_menu() -> None:
-    """Menu for downloading files from URLs"""
+def file_download_menu():
     clear_screen()
     console.print(create_header())
     display_panel(
@@ -1128,18 +786,13 @@ def file_download_menu() -> None:
     
     config = AppConfig.load()
     history = FileHistory(os.path.join(CONFIG_DIR, "url_history.txt"))
-    
-    # Create a URL completer with recent downloads
     url_completer = WordCompleter(config.recent_downloads, sentence=True)
     
-    # Use prompt toolkit for nicer URL input with history
     url = pt_prompt(
         "Enter the URL to download: ",
         history=history,
         completer=url_completer,
-        style=PTStyle.from_dict({
-            'prompt': f'bold {NordColors.FROST_2}',
-        })
+        style=PTStyle.from_dict({'prompt': f'bold {NordColors.FROST_2}',})
     )
     
     if not url:
@@ -1147,31 +800,24 @@ def file_download_menu() -> None:
         Prompt.ask("Press Enter to return to the main menu")
         return
     
-    # Enhanced output directory selection
     output_dir = Prompt.ask(
         "Enter the output directory",
         default=config.default_download_dir,
         show_choices=False
     )
     
-    # Option for verbose output
     verbose = Confirm.ask("Enable verbose mode?", default=False)
-    
-    # Perform the download with enhanced feedback
     success = download_file(url, output_dir, verbose)
     
     if success:
-        # Update recent downloads list
         if url not in config.recent_downloads:
             config.recent_downloads.insert(0, url)
-            config.recent_downloads = config.recent_downloads[:10]  # Keep top 10
+            config.recent_downloads = config.recent_downloads[:10]
         config.save()
     
     Prompt.ask("Press Enter to return to the main menu")
 
-
-def youtube_download_menu() -> None:
-    """Menu for downloading YouTube videos"""
+def youtube_download_menu():
     clear_screen()
     console.print(create_header())
     display_panel(
@@ -1180,7 +826,6 @@ def youtube_download_menu() -> None:
         NordColors.FROST_2
     )
     
-    # Check for yt-dlp
     if not shutil.which("yt-dlp"):
         display_panel(
             "Dependency Missing",
@@ -1203,19 +848,14 @@ def youtube_download_menu() -> None:
     
     config = AppConfig.load()
     history = FileHistory(os.path.join(CONFIG_DIR, "youtube_history.txt"))
-    
-    # Create URL completer with YouTube URLs from history
     youtube_urls = [url for url in config.recent_downloads if "youtube.com" in url or "youtu.be" in url]
     url_completer = WordCompleter(youtube_urls, sentence=True)
     
-    # Use prompt toolkit for nicer URL input with history
     url = pt_prompt(
         "Enter the YouTube URL: ",
         history=history,
         completer=url_completer,
-        style=PTStyle.from_dict({
-            'prompt': f'bold {NordColors.FROST_2}',
-        })
+        style=PTStyle.from_dict({'prompt': f'bold {NordColors.FROST_2}',})
     )
     
     if not url:
@@ -1223,47 +863,33 @@ def youtube_download_menu() -> None:
         Prompt.ask("Press Enter to return to the main menu")
         return
     
-    # Enhanced output directory selection
     output_dir = Prompt.ask(
         "Enter the output directory",
         default=config.default_download_dir,
         show_choices=False
     )
     
-    # Option for verbose output
     verbose = Confirm.ask("Enable verbose mode?", default=False)
-    
-    # Perform the YouTube download with enhanced feedback
     success = download_youtube(url, output_dir, verbose)
     
     if success:
-        # Update recent downloads list
         if url not in config.recent_downloads:
             config.recent_downloads.insert(0, url)
-            config.recent_downloads = config.recent_downloads[:10]  # Keep top 10
+            config.recent_downloads = config.recent_downloads[:10]
         config.save()
     
     Prompt.ask("Press Enter to return to the main menu")
 
-
-def view_download_history() -> None:
-    """View and manage download history"""
+def view_download_history():
     clear_screen()
     console.print(create_header())
-    
-    # Load download history
     history = DownloadHistory.load()
     
     if not history.entries:
-        display_panel(
-            "Download History",
-            "No download history found.",
-            NordColors.FROST_3
-        )
+        display_panel("Download History", "No download history found.", NordColors.FROST_3)
         Prompt.ask("Press Enter to return to the settings menu")
         return
     
-    # Create a table to display download history
     table = Table(
         show_header=True,
         header_style=NordColors.HEADER,
@@ -1273,29 +899,19 @@ def view_download_history() -> None:
         expand=True
     )
     
-    # Add columns
     table.add_column("#", style=NordColors.ACCENT, width=3)
     table.add_column("Date", style=NordColors.FROST_2)
     table.add_column("Filename", style=NordColors.SNOW_STORM_1)
     table.add_column("Size", style=NordColors.FROST_3, justify="right")
     table.add_column("Status", style=NordColors.FROST_4)
     
-    # Add rows (show last 15 downloads)
     for i, entry in enumerate(history.entries[:15], 1):
         date_str = datetime.fromisoformat(entry["date"]).strftime("%Y-%m-%d %H:%M")
         status = "[green]Success[/green]" if entry["success"] else "[red]Failed[/red]"
-        
-        table.add_row(
-            str(i),
-            date_str,
-            entry["filename"],
-            format_size(entry["size"]),
-            status
-        )
+        table.add_row(str(i), date_str, entry["filename"], format_size(entry["size"]), status)
     
     console.print(table)
     
-    # Options for history management
     options = [
         ("1", "View Download Details", "See details for a specific download"),
         ("2", "Clear History", "Delete all download history"),
@@ -1333,20 +949,12 @@ def view_download_history() -> None:
     
     view_download_history() if choice != "3" else None
 
-
-def settings_menu() -> None:
-    """Enhanced settings menu"""
+def settings_menu():
     clear_screen()
     console.print(create_header())
-    display_panel(
-        "Settings",
-        "Configure application settings and preferences.",
-        NordColors.FROST_2
-    )
+    display_panel("Settings", "Configure application settings and preferences.", NordColors.FROST_2)
     
     config = AppConfig.load()
-    
-    # Create a more visually appealing settings menu
     settings_options = [
         ("1", "Change Default Download Directory", config.default_download_dir),
         ("2", "View Recent Downloads", f"{len(config.recent_downloads)} downloads"),
@@ -1360,11 +968,7 @@ def settings_menu() -> None:
     choice = Prompt.ask("Select option", choices=["1", "2", "3", "4", "5", "6"], default="6")
     
     if choice == "1":
-        # Enhanced directory selection with better feedback
-        new_dir = Prompt.ask(
-            "Enter new default download directory",
-            default=config.default_download_dir
-        )
+        new_dir = Prompt.ask("Enter new default download directory", default=config.default_download_dir)
         
         if os.path.isdir(new_dir):
             config.default_download_dir = new_dir
@@ -1382,7 +986,6 @@ def settings_menu() -> None:
             print_warning("Directory change canceled")
             
     elif choice == "2":
-        # Show recent downloads in a table
         if config.recent_downloads:
             recent_table = Table(
                 show_header=True,
@@ -1409,11 +1012,9 @@ def settings_menu() -> None:
             print_warning("No recent downloads found")
             
     elif choice == "3":
-        # View download history
         view_download_history()
         
     elif choice == "4":
-        # Check dependencies with enhanced visual feedback
         dependencies = {
             "curl": ["brew", "install", "curl"],
             "wget": ["brew", "install", "wget"],
@@ -1447,46 +1048,26 @@ def settings_menu() -> None:
                 status_text = "Installed" if installed else "Missing"
                 status_style = NordColors.GREEN if installed else NordColors.RED
                 
-                # Get version if installed
                 version = "N/A"
                 if installed:
                     try:
                         if name == "ffmpeg":
-                            version_result = subprocess.run(
-                                [name, "-version"],
-                                capture_output=True,
-                                text=True,
-                                check=False
-                            )
+                            version_result = subprocess.run([name, "-version"], capture_output=True, text=True, check=False)
                             if version_result.returncode == 0:
                                 version_line = version_result.stdout.split("\n")[0]
                                 version = version_line.split(" ")[2] if len(version_line.split(" ")) > 2 else "Unknown"
                         elif name == "yt-dlp":
-                            version_result = subprocess.run(
-                                [name, "--version"],
-                                capture_output=True,
-                                text=True,
-                                check=False
-                            )
+                            version_result = subprocess.run([name, "--version"], capture_output=True, text=True, check=False)
                             if version_result.returncode == 0:
                                 version = version_result.stdout.strip()
                         else:
-                            version_result = subprocess.run(
-                                [name, "--version"],
-                                capture_output=True,
-                                text=True,
-                                check=False
-                            )
+                            version_result = subprocess.run([name, "--version"], capture_output=True, text=True, check=False)
                             if version_result.returncode == 0:
                                 version = version_result.stdout.strip().split("\n")[0]
                     except Exception:
                         version = "Unknown"
                 
-                dep_table.add_row(
-                    name,
-                    f"[{status_style}]{status_text}[/{status_style}]",
-                    version
-                )
+                dep_table.add_row(name, f"[{status_style}]{status_text}[/{status_style}]", version)
                 
                 if not installed:
                     missing_deps[name] = cmd
@@ -1497,10 +1078,7 @@ def settings_menu() -> None:
         
         if missing_deps:
             if Confirm.ask("Install missing dependencies?", default=True):
-                with Progress(
-                    *NordColors.get_progress_columns(),
-                    console=console
-                ) as progress:
+                with Progress(*NordColors.get_progress_columns(), console=console) as progress:
                     install_task = progress.add_task("Installing", total=len(missing_deps))
                     
                     for name, cmd in missing_deps.items():
@@ -1511,12 +1089,10 @@ def settings_menu() -> None:
                             
                         try:
                             run_command(cmd, check=False, verbose=True)
-                            
                             if shutil.which(name):
                                 print_success(f"Installed {name}")
                             else:
                                 print_error(f"Failed to install {name}")
-                                
                         except Exception as e:
                             print_error(f"Error installing {name}: {e}")
                             
@@ -1527,7 +1103,6 @@ def settings_menu() -> None:
             print_success("All dependencies are installed")
     
     elif choice == "5":
-        # Application information display
         system_info = {
             "App Version": VERSION,
             "Python Version": platform.python_version(),
@@ -1538,27 +1113,18 @@ def settings_menu() -> None:
             "Config Directory": CONFIG_DIR,
         }
         
-        # Create an info panel
         info_content = "\n".join([f"{k}: {v}" for k, v in system_info.items()])
-        
-        display_panel(
-            "Application Information",
-            info_content,
-            NordColors.FROST_2
-        )
+        display_panel("Application Information", info_content, NordColors.FROST_2)
         
     Prompt.ask("Press Enter to continue" if choice != "6" else "Press Enter to return to the main menu")
     if choice != "6":
         settings_menu()
 
-
-def main_menu() -> None:
-    """Enhanced main menu with better visual styling"""
+def main_menu():
     while True:
         clear_screen()
         console.print(create_header())
         
-        # Enhanced main menu with better descriptions
         main_options = [
             ("1", "Download File", "Download any file from the web with progress tracking"),
             ("2", "Download YouTube", "Download YouTube videos in highest quality as MP4"),
@@ -1568,7 +1134,6 @@ def main_menu() -> None:
         
         console.print(create_menu_table("Main Menu", main_options))
         
-        # Add quick stats panel
         config = AppConfig.load()
         history = DownloadHistory.load()
         
@@ -1585,12 +1150,7 @@ def main_menu() -> None:
         )
         
         console.print(stats_panel)
-        
-        choice = Prompt.ask(
-            "Select an option",
-            choices=["1", "2", "3", "4"],
-            default="4"
-        )
+        choice = Prompt.ask("Select an option", choices=["1", "2", "3", "4"], default="4")
         
         if choice == "1":
             file_download_menu()
@@ -1615,11 +1175,8 @@ def main_menu() -> None:
             )
             break
 
-
-def main() -> None:
-    """Main application entry point with enhanced error handling"""
+def main():
     try:
-        # Display a splash screen
         clear_screen()
         console.print(create_header())
         
@@ -1629,24 +1186,15 @@ def main() -> None:
             console=console
         ) as progress:
             task = progress.add_task("", total=100)
-            
-            # Initialize application
             ensure_config_directory()
             progress.update(task, completed=30, description="Checking configuration...")
-            
-            # Check ffmpeg
             check_ffmpeg()
             progress.update(task, completed=60, description="Verifying dependencies...")
-            
-            # Load config
             AppConfig.load()
             progress.update(task, completed=90, description="Loading settings...")
-            
-            # Complete
             progress.update(task, completed=100, description="Ready!")
-            time.sleep(0.5)  # Brief pause to show completion
+            time.sleep(0.5)
         
-        # Start the main menu
         main_menu()
         
     except KeyboardInterrupt:
@@ -1654,15 +1202,12 @@ def main() -> None:
         
     except Exception as e:
         print_error(f"An unexpected error occurred: {e}")
-        
         if Confirm.ask("Show detailed error information?", default=False):
             console.print_exception(show_locals=True)
-            
         print_step("The application will now exit.")
         
     finally:
         cleanup()
-
 
 if __name__ == "__main__":
     main()
