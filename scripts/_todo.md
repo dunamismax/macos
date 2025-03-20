@@ -14,7 +14,6 @@
     └── python_dev_setup.py
     └── script_deployer.py
     └── sftp_toolkit.py
-    *└── ssh_selector.py
     └── system_monitor.py
     └── voip_toolkit.py
 ```
