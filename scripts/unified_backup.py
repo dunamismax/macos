@@ -25,15 +25,21 @@ try:
     from rich.style import Style
     from rich.prompt import Prompt, Confirm
     from rich.progress import (
-        Progress, SpinnerColumn, TextColumn, BarColumn,
-        TimeRemainingColumn, TaskProgressColumn
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        BarColumn,
+        TimeRemainingColumn,
+        TaskProgressColumn,
     )
     from rich.traceback import install as install_rich_traceback
     from prompt_toolkit import prompt as pt_prompt
     from prompt_toolkit.history import InMemoryHistory
     from prompt_toolkit.styles import Style as PtStyle
 except ImportError:
-    print("Missing required packages. Please install with: pip install rich pyfiglet prompt_toolkit")
+    print(
+        "Missing required packages. Please install with: pip install rich pyfiglet prompt_toolkit"
+    )
     sys.exit(1)
 
 install_rich_traceback(show_locals=True)
@@ -67,7 +73,7 @@ BACKUP_CONFIGS = {
             "*.dmg",
             "*.iso",
             "/.DocumentRevisions-V100",
-            "/System/Volumes/Data/.DocumentRevisions-V100"
+            "/System/Volumes/Data/.DocumentRevisions-V100",
         ],
         "name": "System",
         "description": "User data and system configuration",
@@ -81,14 +87,9 @@ BACKUP_CONFIGS = {
     "plex": {
         "paths": [
             "/Users/*/Library/Application Support/Plex Media Server",
-            "/Library/Application Support/Plex Media Server"
+            "/Library/Application Support/Plex Media Server",
         ],
-        "excludes": [
-            "Cache",
-            "Crash Reports",
-            "Logs",
-            "Codecs"
-        ],
+        "excludes": ["Cache", "Crash Reports", "Logs", "Codecs"],
         "name": "Plex Media Server",
         "description": "Plex configuration and data",
     },
@@ -125,7 +126,12 @@ class NordColors:
 
     @classmethod
     def get_polar_gradient(cls, steps=4):
-        return [cls.POLAR_NIGHT_1, cls.POLAR_NIGHT_2, cls.POLAR_NIGHT_3, cls.POLAR_NIGHT_4][:steps]
+        return [
+            cls.POLAR_NIGHT_1,
+            cls.POLAR_NIGHT_2,
+            cls.POLAR_NIGHT_3,
+            cls.POLAR_NIGHT_4,
+        ][:steps]
 
 
 def create_header() -> Panel:
@@ -199,7 +205,9 @@ def display_panel(message: str, style=NordColors.FROST_2, title=None) -> None:
 def get_user_input(prompt_text: str, default=None) -> str:
     pt_style = PtStyle.from_dict({"prompt": f"bold {NordColors.PURPLE}"})
     history = InMemoryHistory()
-    return pt_prompt(f"{prompt_text} ", default=default, style=pt_style, history=history)
+    return pt_prompt(
+        f"{prompt_text} ", default=default, style=pt_style, history=history
+    )
 
 
 def wait_for_enter() -> None:
@@ -211,7 +219,9 @@ def setup_logging() -> None:
     try:
         Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
         with open(LOG_FILE, "a") as log_file:
-            log_file.write(f"\n--- Backup session started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+            log_file.write(
+                f"\n--- Backup session started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n"
+            )
         print_success(f"Logging to {LOG_FILE}", log=False)
     except Exception as e:
         print_warning(f"Logging setup failed: {e}", log=False)
@@ -227,12 +237,12 @@ def log_message(message: str, level="INFO") -> None:
 
 
 def run_command(
-        cmd: List[str],
-        env=None,
-        check=True,
-        capture_output=True,
-        timeout=COMMAND_TIMEOUT,
-        silent=False,
+    cmd: List[str],
+    env=None,
+    check=True,
+    capture_output=True,
+    timeout=COMMAND_TIMEOUT,
+    silent=False,
 ) -> subprocess.CompletedProcess:
     try:
         if not silent:
@@ -240,9 +250,9 @@ def run_command(
 
         command_env = env if env is not None else os.environ.copy()
         with Progress(
-                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]Running command..."),
-                console=console
+            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]Running command..."),
+            console=console,
         ) as progress:
             task = progress.add_task("", total=None)
             result = subprocess.run(
@@ -314,7 +324,9 @@ def install_dependencies() -> bool:
                 run_command(["brew", "install", "restic"])
                 setup_progress = shutil.which("restic") is not None
             else:
-                print_error("Homebrew not found. Please install it from https://brew.sh")
+                print_error(
+                    "Homebrew not found. Please install it from https://brew.sh"
+                )
                 setup_progress = False
         except Exception as e:
             print_error(f"Restic installation failed: {str(e)}")
@@ -330,7 +342,9 @@ def install_dependencies() -> bool:
                     run_command(["chmod", "+x", b2_path])
                 setup_progress = setup_progress and True
             else:
-                print_error("B2 CLI tool installation failed: command not found after installation")
+                print_error(
+                    "B2 CLI tool installation failed: command not found after installation"
+                )
                 setup_progress = False
         except Exception as e:
             print_error(f"B2 CLI installation failed: {str(e)}")
@@ -341,7 +355,9 @@ def install_dependencies() -> bool:
 
 def authorize_b2() -> bool:
     if B2_ACCOUNT_ID == "YOUR_B2_ACCOUNT_ID" or B2_ACCOUNT_KEY == "YOUR_B2_ACCOUNT_KEY":
-        print_error("B2 credentials not configured. Update the script with your actual credentials.")
+        print_error(
+            "B2 credentials not configured. Update the script with your actual credentials."
+        )
         return False
 
     try:
@@ -371,7 +387,9 @@ def ensure_bucket_exists(bucket: str) -> bool:
 
 def check_restic_password() -> bool:
     if RESTIC_PASSWORD == "YOUR_RESTIC_PASSWORD":
-        print_error("Restic password not configured. Update the script with your actual password.")
+        print_error(
+            "Restic password not configured. Update the script with your actual password."
+        )
         return False
     return True
 
@@ -384,7 +402,9 @@ def initialize_repository(service: str) -> bool:
     env = os.environ.copy()
     env.update({"RESTIC_PASSWORD": RESTIC_PASSWORD})
 
-    display_panel("Repository Initialization", NordColors.FROST_3, title=service.upper())
+    display_panel(
+        "Repository Initialization", NordColors.FROST_3, title=service.upper()
+    )
     print_message(f"Checking repository: {repo}")
 
     try:
@@ -424,7 +444,9 @@ def perform_backup(service: str) -> bool:
     config = BACKUP_CONFIGS[service]
     repo = REPOSITORIES[service]
 
-    display_panel(f"{config['name']} Backup", NordColors.FROST_2, title="Backup Operation")
+    display_panel(
+        f"{config['name']} Backup", NordColors.FROST_2, title="Backup Operation"
+    )
     log_message(f"Starting backup for {config['name']}")
 
     for path in config["paths"]:
@@ -450,13 +472,17 @@ def perform_backup(service: str) -> bool:
 
     try:
         with Progress(
-                SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]{{task.description}}"),
-                BarColumn(bar_width=40, style=NordColors.FROST_4, complete_style=NordColors.FROST_2),
-                TaskProgressColumn(),
-                TimeRemainingColumn(),
-                console=console,
-                expand=True,
+            SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]{{task.description}}"),
+            BarColumn(
+                bar_width=40,
+                style=NordColors.FROST_4,
+                complete_style=NordColors.FROST_2,
+            ),
+            TaskProgressColumn(),
+            TimeRemainingColumn(),
+            console=console,
+            expand=True,
         ) as progress:
             task_id = progress.add_task(f"Backing up {config['name']}...", total=100)
 
@@ -520,7 +546,7 @@ def apply_retention(service: str) -> bool:
         "forget",
         "--prune",
         "--keep-within",
-        RETENTION_POLICY
+        RETENTION_POLICY,
     ]
 
     try:
@@ -629,7 +655,9 @@ def backup_all_services() -> Dict[str, bool]:
     results = {}
     console.clear()
     console.print(create_header())
-    display_panel("Starting Backup for All Services", NordColors.FROST_2, title="Unified Backup")
+    display_panel(
+        "Starting Backup for All Services", NordColors.FROST_2, title="Unified Backup"
+    )
     log_message("Starting backup for all services")
 
     for svc in BACKUP_CONFIGS.keys():
@@ -637,7 +665,9 @@ def backup_all_services() -> Dict[str, bool]:
         results[svc] = backup_service(svc)
 
     console.print("\n")
-    display_panel("Backup Results Summary", NordColors.FROST_3, title="Completion Status")
+    display_panel(
+        "Backup Results Summary", NordColors.FROST_3, title="Completion Status"
+    )
 
     table = Table(
         show_header=True,
@@ -663,7 +693,9 @@ def backup_all_services() -> Dict[str, bool]:
 
     success_count = sum(1 for s in results.values() if s)
     total_count = len(results)
-    log_message(f"Completed backup for all services: {success_count}/{total_count} successful")
+    log_message(
+        f"Completed backup for all services: {success_count}/{total_count} successful"
+    )
 
     return results
 
@@ -708,9 +740,7 @@ def show_system_info() -> None:
 
     for key, config in BACKUP_CONFIGS.items():
         svc_table.add_row(
-            config["name"],
-            config["description"],
-            ", ".join(config["paths"])
+            config["name"], config["description"], ", ".join(config["paths"])
         )
 
     console.print(svc_table)
@@ -827,7 +857,9 @@ def interactive_menu() -> None:
         elif choice == "6":
             console.clear()
             console.print(create_header())
-            display_panel("All Snapshots", NordColors.FROST_2, title="Snapshot Overview")
+            display_panel(
+                "All Snapshots", NordColors.FROST_2, title="Snapshot Overview"
+            )
             for svc in BACKUP_CONFIGS.keys():
                 list_snapshots(svc)
         elif choice == "7":
@@ -876,9 +908,9 @@ def main() -> None:
     setup_logging()
 
     if (
-            B2_ACCOUNT_ID == "YOUR_B2_ACCOUNT_ID"
-            or B2_ACCOUNT_KEY == "YOUR_B2_ACCOUNT_KEY"
-            or RESTIC_PASSWORD == "YOUR_RESTIC_PASSWORD"
+        B2_ACCOUNT_ID == "YOUR_B2_ACCOUNT_ID"
+        or B2_ACCOUNT_KEY == "YOUR_B2_ACCOUNT_KEY"
+        or RESTIC_PASSWORD == "YOUR_RESTIC_PASSWORD"
     ):
         display_panel(
             "The script is using placeholder credentials.\nPlease update the script with your actual B2 and Restic credentials before running backups.",
@@ -888,9 +920,9 @@ def main() -> None:
         wait_for_enter()
 
     with Progress(
-            SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
-            TextColumn(f"[bold {NordColors.FROST_2}]{{task.description}}"),
-            console=console,
+        SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
+        TextColumn(f"[bold {NordColors.FROST_2}]{{task.description}}"),
+        console=console,
     ) as progress:
         task = progress.add_task("Setting up backup environment...", total=3)
 
@@ -899,15 +931,17 @@ def main() -> None:
         progress.advance(task)
 
         if (
-                B2_ACCOUNT_ID != "YOUR_B2_ACCOUNT_ID"
-                and B2_ACCOUNT_KEY != "YOUR_B2_ACCOUNT_KEY"
+            B2_ACCOUNT_ID != "YOUR_B2_ACCOUNT_ID"
+            and B2_ACCOUNT_KEY != "YOUR_B2_ACCOUNT_KEY"
         ):
             if not authorize_b2():
                 print_error("B2 authorization failed. Cloud backups may not work.")
             progress.advance(task)
 
             if not ensure_bucket_exists(B2_BUCKET):
-                print_error("Failed to ensure B2 bucket exists. Cloud backups may not work.")
+                print_error(
+                    "Failed to ensure B2 bucket exists. Cloud backups may not work."
+                )
             progress.advance(task)
         else:
             print_warning("Skipping B2 setup due to missing credentials")

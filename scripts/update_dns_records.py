@@ -25,12 +25,18 @@ def install_dependencies():
     try:
         if os.geteuid() != 0:
             import subprocess
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             import subprocess
+
             user = os.environ.get("SUDO_USER", os.environ.get("USER"))
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except Exception as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -41,8 +47,12 @@ try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.progress import (
-        Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn,
-        TimeRemainingColumn
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        BarColumn,
+        TaskProgressColumn,
+        TimeRemainingColumn,
     )
     from rich.table import Table
     from rich.text import Text
@@ -107,14 +117,24 @@ class NordColors:
 
     @classmethod
     def get_polar_gradient(cls, steps=4):
-        return [cls.POLAR_NIGHT_1, cls.POLAR_NIGHT_2, cls.POLAR_NIGHT_3, cls.POLAR_NIGHT_4][:steps]
+        return [
+            cls.POLAR_NIGHT_1,
+            cls.POLAR_NIGHT_2,
+            cls.POLAR_NIGHT_3,
+            cls.POLAR_NIGHT_4,
+        ][:steps]
 
     @classmethod
     def get_progress_columns(cls):
         return [
             SpinnerColumn(spinner_name="dots", style=f"bold {cls.FROST_1}"),
             TextColumn(f"[bold {cls.FROST_2}]{{task.description}}[/]"),
-            BarColumn(bar_width=None, style=cls.POLAR_NIGHT_3, complete_style=cls.FROST_2, finished_style=cls.GREEN),
+            BarColumn(
+                bar_width=None,
+                style=cls.POLAR_NIGHT_3,
+                complete_style=cls.FROST_2,
+                finished_style=cls.GREEN,
+            ),
             TaskProgressColumn(style=cls.SNOW_STORM_1),
             TimeRemainingColumn(compact=True),
         ]
@@ -145,7 +165,9 @@ def setup_logging():
     try:
         os.makedirs(log_dir, exist_ok=True)
     except PermissionError:
-        console.print(f"[bold {NordColors.YELLOW}]Warning:[/] Cannot create log directory, logging to console only")
+        console.print(
+            f"[bold {NordColors.YELLOW}]Warning:[/] Cannot create log directory, logging to console only"
+        )
         return False
 
     logger = logging.getLogger()
@@ -154,7 +176,9 @@ def setup_logging():
     for handler in list(logger.handlers):
         logger.removeHandler(handler)
 
-    formatter = logging.Formatter(fmt="[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter(
+        fmt="[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
     console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setFormatter(formatter)
@@ -167,7 +191,9 @@ def setup_logging():
         os.chmod(LOG_FILE, 0o600)
         return True
     except Exception as e:
-        console.print(f"[bold {NordColors.YELLOW}]Warning:[/] Failed to set up log file: {e}")
+        console.print(
+            f"[bold {NordColors.YELLOW}]Warning:[/] Failed to set up log file: {e}"
+        )
         return False
 
 
@@ -216,18 +242,10 @@ def print_info(message):
 def display_panel(title, message, style=NordColors.INFO):
     if isinstance(style, str):
         panel = Panel(
-            Text.from_markup(message),
-            title=title,
-            border_style=style,
-            padding=(1, 2)
+            Text.from_markup(message), title=title, border_style=style, padding=(1, 2)
         )
     else:
-        panel = Panel(
-            Text(message),
-            title=title,
-            border_style=style,
-            padding=(1, 2)
-        )
+        panel = Panel(Text(message), title=title, border_style=style, padding=(1, 2))
     console.print(panel)
 
 
@@ -287,7 +305,9 @@ def create_records_table(records, title):
     table.add_column("Name", style=f"bold {NordColors.FROST_1}")
     table.add_column("Type", style=f"{NordColors.FROST_3}", justify="center", width=8)
     table.add_column("IP Address", style=f"{NordColors.SNOW_STORM_1}")
-    table.add_column("Proxied", style=f"{NordColors.FROST_4}", justify="center", width=10)
+    table.add_column(
+        "Proxied", style=f"{NordColors.FROST_4}", justify="center", width=10
+    )
     table.add_column("Status", justify="center", width=12)
 
     for record in records:
@@ -319,8 +339,8 @@ def validate_config():
 
 def get_public_ip():
     with Progress(
-            *NordColors.get_progress_columns(),
-            console=console,
+        *NordColors.get_progress_columns(),
+        console=console,
     ) as progress:
         task = progress.add_task("Retrieving public IP address...", total=None)
         for service in IP_SERVICES:
@@ -345,8 +365,8 @@ def get_public_ip():
 
 def fetch_dns_records():
     with Progress(
-            *NordColors.get_progress_columns(),
-            console=console,
+        *NordColors.get_progress_columns(),
+        console=console,
     ) as progress:
         task = progress.add_task("Fetching DNS records from Cloudflare...", total=None)
         try:
@@ -368,7 +388,9 @@ def fetch_dns_records():
 
             if not data.get("success", False) or "result" not in data:
                 print_error("Unexpected Cloudflare API response format.")
-                logging.error("Cloudflare API response missing 'result' or success=false.")
+                logging.error(
+                    "Cloudflare API response missing 'result' or success=false."
+                )
                 sys.exit(1)
 
             records = []
@@ -406,7 +428,9 @@ def update_dns_record(record, new_ip):
 
     try:
         try:
-            response = requests.put(url, headers=headers, json=payload, timeout=REQUEST_TIMEOUT)
+            response = requests.put(
+                url, headers=headers, json=payload, timeout=REQUEST_TIMEOUT
+            )
             response.raise_for_status()
             result = response.json()
         except (requests.RequestException, json.JSONDecodeError):
@@ -418,8 +442,7 @@ def update_dns_record(record, new_ip):
 
         if not result.get("success"):
             errors = ", ".join(
-                err.get("message", "Unknown error")
-                for err in result.get("errors", [])
+                err.get("message", "Unknown error") for err in result.get("errors", [])
             )
             print_warning(f"Failed to update '{record.name}': {errors}")
             logging.warning(f"Update failed for '{record.name}': {errors}")
@@ -459,25 +482,31 @@ def update_cloudflare_dns():
         return 0, 0
 
     with Progress(
-            *NordColors.get_progress_columns(),
-            console=console,
+        *NordColors.get_progress_columns(),
+        console=console,
     ) as progress:
         task = progress.add_task("Updating DNS records...", total=len(records))
         for record in records:
             progress.update(task, description=f"Processing '{record.name}'")
             if record.content != current_ip:
-                logging.info(f"Updating '{record.name}': {record.content} -> {current_ip}")
+                logging.info(
+                    f"Updating '{record.name}': {record.content} -> {current_ip}"
+                )
                 if update_dns_record(record, current_ip):
                     updates += 1
                 else:
                     errors += 1
             else:
-                logging.debug(f"No update needed for '{record.name}' (IP: {record.content})")
+                logging.debug(
+                    f"No update needed for '{record.name}' (IP: {record.content})"
+                )
             progress.advance(task)
 
     if errors:
         print_warning(f"Completed: {updates} update(s) with {errors} error(s).")
-        logging.warning(f"Update completed with {errors} error(s) and {updates} update(s).")
+        logging.warning(
+            f"Update completed with {errors} error(s) and {updates} update(s)."
+        )
     elif updates:
         print_success(f"Success: {updates} record(s) updated.")
         logging.info(f"Update successful with {updates} record(s) updated.")
@@ -494,7 +523,9 @@ def main():
     console.print(create_header())
 
     init_panel = Panel(
-        Text.from_markup(f"[{NordColors.SNOW_STORM_1}]Initializing DNS Updater v{VERSION}[/]"),
+        Text.from_markup(
+            f"[{NordColors.SNOW_STORM_1}]Initializing DNS Updater v{VERSION}[/]"
+        ),
         border_style=Style(color=NordColors.FROST_3),
         title=f"[bold {NordColors.FROST_2}]System Initialization[/]",
         subtitle=f"[{NordColors.SNOW_STORM_1}]{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/]",
@@ -504,8 +535,8 @@ def main():
     console.print(init_panel)
 
     with Progress(
-            *NordColors.get_progress_columns(),
-            console=console,
+        *NordColors.get_progress_columns(),
+        console=console,
     ) as progress:
         task = progress.add_task("Initializing system...", total=None)
         ensure_config_directory()

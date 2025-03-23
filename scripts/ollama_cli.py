@@ -27,10 +27,14 @@ def install_dependencies():
     user = os.environ.get("SUDO_USER", os.environ.get("USER", getpass.getuser()))
     try:
         if os.geteuid() != 0:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -38,7 +42,9 @@ def install_dependencies():
 
 def check_ollama():
     if shutil.which("ollama") is None:
-        print("Ollama CLI not found. Please install Ollama from https://ollama.ai and rerun this script.")
+        print(
+            "Ollama CLI not found. Please install Ollama from https://ollama.ai and rerun this script."
+        )
         sys.exit(1)
 
 
@@ -109,7 +115,12 @@ class NordColors:
 
     @classmethod
     def get_polar_gradient(cls, steps=4):
-        return [cls.POLAR_NIGHT_1, cls.POLAR_NIGHT_2, cls.POLAR_NIGHT_3, cls.POLAR_NIGHT_4][:steps]
+        return [
+            cls.POLAR_NIGHT_1,
+            cls.POLAR_NIGHT_2,
+            cls.POLAR_NIGHT_3,
+            cls.POLAR_NIGHT_4,
+        ][:steps]
 
 
 @dataclass
@@ -151,7 +162,9 @@ class ChatSession:
     messages: List[Dict[str, str]] = field(default_factory=list)
 
     def add_message(self, role: str, content: str):
-        self.messages.append({"role": role, "content": content, "timestamp": datetime.now().isoformat()})
+        self.messages.append(
+            {"role": role, "content": content, "timestamp": datetime.now().isoformat()}
+        )
 
     def get_conversation_text(self) -> str:
         text = ""
@@ -242,7 +255,7 @@ def display_panel(title, message, style=NordColors.INFO):
             title=title,
             border_style=style,
             box=NordColors.NORD_BOX,
-            padding=(1, 2)
+            padding=(1, 2),
         )
     else:
         panel = Panel(
@@ -250,7 +263,7 @@ def display_panel(title, message, style=NordColors.INFO):
             title=title,
             border_style=style,
             box=NordColors.NORD_BOX,
-            padding=(1, 2)
+            padding=(1, 2),
         )
     console.print(panel)
 
@@ -287,12 +300,14 @@ def current_time_str():
 def list_ollama_models():
     try:
         with Progress(
-                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]Fetching Ollama models..."),
-                console=console
+            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]Fetching Ollama models..."),
+            console=console,
         ) as progress:
             task = progress.add_task("", total=None)
-            result = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                ["ollama", "list"], capture_output=True, text=True, check=True
+            )
 
         lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
@@ -302,28 +317,25 @@ def list_ollama_models():
             lines = lines[1:]
 
         for line in lines:
-            parts = re.split(r'\s{2,}', line)
+            parts = re.split(r"\s{2,}", line)
             if len(parts) >= 4:
-                models.append({
-                    "name": parts[0],
-                    "id": parts[1],
-                    "size": parts[2],
-                    "modified": parts[3]
-                })
+                models.append(
+                    {
+                        "name": parts[0],
+                        "id": parts[1],
+                        "size": parts[2],
+                        "modified": parts[3],
+                    }
+                )
             elif len(parts) >= 1:
-                models.append({
-                    "name": parts[0],
-                    "id": "",
-                    "size": "",
-                    "modified": ""
-                })
+                models.append({"name": parts[0], "id": "", "size": "", "modified": ""})
 
         if not models:
             print_warning("No models found. Returning default models.")
             models = [
                 {"name": "llama2", "id": "", "size": "", "modified": ""},
                 {"name": "mistral", "id": "", "size": "", "modified": ""},
-                {"name": "gemma", "id": "", "size": "", "modified": ""}
+                {"name": "gemma", "id": "", "size": "", "modified": ""},
             ]
 
         return models
@@ -332,16 +344,20 @@ def list_ollama_models():
         return [
             {"name": "llama2", "id": "", "size": "", "modified": ""},
             {"name": "mistral", "id": "", "size": "", "modified": ""},
-            {"name": "gemma", "id": "", "size": "", "modified": ""}
+            {"name": "gemma", "id": "", "size": "", "modified": ""},
         ]
 
 
 def get_model_response(model, conversation):
     with Progress(
-            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-            TextColumn(f"[bold {NordColors.FROST_2}]Waiting for {model} response..."),
-            BarColumn(bar_width=None, style=NordColors.POLAR_NIGHT_3, complete_style=NordColors.FROST_2),
-            console=console
+        SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+        TextColumn(f"[bold {NordColors.FROST_2}]Waiting for {model} response..."),
+        BarColumn(
+            bar_width=None,
+            style=NordColors.POLAR_NIGHT_3,
+            complete_style=NordColors.FROST_2,
+        ),
+        console=console,
     ) as progress:
         task = progress.add_task("", total=None)
         try:
@@ -350,7 +366,7 @@ def get_model_response(model, conversation):
                 input=conversation,
                 text=True,
                 capture_output=True,
-                check=True
+                check=True,
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
@@ -371,7 +387,7 @@ def display_model_list():
         box=ROUNDED,
         title="Available Ollama Models",
         border_style=NordColors.FROST_3,
-        expand=True
+        expand=True,
     )
 
     table.add_column("#", style=NordColors.ACCENT, width=3)
@@ -386,7 +402,7 @@ def display_model_list():
             model["name"],
             model["id"] or "N/A",
             model["size"] or "N/A",
-            model["modified"] or "N/A"
+            model["modified"] or "N/A",
         )
 
     console.print(table)
@@ -405,7 +421,7 @@ def select_model():
         box=ROUNDED,
         title="Select an Ollama Model",
         border_style=NordColors.FROST_3,
-        expand=True
+        expand=True,
     )
 
     table.add_column("#", style=NordColors.ACCENT, width=3)
@@ -413,19 +429,12 @@ def select_model():
     table.add_column("Size", style=NordColors.FROST_3)
 
     for i, model in enumerate(models, 1):
-        table.add_row(
-            str(i),
-            model["name"],
-            model["size"] or "N/A"
-        )
+        table.add_row(str(i), model["name"], model["size"] or "N/A")
 
     console.print(table)
 
     while True:
-        choice = pt_prompt(
-            "Enter model number: ",
-            style=get_prompt_style()
-        )
+        choice = pt_prompt("Enter model number: ", style=get_prompt_style())
 
         if not choice.isdigit() or int(choice) < 1 or int(choice) > len(models):
             print_error("Invalid selection. Please enter a valid model number.")
@@ -449,7 +458,7 @@ def interactive_chat():
     display_panel(
         "Chat Session",
         f"Model: [bold]{model}[/]\nType your messages and press Enter. Type 'exit' or 'quit' to end the session.",
-        NordColors.FROST_2
+        NordColors.FROST_2,
     )
 
     while True:
@@ -457,7 +466,7 @@ def interactive_chat():
             f"[You] > ",
             history=FileHistory(COMMAND_HISTORY),
             auto_suggest=AutoSuggestFromHistory(),
-            style=get_prompt_style()
+            style=get_prompt_style(),
         )
 
         if user_input.lower().strip() in ["exit", "quit"]:
@@ -473,19 +482,23 @@ def interactive_chat():
 
         session.add_message("assistant", response)
 
-        console.print(Panel(
-            user_input,
-            title=f"[bold {NordColors.SNOW_STORM_3}]You[/]",
-            border_style=NordColors.FROST_3,
-            box=NordColors.NORD_BOX
-        ))
+        console.print(
+            Panel(
+                user_input,
+                title=f"[bold {NordColors.SNOW_STORM_3}]You[/]",
+                border_style=NordColors.FROST_3,
+                box=NordColors.NORD_BOX,
+            )
+        )
 
-        console.print(Panel(
-            response,
-            title=f"[bold {NordColors.SNOW_STORM_3}]{model}[/]",
-            border_style=NordColors.FROST_1,
-            box=NordColors.NORD_BOX
-        ))
+        console.print(
+            Panel(
+                response,
+                title=f"[bold {NordColors.SNOW_STORM_3}]{model}[/]",
+                border_style=NordColors.FROST_1,
+                box=NordColors.NORD_BOX,
+            )
+        )
 
     if len(session.messages) > 0:
         history.add_entry(model, session.messages)
@@ -508,7 +521,7 @@ def view_chat_history():
         box=ROUNDED,
         title="Chat History",
         border_style=NordColors.FROST_3,
-        expand=True
+        expand=True,
     )
 
     table.add_column("#", style=NordColors.ACCENT, width=3)
@@ -526,7 +539,7 @@ def view_chat_history():
     options = [
         ("1", "View Chat Details", "See a specific conversation"),
         ("2", "Clear History", "Delete all chat history"),
-        ("3", "Return to Main Menu", "")
+        ("3", "Return to Main Menu", ""),
     ]
 
     console.print(create_menu_table("History Options", options))
@@ -536,7 +549,7 @@ def view_chat_history():
         entry_num = Prompt.ask(
             "Enter chat number to view",
             choices=[str(i) for i in range(1, min(11, len(history.entries) + 1))],
-            show_choices=False
+            show_choices=False,
         )
 
         entry = history.entries[int(entry_num) - 1]
@@ -547,30 +560,36 @@ def view_chat_history():
             f"Chat with {entry['model']}",
             f"Date: {datetime.fromisoformat(entry['date']).strftime('%Y-%m-%d %H:%M:%S')}\n"
             f"Messages: {len(entry['messages'])}",
-            NordColors.FROST_2
+            NordColors.FROST_2,
         )
 
         for msg in entry["messages"]:
             if msg["role"] == "user":
-                console.print(Panel(
-                    msg["content"],
-                    title="You",
-                    border_style=NordColors.FROST_3,
-                    box=NordColors.NORD_BOX
-                ))
+                console.print(
+                    Panel(
+                        msg["content"],
+                        title="You",
+                        border_style=NordColors.FROST_3,
+                        box=NordColors.NORD_BOX,
+                    )
+                )
             else:
-                console.print(Panel(
-                    msg["content"],
-                    title=entry["model"],
-                    border_style=NordColors.FROST_1,
-                    box=NordColors.NORD_BOX
-                ))
+                console.print(
+                    Panel(
+                        msg["content"],
+                        title=entry["model"],
+                        border_style=NordColors.FROST_1,
+                        box=NordColors.NORD_BOX,
+                    )
+                )
 
         Prompt.ask("Press Enter to return to history menu")
         view_chat_history()
 
     elif choice == "2":
-        if Confirm.ask("Are you sure you want to clear all chat history?", default=False):
+        if Confirm.ask(
+            "Are you sure you want to clear all chat history?", default=False
+        ):
             history.entries = []
             history.save()
             print_success("Chat history cleared")
@@ -633,12 +652,14 @@ def main():
         console.print(create_header())
 
         with Progress(
-                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]Starting Ollama CLI..."),
-                console=console
+            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]Starting Ollama CLI..."),
+            console=console,
         ) as progress:
             task = progress.add_task("", total=100)
-            progress.update(task, completed=30, description="Checking Ollama installation...")
+            progress.update(
+                task, completed=30, description="Checking Ollama installation..."
+            )
             progress.update(task, completed=60, description="Loading configuration...")
             progress.update(task, completed=90, description="Initializing interface...")
             progress.update(task, completed=100, description="Ready!")
@@ -664,22 +685,21 @@ def main_menu():
         console.print(create_header())
 
         # Display current time and host
-        console.print(f"[dim]Current Time: {current_time_str()} | Host: {HOSTNAME} | User: {USERNAME}[/dim]")
+        console.print(
+            f"[dim]Current Time: {current_time_str()} | Host: {HOSTNAME} | User: {USERNAME}[/dim]"
+        )
 
         main_options = [
             ("1", "List Models", "View all available Ollama models"),
             ("2", "Chat with Model", "Start interactive chat with an Ollama model"),
             ("3", "View History", "Browse previous chat sessions"),
             ("4", "Help", "Show help and documentation"),
-            ("0", "Exit", "Exit the application")
+            ("0", "Exit", "Exit the application"),
         ]
 
         console.print(create_menu_table("Main Menu", main_options))
 
-        choice = pt_prompt(
-            "Select an option: ",
-            style=get_prompt_style()
-        )
+        choice = pt_prompt("Select an option: ", style=get_prompt_style())
 
         if choice == "1":
             display_model_list()
@@ -701,7 +721,7 @@ def main_menu():
                     title_align="center",
                     border_style=NordColors.FROST_2,
                     box=HEAVY,
-                    padding=(2, 4)
+                    padding=(2, 4),
                 )
             )
             break

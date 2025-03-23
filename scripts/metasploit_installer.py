@@ -24,10 +24,14 @@ def install_dependencies():
     user = os.environ.get("SUDO_USER", os.environ.get("USER"))
     try:
         if os.geteuid() != 0:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -35,7 +39,9 @@ def install_dependencies():
 
 def check_homebrew():
     if shutil.which("brew") is None:
-        print("Homebrew is not installed. Please install Homebrew from https://brew.sh and rerun this script.")
+        print(
+            "Homebrew is not installed. Please install Homebrew from https://brew.sh and rerun this script."
+        )
         sys.exit(1)
 
 
@@ -44,8 +50,14 @@ try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.progress import (
-        Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn,
-        TimeRemainingColumn, TransferSpeedColumn, MofNCompleteColumn
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        BarColumn,
+        TaskProgressColumn,
+        TimeRemainingColumn,
+        TransferSpeedColumn,
+        MofNCompleteColumn,
     )
     from rich.prompt import Prompt, Confirm
     from rich.table import Table
@@ -117,14 +129,24 @@ class NordColors:
 
     @classmethod
     def get_polar_gradient(cls, steps=4):
-        return [cls.POLAR_NIGHT_1, cls.POLAR_NIGHT_2, cls.POLAR_NIGHT_3, cls.POLAR_NIGHT_4][:steps]
+        return [
+            cls.POLAR_NIGHT_1,
+            cls.POLAR_NIGHT_2,
+            cls.POLAR_NIGHT_3,
+            cls.POLAR_NIGHT_4,
+        ][:steps]
 
     @classmethod
     def get_progress_columns(cls):
         return [
             SpinnerColumn(spinner_name="dots", style=f"bold {cls.FROST_1}"),
             TextColumn(f"[bold {cls.FROST_2}]{{task.description}}[/]"),
-            BarColumn(bar_width=None, style=cls.POLAR_NIGHT_3, complete_style=cls.FROST_2, finished_style=cls.GREEN),
+            BarColumn(
+                bar_width=None,
+                style=cls.POLAR_NIGHT_3,
+                complete_style=cls.FROST_2,
+                finished_style=cls.GREEN,
+            ),
             TaskProgressColumn(style=cls.SNOW_STORM_1),
             TimeRemainingColumn(compact=True),
         ]
@@ -239,7 +261,7 @@ def display_panel(title, message, style=NordColors.INFO):
             title=title,
             border_style=style,
             box=NordColors.NORD_BOX,
-            padding=(1, 2)
+            padding=(1, 2),
         )
     else:
         panel = Panel(
@@ -247,7 +269,7 @@ def display_panel(title, message, style=NordColors.INFO):
             title=title,
             border_style=style,
             box=NordColors.NORD_BOX,
-            padding=(1, 2)
+            padding=(1, 2),
         )
     console.print(panel)
 
@@ -280,15 +302,17 @@ def ensure_config_directory():
         print_error(f"Could not create config directory: {e}")
 
 
-def run_command(cmd, check=True, timeout=DEFAULT_TIMEOUT, verbose=False, env=None, shell=False):
+def run_command(
+    cmd, check=True, timeout=DEFAULT_TIMEOUT, verbose=False, env=None, shell=False
+):
     try:
         if verbose:
             print_step(f"Executing: {' '.join(cmd)}")
 
         with Progress(
-                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]Running command..."),
-                console=console
+            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]Running command..."),
+            console=console,
         ) as progress:
             task = progress.add_task("", total=None)
             result = subprocess.run(
@@ -298,7 +322,7 @@ def run_command(cmd, check=True, timeout=DEFAULT_TIMEOUT, verbose=False, env=Non
                 capture_output=True,
                 timeout=timeout,
                 env=env or os.environ.copy(),
-                shell=shell
+                shell=shell,
             )
 
         return result
@@ -353,14 +377,13 @@ def check_system():
     print_step("Checking system compatibility...")
 
     if not check_command_available("brew"):
-        print_error("Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun the script.")
+        print_error(
+            "Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun the script."
+        )
         return False
 
     table = Table(
-        show_header=False,
-        box=ROUNDED,
-        border_style=NordColors.FROST_3,
-        padding=(0, 2)
+        show_header=False, box=ROUNDED, border_style=NordColors.FROST_3, padding=(0, 2)
     )
 
     table.add_column("Property", style=f"bold {NordColors.FROST_2}")
@@ -375,12 +398,14 @@ def check_system():
             title="[bold]System Information[/bold]",
             border_style=NordColors.FROST_1,
             padding=(1, 2),
-            box=ROUNDED
+            box=ROUNDED,
         )
     )
 
     required_tools = ["curl", "git"]
-    missing_tools = [tool for tool in required_tools if not check_command_available(tool)]
+    missing_tools = [
+        tool for tool in required_tools if not check_command_available(tool)
+    ]
 
     if missing_tools:
         print_error(f"Missing required tools: {', '.join(missing_tools)}")
@@ -404,11 +429,10 @@ def install_system_dependencies():
     try:
         run_command(["brew", "update"])
 
-        with Progress(
-                *NordColors.get_progress_columns(),
-                console=console
-        ) as progress:
-            task = progress.add_task("Installing dependencies", total=len(SYSTEM_DEPENDENCIES))
+        with Progress(*NordColors.get_progress_columns(), console=console) as progress:
+            task = progress.add_task(
+                "Installing dependencies", total=len(SYSTEM_DEPENDENCIES)
+            )
 
             for pkg in SYSTEM_DEPENDENCIES:
                 try:
@@ -432,9 +456,9 @@ def download_metasploit_installer():
 
     try:
         with Progress(
-                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]Downloading installer..."),
-                console=console
+            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]Downloading installer..."),
+            console=console,
         ) as progress:
             task = progress.add_task("", total=None)
             run_command(["curl", "-sSL", INSTALLER_URL, "-o", INSTALLER_PATH])
@@ -459,15 +483,15 @@ def run_metasploit_installer():
         "Installation",
         "Installing Metasploit Framework. This may take several minutes.\n"
         "The installer will download and set up all required components.",
-        NordColors.FROST_3
+        NordColors.FROST_3,
     )
 
     try:
         with Progress(
-                SpinnerColumn("dots", style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]Installing Metasploit"),
-                TimeRemainingColumn(),
-                console=console
+            SpinnerColumn("dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]Installing Metasploit"),
+            TimeRemainingColumn(),
+            console=console,
         ) as progress:
             task = progress.add_task("Installing", total=None)
             env = os.environ.copy()
@@ -497,19 +521,20 @@ def configure_postgresql():
 
         print_step("Setting up Metasploit database user...")
         user_check = run_command(
-            ["psql", "-tAc", "SELECT 1 FROM pg_roles WHERE rolname='msf'"],
-            check=False
+            ["psql", "-tAc", "SELECT 1 FROM pg_roles WHERE rolname='msf'"], check=False
         )
 
         if "1" not in user_check.stdout:
-            run_command(["psql", "-c", "CREATE USER msf WITH PASSWORD 'msf'"], check=False)
+            run_command(
+                ["psql", "-c", "CREATE USER msf WITH PASSWORD 'msf'"], check=False
+            )
             print_success("Created Metasploit database user.")
         else:
             print_success("Metasploit database user already exists.")
 
         db_check = run_command(
             ["psql", "-tAc", "SELECT 1 FROM pg_database WHERE datname='msf'"],
-            check=False
+            check=False,
         )
 
         if "1" not in db_check.stdout:
@@ -531,7 +556,9 @@ def configure_postgresql():
             if "local   msf         msf" not in content:
                 with open(pg_hba, "a") as f:
                     f.write("\n# Added by Metasploit installer\n")
-                    f.write("local   msf         msf                                     md5\n")
+                    f.write(
+                        "local   msf         msf                                     md5\n"
+                    )
 
                 print_success(f"Updated {pg_hba}")
                 run_command(["brew", "services", "restart", "postgresql"], check=False)
@@ -568,17 +595,24 @@ def check_installation():
 
     try:
         with Progress(
-                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]Checking Metasploit version..."),
-                console=console
+            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]Checking Metasploit version..."),
+            console=console,
         ) as progress:
             task = progress.add_task("", total=None)
             version_result = run_command([msfconsole_path, "-v"], timeout=30)
 
-        if version_result.returncode == 0 and "metasploit" in version_result.stdout.lower():
+        if (
+            version_result.returncode == 0
+            and "metasploit" in version_result.stdout.lower()
+        ):
             version_info = next(
-                (line for line in version_result.stdout.strip().splitlines() if "Framework" in line),
-                ""
+                (
+                    line
+                    for line in version_result.stdout.strip().splitlines()
+                    if "Framework" in line
+                ),
+                "",
             )
 
             print_success("Metasploit Framework installed successfully!")
@@ -591,7 +625,7 @@ def check_installation():
             config.system_info = {
                 "python_version": platform.python_version(),
                 "os_version": platform.platform(),
-                "architecture": platform.machine()
+                "architecture": platform.machine(),
             }
             config.save()
 
@@ -611,7 +645,9 @@ def initialize_database(msfconsole_path):
     msfdb_path = os.path.join(os.path.dirname(msfconsole_path), "msfdb")
 
     if not os.path.exists(msfdb_path) and not check_command_available("msfdb"):
-        print_warning("msfdb utility not found. Attempting alternative initialization via msfconsole.")
+        print_warning(
+            "msfdb utility not found. Attempting alternative initialization via msfconsole."
+        )
 
         try:
             resource_path = "/tmp/msf_init.rc"
@@ -620,12 +656,16 @@ def initialize_database(msfconsole_path):
                 f.write("db_status\nexit\n")
 
             with Progress(
-                    SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                    TextColumn(f"[bold {NordColors.FROST_2}]Initializing database..."),
-                    console=console
+                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+                TextColumn(f"[bold {NordColors.FROST_2}]Initializing database..."),
+                console=console,
             ) as progress:
                 task = progress.add_task("", total=None)
-                run_command([msfconsole_path, "-q", "-r", resource_path], check=False, timeout=60)
+                run_command(
+                    [msfconsole_path, "-q", "-r", resource_path],
+                    check=False,
+                    timeout=60,
+                )
 
             if os.path.exists(resource_path):
                 os.remove(resource_path)
@@ -639,9 +679,11 @@ def initialize_database(msfconsole_path):
 
     try:
         with Progress(
-                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]Initializing database with msfdb..."),
-                console=console
+            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(
+                f"[bold {NordColors.FROST_2}]Initializing database with msfdb..."
+            ),
+            console=console,
         ) as progress:
             task = progress.add_task("", total=None)
             env = os.environ.copy()
@@ -649,7 +691,7 @@ def initialize_database(msfconsole_path):
             result = run_command(
                 [msfdb_path if os.path.exists(msfdb_path) else "msfdb", "init"],
                 check=False,
-                env=env
+                env=env,
             )
 
         if result.returncode == 0:
@@ -725,7 +767,7 @@ def run_full_setup():
         "6. Verify installation\n"
         "7. Initialize database\n"
         "8. Create startup script",
-        NordColors.FROST_2
+        NordColors.FROST_2,
     )
     console.print()
 

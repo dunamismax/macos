@@ -25,10 +25,14 @@ def install_dependencies():
     user = os.environ.get("SUDO_USER", os.environ.get("USER"))
     try:
         if os.geteuid() != 0:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -36,13 +40,20 @@ def install_dependencies():
 
 def check_ffmpeg():
     try:
-        subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        subprocess.run(
+            ["ffmpeg", "-version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
         return True
     except Exception:
         print("FFmpeg not found. Attempting to install via Homebrew...")
         try:
             if shutil.which("brew") is None:
-                print("Homebrew is not installed. Please install it from https://brew.sh")
+                print(
+                    "Homebrew is not installed. Please install it from https://brew.sh"
+                )
                 return False
             subprocess.check_call(["brew", "install", "ffmpeg"])
             print("FFmpeg installed successfully!")
@@ -60,7 +71,14 @@ try:
     from rich.table import Table
     from rich.panel import Panel
     from rich.prompt import Prompt, Confirm
-    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+    from rich.progress import (
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        BarColumn,
+        TaskProgressColumn,
+        TimeRemainingColumn,
+    )
     from rich.align import Align
     from rich.style import Style
     from rich.traceback import install as install_rich_traceback
@@ -272,8 +290,12 @@ class Config:
             with open(CONFIG_FILE, "r") as f:
                 data = json.load(f)
                 return cls(
-                    default_input_dir=data.get("default_input_dir", DEFAULT_INPUT_FOLDER),
-                    default_output_dir=data.get("default_output_dir", DEFAULT_OUTPUT_FOLDER),
+                    default_input_dir=data.get(
+                        "default_input_dir", DEFAULT_INPUT_FOLDER
+                    ),
+                    default_output_dir=data.get(
+                        "default_output_dir", DEFAULT_OUTPUT_FOLDER
+                    ),
                     default_video_codec=data.get("default_video_codec", "h264"),
                     default_audio_codec=data.get("default_audio_codec", "aac"),
                     default_video_quality=data.get("default_video_quality", "23"),
@@ -284,7 +306,9 @@ class Config:
                     favorite_formats=data.get("favorite_formats", []),
                 )
         except Exception as e:
-            console.print(f"[bold {NordColors.YELLOW}]Warning: Failed to load config: {e}[/]")
+            console.print(
+                f"[bold {NordColors.YELLOW}]Warning: Failed to load config: {e}[/]"
+            )
             return cls()
 
 
@@ -327,7 +351,9 @@ class SpinnerProgressManager:
         if total_size is not None:
             self.total_sizes[task_id] = total_size
             self.completed_sizes[task_id] = 0
-        self.tasks[task_id] = self.progress.add_task(description, total=100, visible=True)
+        self.tasks[task_id] = self.progress.add_task(
+            description, total=100, visible=True
+        )
         return task_id
 
     def update_task(self, task_id, status, completed=None):
@@ -370,7 +396,10 @@ class EnhancedPathCompleter(PathCompleter):
             return
         for completion in super().get_completions(document, complete_event):
             full_path = os.path.expanduser(
-                os.path.join(text, completion.text) if text.endswith("/") else completion.text)
+                os.path.join(text, completion.text)
+                if text.endswith("/")
+                else completion.text
+            )
             if os.path.isdir(full_path) and not completion.text.endswith("/"):
                 yield Completion(
                     completion.text + "/",
@@ -384,7 +413,9 @@ class EnhancedPathCompleter(PathCompleter):
                 elif extension in AUDIO_CONTAINERS:
                     style = f"bg:{NordColors.POLAR_NIGHT_2} fg:{NordColors.FROST_4}"
                 else:
-                    style = f"bg:{NordColors.POLAR_NIGHT_2} fg:{NordColors.SNOW_STORM_1}"
+                    style = (
+                        f"bg:{NordColors.POLAR_NIGHT_2} fg:{NordColors.SNOW_STORM_1}"
+                    )
                 yield Completion(
                     completion.text,
                     start_position=completion.start_position,
@@ -418,7 +449,12 @@ def create_header():
         except Exception:
             continue
     ascii_lines = [line for line in ascii_art.splitlines() if line.strip()]
-    colors = [NordColors.FROST_1, NordColors.FROST_2, NordColors.FROST_3, NordColors.FROST_4]
+    colors = [
+        NordColors.FROST_1,
+        NordColors.FROST_2,
+        NordColors.FROST_3,
+        NordColors.FROST_4,
+    ]
     styled_text = ""
     for i, line in enumerate(ascii_lines):
         color = colors[i % len(colors)]
@@ -472,13 +508,21 @@ def get_prompt_style():
 
 
 def wait_for_key():
-    pt_prompt("Press Enter to continue...", style=PtStyle.from_dict({"prompt": f"{NordColors.FROST_2}"}))
+    pt_prompt(
+        "Press Enter to continue...",
+        style=PtStyle.from_dict({"prompt": f"{NordColors.FROST_2}"}),
+    )
 
 
 def display_status_bar():
     ffmpeg_version = "Unknown"
     try:
-        result = subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         match = re.search(r"ffmpeg version (\S+)", result.stdout)
         if match:
             ffmpeg_version = match.group(1)
@@ -487,7 +531,8 @@ def display_status_bar():
     console.print(
         Panel(
             Text.from_markup(
-                f"[bold {NordColors.GREEN}]FFmpeg Version: {ffmpeg_version}[/] | [dim]Output: {config.default_output_dir}[/]"),
+                f"[bold {NordColors.GREEN}]FFmpeg Version: {ffmpeg_version}[/] | [dim]Output: {config.default_output_dir}[/]"
+            ),
             border_style=NordColors.FROST_4,
             padding=(0, 2),
         )
@@ -508,7 +553,12 @@ def analyze_media_file(file_path):
 
         try:
             probe = ffmpeg.probe(file_path)
-            media_file = MediaFile(path=file_path, file_type=file_type, container=ext, size_bytes=size_bytes)
+            media_file = MediaFile(
+                path=file_path,
+                file_type=file_type,
+                container=ext,
+                size_bytes=size_bytes,
+            )
 
             if "format" in probe and "duration" in probe["format"]:
                 media_file.duration = float(probe["format"]["duration"])
@@ -530,10 +580,13 @@ def analyze_media_file(file_path):
             return media_file
         except ffmpeg.Error as e:
             console.print(
-                f"[bold {NordColors.RED}]Error analyzing file: {e.stderr.decode() if e.stderr else str(e)}[/]")
+                f"[bold {NordColors.RED}]Error analyzing file: {e.stderr.decode() if e.stderr else str(e)}[/]"
+            )
             return MediaFile(path=file_path, file_type=file_type, size_bytes=size_bytes)
     except Exception as e:
-        console.print(f"[bold {NordColors.RED}]Unexpected error analyzing file: {str(e)}[/]")
+        console.print(
+            f"[bold {NordColors.RED}]Unexpected error analyzing file: {str(e)}[/]"
+        )
         return MediaFile(path=file_path)
 
 
@@ -578,7 +631,10 @@ def create_conversion_job(input_path, output_format, custom_options=None):
         input_file = analyze_media_file(input_path)
         if input_file.file_type == "unknown":
             print_warning(f"Unknown file type: {input_path}")
-            if not Confirm.ask(f"[bold {NordColors.YELLOW}]Attempt conversion anyway?[/]", default=False):
+            if not Confirm.ask(
+                f"[bold {NordColors.YELLOW}]Attempt conversion anyway?[/]",
+                default=False,
+            ):
                 return None
 
         if input_path not in config.recent_files:
@@ -592,7 +648,10 @@ def create_conversion_job(input_path, output_format, custom_options=None):
         output_path = os.path.join(config.default_output_dir, output_name)
 
         if os.path.exists(output_path):
-            if not Confirm.ask(f"[bold {NordColors.YELLOW}]Output file already exists. Overwrite?[/]", default=False):
+            if not Confirm.ask(
+                f"[bold {NordColors.YELLOW}]Output file already exists. Overwrite?[/]",
+                default=False,
+            ):
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
                 output_name = f"{name_without_ext}_{timestamp}.{output_format}"
                 output_path = os.path.join(config.default_output_dir, output_name)
@@ -603,13 +662,16 @@ def create_conversion_job(input_path, output_format, custom_options=None):
             settings.update(custom_options)
 
         remux_only = False
-        if (input_file.file_type == "video" and
-                output_format in VIDEO_CONTAINERS and
-                input_file.video_codec == settings["video_codec"] and
-                input_file.audio_codec == settings["audio_codec"]):
+        if (
+            input_file.file_type == "video"
+            and output_format in VIDEO_CONTAINERS
+            and input_file.video_codec == settings["video_codec"]
+            and input_file.audio_codec == settings["audio_codec"]
+        ):
             if Confirm.ask(
-                    f"[bold {NordColors.GREEN}]Input and output codecs match. Use remuxing to avoid re-encoding?[/]",
-                    default=True):
+                f"[bold {NordColors.GREEN}]Input and output codecs match. Use remuxing to avoid re-encoding?[/]",
+                default=True,
+            ):
                 remux_only = True
                 print_step("Using remuxing mode (faster, no quality loss)")
 
@@ -623,7 +685,8 @@ def create_conversion_job(input_path, output_format, custom_options=None):
             audio_quality=settings["audio_quality"],
             preset=settings["preset"],
             remux_only=remux_only,
-            extract_audio=input_file.file_type == "video" and output_format in AUDIO_CONTAINERS,
+            extract_audio=input_file.file_type == "video"
+            and output_format in AUDIO_CONTAINERS,
         )
         return job
     except Exception as e:
@@ -688,7 +751,8 @@ def execute_conversion_job(job):
 
         spinner_progress = SpinnerProgressManager("Conversion Operation")
         task_id = spinner_progress.add_task(
-            f"Converting {os.path.basename(job.input_file.path)} → {os.path.basename(job.output_path)}")
+            f"Converting {os.path.basename(job.input_file.path)} → {os.path.basename(job.output_path)}"
+        )
 
         try:
             spinner_progress.start()
@@ -733,7 +797,9 @@ def execute_conversion_job(job):
             spinner_progress.stop()
 
     except ffmpeg.Error as e:
-        error_message = e.stderr.decode("utf-8", errors="ignore") if e.stderr else str(e)
+        error_message = (
+            e.stderr.decode("utf-8", errors="ignore") if e.stderr else str(e)
+        )
         job.status = "failed"
         job.error_message = error_message
         print_error(f"FFmpeg error: {error_message}")
@@ -774,12 +840,18 @@ def check_media_info():
         console.print(f"[bold {NordColors.FROST_3}]Media Information:[/]")
         format_info = probe.get("format", {})
 
-        format_table = Table(title="Container Information", show_header=True, header_style=f"bold {NordColors.FROST_3}")
+        format_table = Table(
+            title="Container Information",
+            show_header=True,
+            header_style=f"bold {NordColors.FROST_3}",
+        )
         format_table.add_column("Property", style="bold")
         format_table.add_column("Value")
         format_table.add_row("Filename", os.path.basename(input_path))
         format_table.add_row("Format", format_info.get("format_name", "Unknown"))
-        format_table.add_row("Duration", f"{float(format_info.get('duration', 0)):.2f} seconds")
+        format_table.add_row(
+            "Duration", f"{float(format_info.get('duration', 0)):.2f} seconds"
+        )
 
         size_bytes = format_info.get("size", 0)
         if size_bytes:
@@ -807,17 +879,29 @@ def check_media_info():
             stream_table.add_row("Codec", stream.get("codec_name", "Unknown"))
 
             if stream_type.lower() == "video":
-                stream_table.add_row("Resolution", f"{stream.get('width', 0)}x{stream.get('height', 0)}")
-                stream_table.add_row("Frame Rate", f"{eval(stream.get('avg_frame_rate', '0/1')):.2f} fps")
+                stream_table.add_row(
+                    "Resolution", f"{stream.get('width', 0)}x{stream.get('height', 0)}"
+                )
+                stream_table.add_row(
+                    "Frame Rate", f"{eval(stream.get('avg_frame_rate', '0/1')):.2f} fps"
+                )
                 if "bit_rate" in stream:
-                    stream_table.add_row("Video Bitrate", f"{int(stream['bit_rate']) / 1000:.0f} kbps")
+                    stream_table.add_row(
+                        "Video Bitrate", f"{int(stream['bit_rate']) / 1000:.0f} kbps"
+                    )
             elif stream_type.lower() == "audio":
-                stream_table.add_row("Sample Rate", f"{stream.get('sample_rate', 0)} Hz")
+                stream_table.add_row(
+                    "Sample Rate", f"{stream.get('sample_rate', 0)} Hz"
+                )
                 stream_table.add_row("Channels", str(stream.get("channels", 0)))
                 if "bit_rate" in stream:
-                    stream_table.add_row("Audio Bitrate", f"{int(stream['bit_rate']) / 1000:.0f} kbps")
+                    stream_table.add_row(
+                        "Audio Bitrate", f"{int(stream['bit_rate']) / 1000:.0f} kbps"
+                    )
             elif stream_type.lower() == "subtitle":
-                stream_table.add_row("Language", stream.get("tags", {}).get("language", "Unknown"))
+                stream_table.add_row(
+                    "Language", stream.get("tags", {}).get("language", "Unknown")
+                )
 
             console.print(stream_table)
 
@@ -825,7 +909,9 @@ def check_media_info():
         if spinner.is_started:
             spinner.complete_task(task_id, False)
             spinner.stop()
-        print_error(f"Error analyzing media: {e.stderr.decode() if e.stderr else str(e)}")
+        print_error(
+            f"Error analyzing media: {e.stderr.decode() if e.stderr else str(e)}"
+        )
     except Exception as e:
         if spinner.is_started:
             spinner.complete_task(task_id, False)
@@ -864,7 +950,9 @@ def extract_audio_from_video():
 
         if not media_file.audio_codec:
             print_warning(f"No audio stream detected in: {input_path}")
-            if not Confirm.ask(f"[bold {NordColors.YELLOW}]Continue anyway?[/]", default=False):
+            if not Confirm.ask(
+                f"[bold {NordColors.YELLOW}]Continue anyway?[/]", default=False
+            ):
                 return
 
         console.print(f"[bold {NordColors.FROST_3}]Video Information:[/]")
@@ -890,7 +978,9 @@ def extract_audio_from_video():
         audio_codec = Prompt.ask(
             f"[bold {NordColors.PURPLE}]Select audio codec[/]",
             choices=sorted(AUDIO_CODECS.keys()),
-            default=get_optimal_output_settings(media_file, output_format)["audio_codec"],
+            default=get_optimal_output_settings(media_file, output_format)[
+                "audio_codec"
+            ],
         )
 
         audio_quality = Prompt.ask(
@@ -974,7 +1064,9 @@ def convert_media_file():
         custom_options = {}
 
         if output_format in VIDEO_CONTAINERS and media_file.file_type == "video":
-            if Confirm.ask(f"[bold {NordColors.FROST_3}]Configure video settings?[/]", default=True):
+            if Confirm.ask(
+                f"[bold {NordColors.FROST_3}]Configure video settings?[/]", default=True
+            ):
                 video_codec = Prompt.ask(
                     f"[bold {NordColors.PURPLE}]Video codec[/]",
                     choices=sorted(VIDEO_CODECS.keys()),
@@ -996,8 +1088,12 @@ def convert_media_file():
                 )
                 custom_options["preset"] = preset
 
-        if (output_format in VIDEO_CONTAINERS and media_file.file_type == "video") or output_format in AUDIO_CONTAINERS:
-            if Confirm.ask(f"[bold {NordColors.FROST_3}]Configure audio settings?[/]", default=True):
+        if (
+            output_format in VIDEO_CONTAINERS and media_file.file_type == "video"
+        ) or output_format in AUDIO_CONTAINERS:
+            if Confirm.ask(
+                f"[bold {NordColors.FROST_3}]Configure audio settings?[/]", default=True
+            ):
                 audio_codec = Prompt.ask(
                     f"[bold {NordColors.PURPLE}]Audio codec[/]",
                     choices=sorted(AUDIO_CODECS.keys()),
@@ -1043,7 +1139,11 @@ def display_recent_files():
     if not config.recent_files:
         return
 
-    recent_table = Table(title="Recent Files", show_header=True, header_style=f"bold {NordColors.FROST_3}")
+    recent_table = Table(
+        title="Recent Files",
+        show_header=True,
+        header_style=f"bold {NordColors.FROST_3}",
+    )
     recent_table.add_column("#", style="bold", width=3)
     recent_table.add_column("Filename", style="bold")
     recent_table.add_column("Path", style=f"{NordColors.FROST_4}")
@@ -1082,7 +1182,9 @@ def show_help():
 
 
 def configure_settings():
-    console.print(Panel(f"[bold {NordColors.FROST_2}]Configuration Settings[/]", expand=False))
+    console.print(
+        Panel(f"[bold {NordColors.FROST_2}]Configuration Settings[/]", expand=False)
+    )
 
     new_input_dir = pt_prompt(
         "Default input directory: ",
@@ -1095,7 +1197,9 @@ def configure_settings():
         config.default_input_dir = new_input_dir
     else:
         print_warning(f"Directory doesn't exist: {new_input_dir}")
-        if Confirm.ask(f"[bold {NordColors.YELLOW}]Create this directory?[/]", default=True):
+        if Confirm.ask(
+            f"[bold {NordColors.YELLOW}]Create this directory?[/]", default=True
+        ):
             os.makedirs(os.path.expanduser(new_input_dir), exist_ok=True)
             config.default_input_dir = new_input_dir
 
@@ -1110,7 +1214,9 @@ def configure_settings():
         config.default_output_dir = new_output_dir
     else:
         print_warning(f"Directory doesn't exist: {new_output_dir}")
-        if Confirm.ask(f"[bold {NordColors.YELLOW}]Create this directory?[/]", default=True):
+        if Confirm.ask(
+            f"[bold {NordColors.YELLOW}]Create this directory?[/]", default=True
+        ):
             os.makedirs(os.path.expanduser(new_output_dir), exist_ok=True)
             config.default_output_dir = new_output_dir
 
@@ -1182,11 +1288,15 @@ def main_menu():
         console.print(create_header())
         display_status_bar()
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        console.print(Align.center(f"[{NordColors.SNOW_STORM_1}]Current Time: {current_time}[/]"))
+        console.print(
+            Align.center(f"[{NordColors.SNOW_STORM_1}]Current Time: {current_time}[/]")
+        )
         console.print()
 
         console.print(f"[bold {NordColors.PURPLE}]Media Conversion Menu[/]")
-        table = Table(show_header=True, header_style=f"bold {NordColors.FROST_3}", expand=True)
+        table = Table(
+            show_header=True, header_style=f"bold {NordColors.FROST_3}", expand=True
+        )
         table.add_column("Option", style="bold", width=8)
         table.add_column("Description", style="bold")
 
@@ -1210,7 +1320,10 @@ def main_menu():
             console.print()
             console.print(
                 Panel(
-                    Text(f"Thank you for using the macOS Media Converter!", style=f"bold {NordColors.FROST_2}"),
+                    Text(
+                        f"Thank you for using the macOS Media Converter!",
+                        style=f"bold {NordColors.FROST_2}",
+                    ),
                     border_style=Style(color=NordColors.FROST_1),
                     padding=(1, 2),
                 )

@@ -30,7 +30,9 @@ import shutil
 
 def check_homebrew():
     if shutil.which("brew") is None:
-        print("Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun this script.")
+        print(
+            "Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun this script."
+        )
         sys.exit(1)
 
 
@@ -40,11 +42,15 @@ def install_dependencies():
     try:
         if os.geteuid() != 0:
             print(f"Installing dependencies for user: {user}")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             print(f"Running as sudo. Installing dependencies for user: {user}")
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -60,7 +66,13 @@ try:
     from rich.layout import Layout
     from rich.live import Live
     from rich.panel import Panel
-    from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
+    from rich.progress import (
+        Progress,
+        SpinnerColumn,
+        BarColumn,
+        TextColumn,
+        TimeRemainingColumn,
+    )
     from rich.table import Table
     from rich.text import Text
     from rich.style import Style
@@ -135,7 +147,12 @@ def create_header():
         ascii_art = APP_NAME
 
     lines = [line for line in ascii_art.split("\n") if line.strip()]
-    colors = [NordColors.FROST_1, NordColors.FROST_2, NordColors.FROST_3, NordColors.FROST_4]
+    colors = [
+        NordColors.FROST_1,
+        NordColors.FROST_2,
+        NordColors.FROST_3,
+        NordColors.FROST_4,
+    ]
     styled_text = ""
     for idx, line in enumerate(lines):
         color = colors[idx % len(colors)]
@@ -196,7 +213,9 @@ def cleanup():
 
 
 def signal_handler(sig, frame):
-    sig_name = signal.Signals(sig).name if hasattr(signal, "Signals") else f"Signal {sig}"
+    sig_name = (
+        signal.Signals(sig).name if hasattr(signal, "Signals") else f"Signal {sig}"
+    )
     print_warning(f"Process interrupted by {sig_name}")
     cleanup()
     sys.exit(128 + sig)
@@ -267,7 +286,9 @@ def get_cpu_info():
 
 
 def get_cpu_temperature():
-    temps = psutil.sensors_temperatures() if hasattr(psutil, "sensors_temperatures") else {}
+    temps = (
+        psutil.sensors_temperatures() if hasattr(psutil, "sensors_temperatures") else {}
+    )
     if temps:
         for key in ("coretemp", "cpu_thermal", "cpu-thermal", "k10temp"):
             if key in temps and temps[key]:
@@ -286,6 +307,7 @@ def get_gpu_info():
     try:
         try:
             import GPUtil
+
             gpus = GPUtil.getGPUs()
             if gpus:
                 gpu = gpus[0]
@@ -358,14 +380,18 @@ def cpu_prime_benchmark(duration_sec):
     prime_count = 0
     num = 2
     with Progress(
-            SpinnerColumn(style=f"bold {NordColors.CPU}"),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(bar_width=40, style=NordColors.CPU, complete_style=NordColors.FROST_2),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TimeRemainingColumn(),
-            console=console,
+        SpinnerColumn(style=f"bold {NordColors.CPU}"),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(
+            bar_width=40, style=NordColors.CPU, complete_style=NordColors.FROST_2
+        ),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeRemainingColumn(),
+        console=console,
     ) as progress:
-        task = progress.add_task(f"Calculating primes for {duration_sec} seconds...", total=100)
+        task = progress.add_task(
+            f"Calculating primes for {duration_sec} seconds...", total=100
+        )
         while time.time() < end:
             if is_prime(num):
                 prime_count += 1
@@ -399,7 +425,7 @@ def gpu_matrix_benchmark(duration_sec):
     matrix_size = 1024
     try:
         mem = psutil.virtual_memory()
-        avail_gb = mem.available / (1024 ** 3)
+        avail_gb = mem.available / (1024**3)
         if avail_gb > 8:
             matrix_size = 2048
         elif avail_gb < 2:
@@ -407,12 +433,14 @@ def gpu_matrix_benchmark(duration_sec):
     except Exception:
         pass
     with Progress(
-            SpinnerColumn(style=f"bold {NordColors.GPU}"),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(bar_width=40, style=NordColors.GPU, complete_style=NordColors.FROST_1),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TimeRemainingColumn(),
-            console=console,
+        SpinnerColumn(style=f"bold {NordColors.GPU}"),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(
+            bar_width=40, style=NordColors.GPU, complete_style=NordColors.FROST_1
+        ),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeRemainingColumn(),
+        console=console,
     ) as progress:
         task = progress.add_task(
             f"Running {matrix_size}x{matrix_size} matrix multiplications for {duration_sec} seconds...",
@@ -478,10 +506,16 @@ def display_cpu_results(results):
     table.add_row("Benchmark Duration", f"{results['elapsed_time']:.2f} seconds")
     table.add_row("Primes Found", f"{results['prime_count']:,}")
     table.add_row("Highest Number Checked", f"{results['highest_prime_checked']:,}")
-    table.add_row("Primes/Second", f"{results['primes_per_sec']:.2f}", style=f"bold {NordColors.SUCCESS}")
+    table.add_row(
+        "Primes/Second",
+        f"{results['primes_per_sec']:.2f}",
+        style=f"bold {NordColors.SUCCESS}",
+    )
     console.print(table)
     console.print("\n[bold {0}]Benchmark Explanation:[/{0}]".format(NordColors.FROST_2))
-    console.print("• Prime calculations stress single-core performance and integer operations.")
+    console.print(
+        "• Prime calculations stress single-core performance and integer operations."
+    )
     console.print("• Higher primes/second indicate better CPU performance.")
 
 
@@ -510,11 +544,17 @@ def display_gpu_results(results):
             table.add_row("GPU Temp", f"{gpu_info['temperature']:.1f}°C")
     table.add_row("Benchmark Duration", f"{results['elapsed_time']:.2f} seconds")
     table.add_row("Matrix Size", f"{results['matrix_size']}x{results['matrix_size']}")
-    table.add_row("Ops/Second", f"{results['iterations_per_sec']:.2f}", style=f"bold {NordColors.SUCCESS}")
+    table.add_row(
+        "Ops/Second",
+        f"{results['iterations_per_sec']:.2f}",
+        style=f"bold {NordColors.SUCCESS}",
+    )
     console.print(table)
     console.print("\n[bold {0}]Benchmark Explanation:[/{0}]".format(NordColors.FROST_2))
     console.print("• Matrix multiplication tests floating-point performance.")
-    console.print("• This benchmark uses NumPy; for true GPU testing, consider CUDA/OpenCL-based tools.")
+    console.print(
+        "• This benchmark uses NumPy; for true GPU testing, consider CUDA/OpenCL-based tools."
+    )
 
 
 @dataclass
@@ -634,8 +674,12 @@ class NetworkMonitor:
                     iface.packets_recv = io_counters[name].packets_recv
                     if name in self.last_stats:
                         last = self.last_stats[name]
-                        iface.bytes_sent_rate = (iface.bytes_sent - last.get("bytes_sent", 0)) / delta
-                        iface.bytes_recv_rate = (iface.bytes_recv - last.get("bytes_recv", 0)) / delta
+                        iface.bytes_sent_rate = (
+                            iface.bytes_sent - last.get("bytes_sent", 0)
+                        ) / delta
+                        iface.bytes_recv_rate = (
+                            iface.bytes_recv - last.get("bytes_recv", 0)
+                        ) / delta
                     self.last_stats[name] = {
                         "bytes_sent": iface.bytes_sent,
                         "bytes_recv": iface.bytes_recv,
@@ -661,7 +705,9 @@ class CpuMonitor:
         try:
             self.usage_percent = psutil.cpu_percent(interval=None)
             self.per_core = psutil.cpu_percent(interval=None, percpu=True)
-            self.load_avg = os.getloadavg() if hasattr(os, "getloadavg") else (0.0, 0.0, 0.0)
+            self.load_avg = (
+                os.getloadavg() if hasattr(os, "getloadavg") else (0.0, 0.0, 0.0)
+            )
             freq = psutil.cpu_freq()
             self.frequency = freq.current if freq else 0.0
             self.temperature = get_cpu_temperature()
@@ -702,7 +748,9 @@ class ProcessMonitor:
         self.last_update = time.time()
         procs = []
         try:
-            for proc in psutil.process_iter(["pid", "name", "username", "cpu_percent", "memory_percent", "status"]):
+            for proc in psutil.process_iter(
+                ["pid", "name", "username", "cpu_percent", "memory_percent", "status"]
+            ):
                 try:
                     info = proc.info
                     with proc.oneshot():
@@ -716,20 +764,26 @@ class ProcessMonitor:
                         except Exception:
                             info["memory_mb"] = 0.0
                     procs.append(info)
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                except (
+                    psutil.NoSuchProcess,
+                    psutil.AccessDenied,
+                    psutil.ZombieProcess,
+                ):
                     continue
             if sort_by.lower() == "memory":
                 procs.sort(key=lambda p: p.get("memory_percent", 0), reverse=True)
             else:
                 procs.sort(key=lambda p: p.get("cpu_percent", 0), reverse=True)
-            self.processes = procs[:self.limit]
+            self.processes = procs[: self.limit]
         except Exception as e:
             logging.error(f"Error updating process list: {e}")
             print_error(f"Error updating process list: {e}")
 
 
 class UnifiedMonitor:
-    def __init__(self, refresh_rate=DEFAULT_REFRESH_RATE, top_limit=DEFAULT_TOP_PROCESSES):
+    def __init__(
+        self, refresh_rate=DEFAULT_REFRESH_RATE, top_limit=DEFAULT_TOP_PROCESSES
+    ):
         self.refresh_rate = refresh_rate
         self.start_time = time.time()
         self.top_limit = top_limit
@@ -773,10 +827,10 @@ class UnifiedMonitor:
             return NordColors.GREEN
 
     def _format_network_rate(self, bytes_per_sec):
-        if bytes_per_sec > 1024 ** 3:
-            return f"{bytes_per_sec / 1024 ** 3:.2f} GB/s"
-        elif bytes_per_sec > 1024 ** 2:
-            return f"{bytes_per_sec / 1024 ** 2:.2f} MB/s"
+        if bytes_per_sec > 1024**3:
+            return f"{bytes_per_sec / 1024**3:.2f} GB/s"
+        elif bytes_per_sec > 1024**2:
+            return f"{bytes_per_sec / 1024**2:.2f} MB/s"
         elif bytes_per_sec > 1024:
             return f"{bytes_per_sec / 1024:.2f} KB/s"
         else:
@@ -807,25 +861,44 @@ class UnifiedMonitor:
 
         # CPU Panel
         cpu_info = self.cpu_monitor
-        cpu_table = Table(show_header=True, header_style=f"bold {NordColors.CPU}", expand=True, box=None)
-        cpu_table.add_column("Core", style=f"bold {NordColors.FROST_4}", justify="right")
+        cpu_table = Table(
+            show_header=True,
+            header_style=f"bold {NordColors.CPU}",
+            expand=True,
+            box=None,
+        )
+        cpu_table.add_column(
+            "Core", style=f"bold {NordColors.FROST_4}", justify="right"
+        )
         cpu_table.add_column("Usage", style=f"{NordColors.TEXT}")
-        cpu_table.add_column("Bar", style=f"{NordColors.CPU}", justify="center", ratio=3)
-        cpu_table.add_row("All", f"{cpu_info.usage_percent:.1f}%",
-                          self._create_bar(cpu_info.usage_percent, NordColors.CPU))
+        cpu_table.add_column(
+            "Bar", style=f"{NordColors.CPU}", justify="center", ratio=3
+        )
+        cpu_table.add_row(
+            "All",
+            f"{cpu_info.usage_percent:.1f}%",
+            self._create_bar(cpu_info.usage_percent, NordColors.CPU),
+        )
         for i, usage in enumerate(cpu_info.per_core):
-            cpu_table.add_row(f"{i + 1}", f"{usage:.1f}%", self._create_bar(usage, NordColors.CPU))
+            cpu_table.add_row(
+                f"{i + 1}", f"{usage:.1f}%", self._create_bar(usage, NordColors.CPU)
+            )
         cpu_stats = Table(box=None, expand=True, show_header=False)
         cpu_stats.add_column("Metric", style=f"bold {NordColors.FROST_3}")
         cpu_stats.add_column("Value", style=f"{NordColors.TEXT}")
         cpu_stats.add_row("Frequency", f"{cpu_info.frequency:.1f} MHz")
-        cpu_stats.add_row("Load Avg",
-                          f"{cpu_info.load_avg[0]:.2f}, {cpu_info.load_avg[1]:.2f}, {cpu_info.load_avg[2]:.2f}")
+        cpu_stats.add_row(
+            "Load Avg",
+            f"{cpu_info.load_avg[0]:.2f}, {cpu_info.load_avg[1]:.2f}, {cpu_info.load_avg[2]:.2f}",
+        )
         if cpu_info.temperature is not None:
             temp_color = self._get_temperature_color(cpu_info.temperature)
             cpu_stats.add_row("Temp", f"[{temp_color}]{cpu_info.temperature:.1f}°C[/]")
-        cpu_panel = Panel(Columns([cpu_table, cpu_stats], expand=True), title=f"[bold {NordColors.CPU}]CPU Usage[/]",
-                          border_style=NordColors.CPU)
+        cpu_panel = Panel(
+            Columns([cpu_table, cpu_stats], expand=True),
+            title=f"[bold {NordColors.CPU}]CPU Usage[/]",
+            border_style=NordColors.CPU,
+        )
         body["left"]["cpu"].update(cpu_panel)
 
         # Memory Panel
@@ -834,45 +907,67 @@ class UnifiedMonitor:
         mem_table.add_column("Memory", style=f"bold {NordColors.MEM}")
         mem_table.add_column("Usage", style=f"{NordColors.TEXT}")
         mem_table.add_column("Bar", ratio=3, justify="center")
-        mem_used_gb = mem_info.used / (1024 ** 3)
-        mem_total_gb = mem_info.total / (1024 ** 3)
+        mem_used_gb = mem_info.used / (1024**3)
+        mem_total_gb = mem_info.total / (1024**3)
         mem_table.add_row(
             "RAM",
             f"{mem_info.percent:.1f}% ({mem_used_gb:.1f}/{mem_total_gb:.1f} GB)",
             self._create_bar(mem_info.percent, NordColors.MEM),
         )
         if mem_info.swap_total > 0:
-            swap_used_gb = mem_info.swap_used / (1024 ** 3)
-            swap_total_gb = mem_info.swap_total / (1024 ** 3)
+            swap_used_gb = mem_info.swap_used / (1024**3)
+            swap_total_gb = mem_info.swap_total / (1024**3)
             mem_table.add_row(
                 "Swap",
                 f"{mem_info.swap_percent:.1f}% ({swap_used_gb:.1f}/{swap_total_gb:.1f} GB)",
                 self._create_bar(mem_info.swap_percent, NordColors.MEM),
             )
-        mem_panel = Panel(mem_table, title=f"[bold {NordColors.MEM}]Memory Usage[/]", border_style=NordColors.MEM)
+        mem_panel = Panel(
+            mem_table,
+            title=f"[bold {NordColors.MEM}]Memory Usage[/]",
+            border_style=NordColors.MEM,
+        )
         body["left"]["memory"].update(mem_panel)
 
         # Disk Panel
-        disk_table = Table(show_header=True, header_style=f"bold {NordColors.DISK}", expand=True, box=None)
+        disk_table = Table(
+            show_header=True,
+            header_style=f"bold {NordColors.DISK}",
+            expand=True,
+            box=None,
+        )
         disk_table.add_column("Mount", style=f"bold {NordColors.FROST_3}")
         disk_table.add_column("Size", style=f"{NordColors.TEXT}", justify="right")
         disk_table.add_column("Used", style=f"{NordColors.TEXT}", justify="right")
         disk_table.add_column("Free", style=f"{NordColors.TEXT}", justify="right")
-        disk_table.add_column("Usage", style=f"{NordColors.TEXT}", justify="center", ratio=2)
+        disk_table.add_column(
+            "Usage", style=f"{NordColors.TEXT}", justify="center", ratio=2
+        )
         for disk in self.disk_monitor.disks[:4]:
             disk_table.add_row(
                 disk.mountpoint,
-                f"{disk.total / (1024 ** 3):.1f} GB",
-                f"{disk.used / (1024 ** 3):.1f} GB",
-                f"{disk.free / (1024 ** 3):.1f} GB",
+                f"{disk.total / (1024**3):.1f} GB",
+                f"{disk.used / (1024**3):.1f} GB",
+                f"{disk.free / (1024**3):.1f} GB",
                 self._create_bar(disk.percent, NordColors.DISK),
             )
-        disk_panel = Panel(disk_table, title=f"[bold {NordColors.DISK}]Disk Usage[/]", border_style=NordColors.DISK)
+        disk_panel = Panel(
+            disk_table,
+            title=f"[bold {NordColors.DISK}]Disk Usage[/]",
+            border_style=NordColors.DISK,
+        )
         body["left"]["disk"].update(disk_panel)
 
         # Processes Panel
-        proc_table = Table(show_header=True, header_style=f"bold {NordColors.PROC}", expand=True, box=None)
-        proc_table.add_column("PID", style=f"bold {NordColors.FROST_4}", justify="right")
+        proc_table = Table(
+            show_header=True,
+            header_style=f"bold {NordColors.PROC}",
+            expand=True,
+            box=None,
+        )
+        proc_table.add_column(
+            "PID", style=f"bold {NordColors.FROST_4}", justify="right"
+        )
         proc_table.add_column("Name", style=f"{NordColors.TEXT}")
         proc_table.add_column("CPU%", style=f"{NordColors.CPU}", justify="right")
         proc_table.add_column("MEM%", style=f"{NordColors.MEM}", justify="right")
@@ -903,16 +998,23 @@ class UnifiedMonitor:
         body["right"]["processes"].update(proc_panel)
 
         # Network Panel
-        net_table = Table(show_header=True, header_style=f"bold {NordColors.NET}", expand=True, box=None)
+        net_table = Table(
+            show_header=True,
+            header_style=f"bold {NordColors.NET}",
+            expand=True,
+            box=None,
+        )
         net_table.add_column("Interface", style=f"bold {NordColors.FROST_3}")
         net_table.add_column("IP", style=f"{NordColors.TEXT}")
         net_table.add_column("RX", style=f"{NordColors.TEXT}", justify="right")
         net_table.add_column("TX", style=f"{NordColors.TEXT}", justify="right")
         net_table.add_column("Status", style=f"{NordColors.TEXT}", justify="center")
         active_ifaces = [
-            iface for iface in self.network_monitor.interfaces
-            if
-            iface.bytes_recv_rate > 0 or iface.bytes_sent_rate > 0 or iface.name.startswith(("en", "eth", "wl", "ww"))
+            iface
+            for iface in self.network_monitor.interfaces
+            if iface.bytes_recv_rate > 0
+            or iface.bytes_sent_rate > 0
+            or iface.name.startswith(("en", "eth", "wl", "ww"))
         ]
         if not active_ifaces:
             active_ifaces = self.network_monitor.interfaces
@@ -921,8 +1023,14 @@ class UnifiedMonitor:
             tx_rate = self._format_network_rate(iface.bytes_sent_rate)
             status = "● Online" if iface.is_up else "○ Offline"
             status_color = NordColors.GREEN if iface.is_up else NordColors.RED
-            net_table.add_row(iface.name, iface.ipv4, rx_rate, tx_rate, f"[{status_color}]{status}[/]")
-        net_panel = Panel(net_table, title=f"[bold {NordColors.NET}]Network Interfaces[/]", border_style=NordColors.NET)
+            net_table.add_row(
+                iface.name, iface.ipv4, rx_rate, tx_rate, f"[{status_color}]{status}[/]"
+            )
+        net_panel = Panel(
+            net_table,
+            title=f"[bold {NordColors.NET}]Network Interfaces[/]",
+            border_style=NordColors.NET,
+        )
         body["right"]["network"].update(net_panel)
 
         layout["body"].update(body)
@@ -952,19 +1060,35 @@ class UnifiedMonitor:
         os.makedirs(EXPORT_DIR, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         if not output_file:
-            output_file = os.path.join(EXPORT_DIR, f"system_monitor_{timestamp}.{export_format}")
+            output_file = os.path.join(
+                EXPORT_DIR, f"system_monitor_{timestamp}.{export_format}"
+            )
         try:
             if export_format.lower() == "json":
                 with open(output_file, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, default=lambda o: o.__dict__ if hasattr(o, "__dict__") else str(o))
+                    json.dump(
+                        data,
+                        f,
+                        indent=2,
+                        default=lambda o: o.__dict__
+                        if hasattr(o, "__dict__")
+                        else str(o),
+                    )
                 print_success(f"Data exported to {output_file}")
             elif export_format.lower() == "csv":
                 base, _ = os.path.splitext(output_file)
                 with open(f"{base}_cpu.csv", "w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
                     writer.writerow(
-                        ["timestamp", "usage_percent", "load_avg_1m", "load_avg_5m", "load_avg_15m", "frequency",
-                         "temperature"]
+                        [
+                            "timestamp",
+                            "usage_percent",
+                            "load_avg_1m",
+                            "load_avg_5m",
+                            "load_avg_15m",
+                            "frequency",
+                            "temperature",
+                        ]
                     )
                     writer.writerow(
                         [
@@ -980,8 +1104,16 @@ class UnifiedMonitor:
                 with open(f"{base}_memory.csv", "w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
                     writer.writerow(
-                        ["timestamp", "total", "used", "available", "percent", "swap_total", "swap_used",
-                         "swap_percent"]
+                        [
+                            "timestamp",
+                            "total",
+                            "used",
+                            "available",
+                            "percent",
+                            "swap_total",
+                            "swap_used",
+                            "swap_percent",
+                        ]
                     )
                     mem = data["memory"]
                     writer.writerow(
@@ -999,7 +1131,16 @@ class UnifiedMonitor:
                 with open(f"{base}_disks.csv", "w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
                     writer.writerow(
-                        ["timestamp", "device", "mountpoint", "total", "used", "free", "percent", "filesystem"]
+                        [
+                            "timestamp",
+                            "device",
+                            "mountpoint",
+                            "total",
+                            "used",
+                            "free",
+                            "percent",
+                            "filesystem",
+                        ]
                     )
                     for disk in data["disks"]:
                         writer.writerow(
@@ -1022,8 +1163,14 @@ class UnifiedMonitor:
             logging.exception("Error exporting data")
 
 
-def run_monitor(refresh=DEFAULT_REFRESH_RATE, duration=0.0, export_format=None, export_interval=0.0, output_file=None,
-                sort_by="cpu"):
+def run_monitor(
+    refresh=DEFAULT_REFRESH_RATE,
+    duration=0.0,
+    export_format=None,
+    export_interval=0.0,
+    output_file=None,
+    sort_by="cpu",
+):
     setup_logging()
     if os.name == "posix" and os.geteuid() != 0:
         print_warning("Running without root privileges may limit functionality.")
@@ -1035,7 +1182,11 @@ def run_monitor(refresh=DEFAULT_REFRESH_RATE, duration=0.0, export_format=None, 
     monitor = UnifiedMonitor(refresh_rate=refresh, top_limit=DEFAULT_TOP_PROCESSES)
     last_export_time = 0.0
     try:
-        with Live(monitor.build_dashboard(sort_by), refresh_per_second=1 / refresh, screen=True) as live:
+        with Live(
+            monitor.build_dashboard(sort_by),
+            refresh_per_second=1 / refresh,
+            screen=True,
+        ) as live:
             while True:
                 monitor.update()
                 live.update(monitor.build_dashboard(sort_by))
@@ -1068,35 +1219,71 @@ def monitor_menu():
         console.clear()
         console.print(create_header())
         print_section("Monitor Configuration")
-        settings_table = Table(show_header=True, header_style=f"bold {NordColors.FROST_1}", expand=True, box=None)
+        settings_table = Table(
+            show_header=True,
+            header_style=f"bold {NordColors.FROST_1}",
+            expand=True,
+            box=None,
+        )
         settings_table.add_column("Option", style=f"bold {NordColors.FROST_3}")
         settings_table.add_column("Setting", style=f"{NordColors.TEXT}")
         settings_table.add_column("Description", style=f"dim {NordColors.TEXT}")
-        settings_table.add_row("1. Refresh Rate", f"{refresh_rate} seconds", "Time between updates")
-        settings_table.add_row("2. Duration", f"{duration if duration > 0 else 'Unlimited'} seconds",
-                               "Monitoring duration (0=unlimited)")
-        settings_table.add_row("3. Export Format", f"{export_format if export_format else 'None'}",
-                               "Data export format")
-        settings_table.add_row("4. Export Interval", f"{export_interval} minutes",
-                               "Interval between exports (0=end only)")
-        settings_table.add_row("5. Output File", f"{output_file if output_file else 'Auto-generated'}",
-                               "Export file location")
-        settings_table.add_row("6. Sort Processes By", f"{sort_by.upper()}", "Sort criteria: CPU or Memory")
-        console.print(Panel(settings_table, title="Current Settings", border_style=NordColors.FROST_2))
+        settings_table.add_row(
+            "1. Refresh Rate", f"{refresh_rate} seconds", "Time between updates"
+        )
+        settings_table.add_row(
+            "2. Duration",
+            f"{duration if duration > 0 else 'Unlimited'} seconds",
+            "Monitoring duration (0=unlimited)",
+        )
+        settings_table.add_row(
+            "3. Export Format",
+            f"{export_format if export_format else 'None'}",
+            "Data export format",
+        )
+        settings_table.add_row(
+            "4. Export Interval",
+            f"{export_interval} minutes",
+            "Interval between exports (0=end only)",
+        )
+        settings_table.add_row(
+            "5. Output File",
+            f"{output_file if output_file else 'Auto-generated'}",
+            "Export file location",
+        )
+        settings_table.add_row(
+            "6. Sort Processes By", f"{sort_by.upper()}", "Sort criteria: CPU or Memory"
+        )
+        console.print(
+            Panel(
+                settings_table,
+                title="Current Settings",
+                border_style=NordColors.FROST_2,
+            )
+        )
 
         actions_table = Table(show_header=False, box=None, expand=True)
         actions_table.add_column("Action", style=f"bold {NordColors.FROST_2}")
         actions_table.add_column("Description", style=f"{NordColors.TEXT}")
         actions_table.add_row("7", "[bold]Start Monitor[/]")
         actions_table.add_row("8", "Return to Main Menu")
-        console.print(Panel(actions_table, title="Actions", border_style=NordColors.FROST_3))
+        console.print(
+            Panel(actions_table, title="Actions", border_style=NordColors.FROST_3)
+        )
 
         try:
-            choice = Prompt.ask(f"[bold {NordColors.FROST_2}]Enter your choice[/]",
-                                choices=["1", "2", "3", "4", "5", "6", "7", "8"], default="7")
+            choice = Prompt.ask(
+                f"[bold {NordColors.FROST_2}]Enter your choice[/]",
+                choices=["1", "2", "3", "4", "5", "6", "7", "8"],
+                default="7",
+            )
             if choice == "1":
                 try:
-                    value = float(Prompt.ask("Enter refresh rate in seconds", default=str(refresh_rate)))
+                    value = float(
+                        Prompt.ask(
+                            "Enter refresh rate in seconds", default=str(refresh_rate)
+                        )
+                    )
                     if value <= 0:
                         print_error("Refresh rate must be > 0")
                     else:
@@ -1105,7 +1292,12 @@ def monitor_menu():
                     print_error("Please enter a valid number")
             elif choice == "2":
                 try:
-                    value = float(Prompt.ask("Enter duration in seconds (0=unlimited)", default=str(duration)))
+                    value = float(
+                        Prompt.ask(
+                            "Enter duration in seconds (0=unlimited)",
+                            default=str(duration),
+                        )
+                    )
                     if value < 0:
                         print_error("Duration cannot be negative")
                     else:
@@ -1113,16 +1305,30 @@ def monitor_menu():
                 except ValueError:
                     print_error("Please enter a valid number")
             elif choice == "3":
-                console.print("\n[bold {0}]Export Formats:[/{0}]".format(NordColors.FROST_2))
+                console.print(
+                    "\n[bold {0}]Export Formats:[/{0}]".format(NordColors.FROST_2)
+                )
                 console.print("1. None")
                 console.print("2. JSON")
                 console.print("3. CSV")
-                fmt_choice = Prompt.ask("Choose export format", choices=["1", "2", "3"], default="1")
-                export_format = None if fmt_choice == "1" else "json" if fmt_choice == "2" else "csv"
+                fmt_choice = Prompt.ask(
+                    "Choose export format", choices=["1", "2", "3"], default="1"
+                )
+                export_format = (
+                    None
+                    if fmt_choice == "1"
+                    else "json"
+                    if fmt_choice == "2"
+                    else "csv"
+                )
             elif choice == "4":
                 try:
                     value = float(
-                        Prompt.ask("Enter export interval in minutes (0=end only)", default=str(export_interval)))
+                        Prompt.ask(
+                            "Enter export interval in minutes (0=end only)",
+                            default=str(export_interval),
+                        )
+                    )
                     if value < 0:
                         print_error("Interval cannot be negative")
                     else:
@@ -1130,19 +1336,32 @@ def monitor_menu():
                 except ValueError:
                     print_error("Please enter a valid number")
             elif choice == "5":
-                path = Prompt.ask("Enter output file path (leave empty for auto-generated)",
-                                  default="" if not output_file else output_file)
+                path = Prompt.ask(
+                    "Enter output file path (leave empty for auto-generated)",
+                    default="" if not output_file else output_file,
+                )
                 output_file = path if path else None
             elif choice == "6":
-                console.print("\n[bold {0}]Sort Options:[/{0}]".format(NordColors.FROST_2))
+                console.print(
+                    "\n[bold {0}]Sort Options:[/{0}]".format(NordColors.FROST_2)
+                )
                 console.print("1. CPU Usage")
                 console.print("2. Memory Usage")
-                sort_choice = Prompt.ask("Choose sort criteria", choices=["1", "2"],
-                                         default="1" if sort_by == "cpu" else "2")
+                sort_choice = Prompt.ask(
+                    "Choose sort criteria",
+                    choices=["1", "2"],
+                    default="1" if sort_by == "cpu" else "2",
+                )
                 sort_by = "cpu" if sort_choice == "1" else "memory"
             elif choice == "7":
-                run_monitor(refresh=refresh_rate, duration=duration, export_format=export_format,
-                            export_interval=export_interval, output_file=output_file, sort_by=sort_by)
+                run_monitor(
+                    refresh=refresh_rate,
+                    duration=duration,
+                    export_format=export_format,
+                    export_interval=export_interval,
+                    output_file=output_file,
+                    sort_by=sort_by,
+                )
             elif choice == "8":
                 break
         except KeyboardInterrupt:
@@ -1161,7 +1380,13 @@ def benchmark_menu():
         settings_table.add_column("Setting", style=f"bold {NordColors.FROST_3}")
         settings_table.add_column("Value", style=f"{NordColors.TEXT}")
         settings_table.add_row("Benchmark Duration", f"{duration} seconds")
-        console.print(Panel(settings_table, title="Current Settings", border_style=NordColors.FROST_2))
+        console.print(
+            Panel(
+                settings_table,
+                title="Current Settings",
+                border_style=NordColors.FROST_2,
+            )
+        )
 
         actions_table = Table(show_header=False, box=None, expand=True)
         actions_table.add_column("Option", style=f"bold {NordColors.FROST_2}")
@@ -1171,14 +1396,27 @@ def benchmark_menu():
         actions_table.add_row("3", "Run GPU Benchmark")
         actions_table.add_row("4", "Run Both CPU and GPU Benchmarks")
         actions_table.add_row("5", "Return to Main Menu")
-        console.print(Panel(actions_table, title="Available Benchmarks", border_style=NordColors.FROST_3))
+        console.print(
+            Panel(
+                actions_table,
+                title="Available Benchmarks",
+                border_style=NordColors.FROST_3,
+            )
+        )
 
         try:
-            choice = Prompt.ask(f"[bold {NordColors.FROST_2}]Enter your choice[/]", choices=["1", "2", "3", "4", "5"],
-                                default="2")
+            choice = Prompt.ask(
+                f"[bold {NordColors.FROST_2}]Enter your choice[/]",
+                choices=["1", "2", "3", "4", "5"],
+                default="2",
+            )
             if choice == "1":
                 try:
-                    value = int(Prompt.ask("Enter benchmark duration in seconds", default=str(duration)))
+                    value = int(
+                        Prompt.ask(
+                            "Enter benchmark duration in seconds", default=str(duration)
+                        )
+                    )
                     if value <= 0:
                         print_error("Duration must be > 0")
                     else:
@@ -1210,12 +1448,14 @@ def benchmark_menu():
                     gpu_results = gpu_benchmark(duration)
 
                 with Progress(
-                        SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
-                        TextColumn("[progress.description]{task.description}"),
-                        TimeRemainingColumn(),
-                        console=console,
+                    SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
+                    TextColumn("[progress.description]{task.description}"),
+                    TimeRemainingColumn(),
+                    console=console,
                 ) as progress:
-                    progress.add_task(f"Running benchmarks for {duration} seconds...", total=None)
+                    progress.add_task(
+                        f"Running benchmarks for {duration} seconds...", total=None
+                    )
                     cpu_thread = threading.Thread(target=run_cpu)
                     gpu_thread = threading.Thread(target=run_gpu)
                     cpu_thread.start()
@@ -1246,12 +1486,19 @@ def display_system_info():
     info_table.add_row("Uptime", uptime)
     cpu_info = get_cpu_info()
     mem = psutil.virtual_memory()
-    info_table.add_row("CPU",
-                       f"{cpu_info['model'][:40]}... ({cpu_info['cores']} cores / {cpu_info['threads']} threads)")
-    info_table.add_row("Memory", f"{mem.total / (1024 ** 3):.2f} GB total")
+    info_table.add_row(
+        "CPU",
+        f"{cpu_info['model'][:40]}... ({cpu_info['cores']} cores / {cpu_info['threads']} threads)",
+    )
+    info_table.add_row("Memory", f"{mem.total / (1024**3):.2f} GB total")
     if os.name == "posix" and os.geteuid() != 0:
-        info_table.add_row("Privileges", f"[bold {NordColors.YELLOW}]Running without root privileges.[/]")
-    console.print(Panel(info_table, title="System Information", border_style=NordColors.FROST_2))
+        info_table.add_row(
+            "Privileges",
+            f"[bold {NordColors.YELLOW}]Running without root privileges.[/]",
+        )
+    console.print(
+        Panel(info_table, title="System Information", border_style=NordColors.FROST_2)
+    )
 
 
 def quick_cpu_status():
@@ -1259,16 +1506,21 @@ def quick_cpu_status():
     console.print(create_header())
     print_section("Current CPU Status")
     with Progress(
-            SpinnerColumn(style=f"bold {NordColors.CPU}"),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
+        SpinnerColumn(style=f"bold {NordColors.CPU}"),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
     ) as progress:
         task = progress.add_task("Measuring CPU usage...", total=None)
         cpu_usage = psutil.cpu_percent(interval=1, percpu=True)
         progress.update(task, description="CPU information gathered")
 
-    cpu_table = Table(show_header=True, header_style=f"bold {NordColors.CPU}", expand=True,
-                      title=f"[bold {NordColors.CPU}]Per-Core CPU Usage[/]", border_style=NordColors.CPU)
+    cpu_table = Table(
+        show_header=True,
+        header_style=f"bold {NordColors.CPU}",
+        expand=True,
+        title=f"[bold {NordColors.CPU}]Per-Core CPU Usage[/]",
+        border_style=NordColors.CPU,
+    )
     cpu_table.add_column("Core", style=f"bold {NordColors.FROST_4}", justify="right")
     cpu_table.add_column("Usage", style=f"{NordColors.TEXT}", justify="right")
     cpu_table.add_column("Bar", style=f"{NordColors.CPU}", ratio=3)
@@ -1285,10 +1537,18 @@ def quick_cpu_status():
         cpu_table.add_row(f"Core {i + 1}", f"{usage:.1f}%", bar)
 
     avg = sum(cpu_usage) / len(cpu_usage)
-    avg_color = NordColors.RED if avg > 90 else NordColors.YELLOW if avg > 70 else NordColors.GREEN
+    avg_color = (
+        NordColors.RED
+        if avg > 90
+        else NordColors.YELLOW
+        if avg > 70
+        else NordColors.GREEN
+    )
     avg_filled = int((avg / 100) * width)
     avg_bar = f"[{avg_color}]{'█' * avg_filled}[/][{NordColors.POLAR_NIGHT_4}]{'█' * (width - avg_filled)}[/]"
-    cpu_table.add_row("Average", f"{avg:.1f}%", avg_bar, style=f"bold {NordColors.FROST_2}")
+    cpu_table.add_row(
+        "Average", f"{avg:.1f}%", avg_bar, style=f"bold {NordColors.FROST_2}"
+    )
     console.print(cpu_table)
 
     info_table = Table(show_header=False, box=None, expand=True)
@@ -1301,13 +1561,34 @@ def quick_cpu_status():
         info_table.add_row("CPU Model", cpu_info["model"])
     info_table.add_row("Cores/Threads", f"{cpu_info['cores']} / {cpu_info['threads']}")
     info_table.add_row("Frequency", f"{cpu_info['frequency_current']:.1f} MHz")
-    load_color = NordColors.RED if load[0] > cpu_info["threads"] else NordColors.YELLOW if load[0] > cpu_info[
-        "threads"] / 2 else NordColors.LOAD
-    info_table.add_row("Load Avg", f"[{load_color}]{load[0]:.2f}[/], {load[1]:.2f}, {load[2]:.2f}")
+    load_color = (
+        NordColors.RED
+        if load[0] > cpu_info["threads"]
+        else NordColors.YELLOW
+        if load[0] > cpu_info["threads"] / 2
+        else NordColors.LOAD
+    )
+    info_table.add_row(
+        "Load Avg", f"[{load_color}]{load[0]:.2f}[/], {load[1]:.2f}, {load[2]:.2f}"
+    )
     if temp:
-        temp_color = NordColors.RED if temp > 80 else NordColors.ORANGE if temp > 70 else NordColors.YELLOW if temp > 60 else NordColors.GREEN
+        temp_color = (
+            NordColors.RED
+            if temp > 80
+            else NordColors.ORANGE
+            if temp > 70
+            else NordColors.YELLOW
+            if temp > 60
+            else NordColors.GREEN
+        )
         info_table.add_row("Temperature", f"[{temp_color}]{temp:.1f}°C[/]")
-    console.print(Panel(info_table, title="Additional CPU Information", border_style=NordColors.FROST_3))
+    console.print(
+        Panel(
+            info_table,
+            title="Additional CPU Information",
+            border_style=NordColors.FROST_3,
+        )
+    )
     Prompt.ask(f"[{NordColors.TEXT}]Press Enter to continue[/]", default="")
 
 
@@ -1316,9 +1597,14 @@ def main_menu():
         console.clear()
         console.print(create_header())
         display_system_info()
-        menu_table = Table(show_header=False, box=None, expand=True,
-                           title=f"[bold {NordColors.FROST_2}]Main Menu[/]", title_justify="center",
-                           border_style=NordColors.FROST_2)
+        menu_table = Table(
+            show_header=False,
+            box=None,
+            expand=True,
+            title=f"[bold {NordColors.FROST_2}]Main Menu[/]",
+            title_justify="center",
+            border_style=NordColors.FROST_2,
+        )
         menu_table.add_column("Option", style=f"bold {NordColors.FROST_2}")
         menu_table.add_column("Description", style=f"{NordColors.TEXT}")
         menu_table.add_row("1", "System Monitor (Real-time Dashboard)")
@@ -1329,8 +1615,11 @@ def main_menu():
         console.print(Panel(menu_table))
 
         try:
-            choice = Prompt.ask(f"[bold {NordColors.FROST_2}]Enter your choice[/]", choices=["1", "2", "3", "4", "5"],
-                                default="1")
+            choice = Prompt.ask(
+                f"[bold {NordColors.FROST_2}]Enter your choice[/]",
+                choices=["1", "2", "3", "4", "5"],
+                default="1",
+            )
             if choice == "1":
                 monitor_menu()
             elif choice == "2":
@@ -1352,12 +1641,17 @@ Key Features:
 • Data export in JSON or CSV format
 • Fully interactive, menu-driven interface with Nord-themed styling
                 """
-                console.print(Panel(about_text, title="About", border_style=NordColors.FROST_2))
+                console.print(
+                    Panel(about_text, title="About", border_style=NordColors.FROST_2)
+                )
                 Prompt.ask(f"[{NordColors.TEXT}]Press Enter to continue[/]", default="")
             elif choice == "5":
                 console.clear()
-                goodbye = Panel(f"[bold {NordColors.FROST_2}]Thank you for using the Enhanced System Monitor![/]",
-                                border_style=Style(color=NordColors.FROST_1), padding=(1, 2))
+                goodbye = Panel(
+                    f"[bold {NordColors.FROST_2}]Thank you for using the Enhanced System Monitor![/]",
+                    border_style=Style(color=NordColors.FROST_1),
+                    padding=(1, 2),
+                )
                 console.print(goodbye)
                 break
         except KeyboardInterrupt:

@@ -26,10 +26,14 @@ def install_dependencies():
     user = os.environ.get("SUDO_USER", os.environ.get("USER"))
     try:
         if os.geteuid() != 0:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -42,7 +46,14 @@ try:
     from rich.table import Table
     from rich.panel import Panel
     from rich.prompt import Prompt
-    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+    from rich.progress import (
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        BarColumn,
+        TaskProgressColumn,
+        TimeRemainingColumn,
+    )
     from rich.style import Style
     from rich.traceback import install as install_rich_traceback
     from rich.theme import Theme
@@ -81,13 +92,17 @@ class NordColors:
         return frosts[:steps]
 
 
-console = Console(theme=Theme({
-    "info": f"bold {NordColors.FROST_2}",
-    "warning": f"bold {NordColors.YELLOW}",
-    "error": f"bold {NordColors.RED}",
-    "success": f"bold {NordColors.GREEN}",
-    "filename": f"italic {NordColors.FROST_1}",
-}))
+console = Console(
+    theme=Theme(
+        {
+            "info": f"bold {NordColors.FROST_2}",
+            "warning": f"bold {NordColors.YELLOW}",
+            "error": f"bold {NordColors.RED}",
+            "success": f"bold {NordColors.GREEN}",
+            "filename": f"italic {NordColors.FROST_1}",
+        }
+    )
+)
 
 
 @dataclass
@@ -147,7 +162,12 @@ class DeploymentResult:
 
     @property
     def total_files(self):
-        return self.new_files + self.updated_files + self.unchanged_files + self.failed_files
+        return (
+            self.new_files
+            + self.updated_files
+            + self.unchanged_files
+            + self.failed_files
+        )
 
     @property
     def elapsed_time(self):
@@ -297,9 +317,14 @@ async def set_owner(path, config):
     loop = asyncio.get_running_loop()
     try:
         stat_info = await loop.run_in_executor(None, os.stat, path)
-        if stat_info.st_uid == config.OWNER_UID and stat_info.st_gid == config.OWNER_GID:
+        if (
+            stat_info.st_uid == config.OWNER_UID
+            and stat_info.st_gid == config.OWNER_GID
+        ):
             return False
-        await loop.run_in_executor(None, lambda: os.chown(path, config.OWNER_UID, config.OWNER_GID))
+        await loop.run_in_executor(
+            None, lambda: os.chown(path, config.OWNER_UID, config.OWNER_GID)
+        )
         return True
     except Exception as e:
         print_warning(f"Failed to set ownership on {path}: {e}")
@@ -310,7 +335,9 @@ async def set_permissions(path, config, is_directory=False):
     loop = asyncio.get_running_loop()
     try:
         owner_changed = await set_owner(path, config)
-        permissions = config.DIR_PERMISSIONS if is_directory else config.FILE_PERMISSIONS
+        permissions = (
+            config.DIR_PERMISSIONS if is_directory else config.FILE_PERMISSIONS
+        )
         await loop.run_in_executor(None, lambda: os.chmod(path, permissions))
         return owner_changed or True
     except Exception as e:
@@ -356,7 +383,9 @@ async def process_file(rel_path, config, progress=None, task_id=None):
         try:
             source_hash = await get_file_hash(source_path)
             dest_hash = await get_file_hash(dest_path)
-            status = FileStatus.UPDATED if source_hash != dest_hash else FileStatus.UNCHANGED
+            status = (
+                FileStatus.UPDATED if source_hash != dest_hash else FileStatus.UNCHANGED
+            )
         except Exception as e:
             print_warning(f"Error comparing file {filename}: {e}")
             status = FileStatus.UPDATED
@@ -364,7 +393,9 @@ async def process_file(rel_path, config, progress=None, task_id=None):
     if status in (FileStatus.NEW, FileStatus.UPDATED):
         try:
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, lambda: shutil.copy2(source_path, dest_path))
+            await loop.run_in_executor(
+                None, lambda: shutil.copy2(source_path, dest_path)
+            )
             perm_changed = await set_permissions(dest_path, config)
         except Exception as e:
             return FileInfo(
@@ -403,16 +434,16 @@ async def deploy_files(config):
         return result
 
     with Progress(
-            SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
-            TextColumn(f"[bold {NordColors.FROST_2}]{{task.description}}"),
-            BarColumn(
-                bar_width=config.PROGRESS_WIDTH,
-                style=NordColors.FROST_4,
-                complete_style=NordColors.FROST_2,
-            ),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            console=console,
+        SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
+        TextColumn(f"[bold {NordColors.FROST_2}]{{task.description}}"),
+        BarColumn(
+            bar_width=config.PROGRESS_WIDTH,
+            style=NordColors.FROST_4,
+            complete_style=NordColors.FROST_2,
+        ),
+        TaskProgressColumn(),
+        TimeRemainingColumn(),
+        console=console,
     ) as progress:
         task = progress.add_task("Deploying files", total=len(source_files))
         semaphore = asyncio.Semaphore(config.MAX_WORKERS)
@@ -520,16 +551,26 @@ def create_file_details_table(result, max_files=20):
 async def run_deployment():
     config = AppConfig()
     console.print(create_header())
-    print_step(f"Starting deployment at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    print_step(
+        f"Starting deployment at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+    )
     display_deployment_details(config)
 
-    console.print(Panel("Path Verification", style=f"bold {NordColors.FROST_2}", padding=(0, 2)))
+    console.print(
+        Panel("Path Verification", style=f"bold {NordColors.FROST_2}", padding=(0, 2))
+    )
     if not await verify_paths(config):
-        display_panel("Deployment failed due to path verification errors.", style=NordColors.RED, title="Error")
+        display_panel(
+            "Deployment failed due to path verification errors.",
+            style=NordColors.RED,
+            title="Error",
+        )
         sys.exit(1)
     print_success("Source and destination directories verified\n")
 
-    console.print(Panel("File Deployment", style=f"bold {NordColors.FROST_2}", padding=(0, 2)))
+    console.print(
+        Panel("File Deployment", style=f"bold {NordColors.FROST_2}", padding=(0, 2))
+    )
     try:
         result = await deploy_files(config)
         console.print(create_stats_table(result))
@@ -553,7 +594,9 @@ async def run_deployment():
                 title="Deployment Complete",
             )
     except Exception as e:
-        display_panel(f"Deployment failed: {str(e)}", style=NordColors.RED, title="Error")
+        display_panel(
+            f"Deployment failed: {str(e)}", style=NordColors.RED, title="Error"
+        )
         console.print_exception()
         sys.exit(1)
 

@@ -42,14 +42,40 @@ BREW_CMD = "brew"
 PYENV_SHIMS = os.path.join(HOME_DIR, ".pyenv", "shims")
 
 SYSTEM_DEPENDENCIES = [
-    "openssl", "readline", "sqlite3", "xz", "zlib", "git", "curl", "wget"
+    "openssl",
+    "readline",
+    "sqlite3",
+    "xz",
+    "zlib",
+    "git",
+    "curl",
+    "wget",
 ]
 
 PIPX_TOOLS = [
-    "black", "isort", "flake8", "mypy", "pytest", "pre-commit", "ipython",
-    "cookiecutter", "pylint", "sphinx", "httpie", "ruff", "yt-dlp", "bandit",
-    "pipenv", "pip-audit", "nox", "awscli", "dvc", "uv", "pyupgrade",
-    "watchfiles", "bump2version"
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+    "pytest",
+    "pre-commit",
+    "ipython",
+    "cookiecutter",
+    "pylint",
+    "sphinx",
+    "httpie",
+    "ruff",
+    "yt-dlp",
+    "bandit",
+    "pipenv",
+    "pip-audit",
+    "nox",
+    "awscli",
+    "dvc",
+    "uv",
+    "pyupgrade",
+    "watchfiles",
+    "bump2version",
 ]
 
 TOOL_DESCRIPTIONS = {
@@ -161,12 +187,7 @@ def print_step(message):
 
 
 def run_command(
-        cmd,
-        shell=False,
-        check=True,
-        capture_output=True,
-        timeout=DEFAULT_TIMEOUT,
-        env=None
+    cmd, shell=False, check=True, capture_output=True, timeout=DEFAULT_TIMEOUT, env=None
 ):
     cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
     print_message(
@@ -199,7 +220,9 @@ def append_to_shell_rc(shell_rc, content):
 def check_system():
     with console.status("[bold blue]Checking system compatibility...", spinner="dots"):
         if os.geteuid() == 0:
-            print_error("Do not run this script as root on macOS. Please run as your regular user.")
+            print_error(
+                "Do not run this script as root on macOS. Please run as your regular user."
+            )
             return False
 
         if platform.system().lower() != "darwin":
@@ -207,7 +230,9 @@ def check_system():
             return False
 
         if not shutil.which(BREW_CMD):
-            print_error("Homebrew is not installed. Please install it from https://brew.sh")
+            print_error(
+                "Homebrew is not installed. Please install it from https://brew.sh"
+            )
             return False
 
         table = Table(
@@ -299,7 +324,9 @@ def install_latest_python_with_pyenv():
         return False
 
     try:
-        with console.status("[bold blue]Fetching available Python versions...", spinner="dots"):
+        with console.status(
+            "[bold blue]Fetching available Python versions...", spinner="dots"
+        ):
             versions_output = run_command([pyenv_cmd, "install", "--list"]).stdout
 
         versions = re.findall(r"^\s*(\d+\.\d+\.\d+)$", versions_output, re.MULTILINE)
@@ -320,13 +347,17 @@ def install_latest_python_with_pyenv():
         )
 
         install_cmd = [pyenv_cmd, "install", "--skip-existing", latest_version]
-        with console.status(f"[bold blue]Building Python {latest_version}...", spinner="dots"):
+        with console.status(
+            f"[bold blue]Building Python {latest_version}...", spinner="dots"
+        ):
             run_command(install_cmd, timeout=PYTHON_BUILD_TIMEOUT)
 
         print_step(f"Setting Python {latest_version} as the global default...")
         run_command([pyenv_cmd, "global", latest_version])
 
-        python_path = os.path.join(HOME_DIR, ".pyenv", "versions", latest_version, "bin", "python")
+        python_path = os.path.join(
+            HOME_DIR, ".pyenv", "versions", latest_version, "bin", "python"
+        )
         if os.path.exists(python_path):
             run_command([python_path, "-m", "pip", "install", "--upgrade", "pip"])
             version_info = run_command([python_path, "--version"]).stdout.strip()
@@ -398,7 +429,9 @@ def install_pipx_tools():
     if installed_tools:
         print_success(f"Successfully installed {len(installed_tools)} tools.")
     if failed_tools:
-        print_warning(f"Failed to install {len(failed_tools)} tools: {', '.join(failed_tools)}")
+        print_warning(
+            f"Failed to install {len(failed_tools)} tools: {', '.join(failed_tools)}"
+        )
 
     tools_table = Table(
         show_header=True,
@@ -413,7 +446,9 @@ def install_pipx_tools():
     tools_table.add_column("Description", style=NordColors.SNOW_STORM_1)
 
     for tool in PIPX_TOOLS:
-        status = "[green]✓ Installed[/]" if tool in installed_tools else "[red]× Failed[/]"
+        status = (
+            "[green]✓ Installed[/]" if tool in installed_tools else "[red]× Failed[/]"
+        )
         desc = TOOL_DESCRIPTIONS.get(tool, "")
         tools_table.add_row(tool, status, desc)
 
@@ -476,7 +511,9 @@ def display_summary(successes):
 
     shell = os.path.basename(os.environ.get("SHELL", "bash"))
     console.print("\n[bold]Next Steps:[/bold]")
-    console.print(f"Restart your terminal or run: [bold {NordColors.FROST_3}]source ~/.{shell}rc[/]")
+    console.print(
+        f"Restart your terminal or run: [bold {NordColors.FROST_3}]source ~/.{shell}rc[/]"
+    )
     console.print("\n[bold green]✓ Setup process completed![/bold green]")
 
 

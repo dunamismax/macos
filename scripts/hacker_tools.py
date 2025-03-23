@@ -25,10 +25,14 @@ def install_dependencies():
     user = os.environ.get("SUDO_USER", os.environ.get("USER"))
     try:
         if os.geteuid() != 0:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -36,7 +40,9 @@ def install_dependencies():
 
 def check_homebrew():
     if shutil.which("brew") is None:
-        print("Homebrew is not installed. Please install Homebrew from https://brew.sh and rerun this script.")
+        print(
+            "Homebrew is not installed. Please install Homebrew from https://brew.sh and rerun this script."
+        )
         return False
     return True
 
@@ -46,8 +52,14 @@ try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.progress import (
-        Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn,
-        TimeRemainingColumn, TransferSpeedColumn, MofNCompleteColumn
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        BarColumn,
+        TaskProgressColumn,
+        TimeRemainingColumn,
+        TransferSpeedColumn,
+        MofNCompleteColumn,
     )
     from rich.prompt import Prompt, Confirm
     from rich.table import Table
@@ -155,14 +167,24 @@ class NordColors:
 
     @classmethod
     def get_polar_gradient(cls, steps=4):
-        return [cls.POLAR_NIGHT_1, cls.POLAR_NIGHT_2, cls.POLAR_NIGHT_3, cls.POLAR_NIGHT_4][:steps]
+        return [
+            cls.POLAR_NIGHT_1,
+            cls.POLAR_NIGHT_2,
+            cls.POLAR_NIGHT_3,
+            cls.POLAR_NIGHT_4,
+        ][:steps]
 
     @classmethod
     def get_progress_columns(cls):
         return [
             SpinnerColumn(spinner_name="dots", style=f"bold {cls.FROST_1}"),
             TextColumn(f"[bold {cls.FROST_2}]{{task.description}}[/]"),
-            BarColumn(bar_width=None, style=cls.POLAR_NIGHT_3, complete_style=cls.FROST_2, finished_style=cls.GREEN),
+            BarColumn(
+                bar_width=None,
+                style=cls.POLAR_NIGHT_3,
+                complete_style=cls.FROST_2,
+                finished_style=cls.GREEN,
+            ),
             TaskProgressColumn(style=cls.SNOW_STORM_1),
             MofNCompleteColumn(),
             TimeRemainingColumn(compact=True),
@@ -281,7 +303,7 @@ def display_panel(title, message, style=NordColors.INFO):
             title=title,
             border_style=style,
             box=NordColors.NORD_BOX,
-            padding=(1, 2)
+            padding=(1, 2),
         )
     else:
         panel = Panel(
@@ -289,7 +311,7 @@ def display_panel(title, message, style=NordColors.INFO):
             title=title,
             border_style=style,
             box=NordColors.NORD_BOX,
-            padding=(1, 2)
+            padding=(1, 2),
         )
     console.print(panel)
 
@@ -330,7 +352,7 @@ def log_installation_result(tool_name, success, method, message=""):
             "success": success,
             "method": method,
             "message": message,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         log_data = []
@@ -350,15 +372,15 @@ def log_installation_result(tool_name, success, method, message=""):
 
 
 def run_command(
-        cmd,
-        shell=False,
-        check=True,
-        capture_output=True,
-        timeout=DEFAULT_TIMEOUT,
-        verbose=False,
-        env=None,
-        use_sudo=False,
-        show_progress=True  # Add parameter to control progress display
+    cmd,
+    shell=False,
+    check=True,
+    capture_output=True,
+    timeout=DEFAULT_TIMEOUT,
+    verbose=False,
+    env=None,
+    use_sudo=False,
+    show_progress=True,  # Add parameter to control progress display
 ):
     try:
         cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
@@ -374,9 +396,9 @@ def run_command(
         # Avoid nested progress displays by skipping progress display when requested
         if show_progress:
             with Progress(
-                    SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                    TextColumn(f"[bold {NordColors.FROST_2}]Running command..."),
-                    console=console
+                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+                TextColumn(f"[bold {NordColors.FROST_2}]Running command..."),
+                console=console,
             ) as progress:
                 task = progress.add_task("", total=None)
                 result = subprocess.run(
@@ -386,7 +408,7 @@ def run_command(
                     text=True,
                     capture_output=capture_output,
                     timeout=timeout,
-                    env=env or os.environ.copy()
+                    env=env or os.environ.copy(),
                 )
         else:
             # Run without progress display to avoid conflicts
@@ -397,7 +419,7 @@ def run_command(
                 text=True,
                 capture_output=capture_output,
                 timeout=timeout,
-                env=env or os.environ.copy()
+                env=env or os.environ.copy(),
             )
 
         return result
@@ -428,7 +450,9 @@ def install_homebrew():
         result = run_command(install_script, shell=True, check=False)
 
         if result.returncode != 0:
-            print_error("Failed to install Homebrew. Please install it manually from https://brew.sh")
+            print_error(
+                "Failed to install Homebrew. Please install it manually from https://brew.sh"
+            )
             return False
 
         # Update PATH for this session
@@ -439,7 +463,9 @@ def install_homebrew():
         # Verify installation
         if shutil.which("brew") is None:
             print_error("Homebrew installed but 'brew' command not found in PATH.")
-            print_warning("You may need to restart your terminal for the PATH changes to take effect.")
+            print_warning(
+                "You may need to restart your terminal for the PATH changes to take effect."
+            )
             return False
 
         print_success("Homebrew installed successfully.")
@@ -468,7 +494,9 @@ def update_homebrew():
         return True  # Return True to continue with installation
 
 
-def install_brew_package(tool_name, cask=False, verbose=False, use_sudo=False, show_progress=True):
+def install_brew_package(
+    tool_name, cask=False, verbose=False, use_sudo=False, show_progress=True
+):
     if not check_homebrew():
         print_error("Homebrew is not installed.")
         return False
@@ -479,7 +507,7 @@ def install_brew_package(tool_name, cask=False, verbose=False, use_sudo=False, s
             [BREW_CMD, "list", tool_name],
             check=False,
             verbose=verbose,
-            show_progress=False  # Don't show progress for checks
+            show_progress=False,  # Don't show progress for checks
         )
 
         if result.returncode == 0:
@@ -496,12 +524,7 @@ def install_brew_package(tool_name, cask=False, verbose=False, use_sudo=False, s
 
         # For GUI applications like Wireshark, use direct subprocess call to avoid live display issues
         if tool_name in ["wireshark", "burp-suite", "ghidra", "autopsy"]:
-            result = subprocess.run(
-                cmd,
-                text=True,
-                capture_output=True,
-                check=False
-            )
+            result = subprocess.run(cmd, text=True, capture_output=True, check=False)
             if result.returncode == 0:
                 print_success(f"{tool_name} installed successfully via Homebrew.")
                 return True
@@ -511,19 +534,32 @@ def install_brew_package(tool_name, cask=False, verbose=False, use_sudo=False, s
                     if result.stdout:
                         console.print(f"[dim]Output: {result.stdout.strip()}[/dim]")
                     if result.stderr:
-                        console.print(f"[bold {NordColors.RED}]Error: {result.stderr.strip()}[/]")
+                        console.print(
+                            f"[bold {NordColors.RED}]Error: {result.stderr.strip()}[/]"
+                        )
                 return False
         else:
             # Normal installation with optional progress display
-            result = run_command(cmd, check=False, verbose=verbose, use_sudo=use_sudo, show_progress=show_progress)
+            result = run_command(
+                cmd,
+                check=False,
+                verbose=verbose,
+                use_sudo=use_sudo,
+                show_progress=show_progress,
+            )
 
         if result.returncode == 0:
             print_success(f"{tool_name} installed successfully via Homebrew.")
             return True
         else:
             print_error(f"Failed to install {tool_name} via Homebrew.")
-            if "No available formula" in result.stderr or "No casks found" in result.stderr:
-                print_warning(f"Package {tool_name} not found in Homebrew. It may have been renamed or removed.")
+            if (
+                "No available formula" in result.stderr
+                or "No casks found" in result.stderr
+            ):
+                print_warning(
+                    f"Package {tool_name} not found in Homebrew. It may have been renamed or removed."
+                )
             return False
     except Exception as e:
         print_error(f"Error installing {tool_name} via Homebrew: {e}")
@@ -568,7 +604,9 @@ def install_pipx_package(tool_name, verbose=False):
                 return False
 
         print_step(f"Installing {tool_name} via pipx...")
-        result = run_command([pipx_cmd, "install", tool_name], check=False, verbose=verbose)
+        result = run_command(
+            [pipx_cmd, "install", tool_name], check=False, verbose=verbose
+        )
 
         if result.returncode == 0:
             print_success(f"{tool_name} installed successfully via pipx.")
@@ -591,13 +629,12 @@ def install_git_repo(repo_url, tool_name, install_cmd=None, verbose=False):
 
         # Create a temp directory for cloning
         import tempfile
+
         temp_dir = tempfile.mkdtemp(prefix=f"{tool_name}-")
 
         print_step(f"Cloning {tool_name} repository...")
         clone_result = run_command(
-            [git_cmd, "clone", repo_url, temp_dir],
-            check=False,
-            verbose=verbose
+            [git_cmd, "clone", repo_url, temp_dir], check=False, verbose=verbose
         )
 
         if clone_result.returncode != 0:
@@ -614,7 +651,9 @@ def install_git_repo(repo_url, tool_name, install_cmd=None, verbose=False):
                         print_error(f"Install command failed: {cmd}")
                         return False
             else:
-                result = run_command(install_cmd, shell=True, check=False, verbose=verbose)
+                result = run_command(
+                    install_cmd, shell=True, check=False, verbose=verbose
+                )
                 if result.returncode != 0:
                     print_error(f"Install command failed: {install_cmd}")
                     return False
@@ -642,7 +681,9 @@ def install_tool(tool, verbose=False, use_sudo=False, show_progress=True):
     # Install dependencies first
     for dep in tool.dependencies:
         print_step(f"Installing dependency: {dep}")
-        install_brew_package(dep, verbose=verbose, use_sudo=use_sudo, show_progress=False)
+        install_brew_package(
+            dep, verbose=verbose, use_sudo=use_sudo, show_progress=False
+        )
 
     success = False
 
@@ -650,12 +691,22 @@ def install_tool(tool, verbose=False, use_sudo=False, show_progress=True):
     for method, param in tool.install_methods:
         try:
             if method == InstallMethod.BREW:
-                if install_brew_package(param, verbose=verbose, use_sudo=use_sudo, show_progress=show_progress):
+                if install_brew_package(
+                    param,
+                    verbose=verbose,
+                    use_sudo=use_sudo,
+                    show_progress=show_progress,
+                ):
                     success = True
                     break
             elif method == InstallMethod.BREW_CASK:
-                if install_brew_package(param, cask=True, verbose=verbose, use_sudo=use_sudo,
-                                        show_progress=show_progress):
+                if install_brew_package(
+                    param,
+                    cask=True,
+                    verbose=verbose,
+                    use_sudo=use_sudo,
+                    show_progress=show_progress,
+                ):
                     success = True
                     break
             elif method == InstallMethod.PIP:
@@ -673,8 +724,14 @@ def install_tool(tool, verbose=False, use_sudo=False, show_progress=True):
                     break
             elif method == InstallMethod.CUSTOM:
                 print_step(f"Running custom installation for {tool.name}...")
-                result = run_command(param, shell=True, check=False, verbose=verbose, use_sudo=use_sudo,
-                                     show_progress=show_progress)
+                result = run_command(
+                    param,
+                    shell=True,
+                    check=False,
+                    verbose=verbose,
+                    use_sudo=use_sudo,
+                    show_progress=show_progress,
+                )
                 if result.returncode == 0:
                     success = True
                     break
@@ -687,7 +744,9 @@ def install_tool(tool, verbose=False, use_sudo=False, show_progress=True):
         for cmd in tool.post_install:
             try:
                 print_step(f"Running post-installation command for {tool.name}...")
-                run_command(cmd, shell=True, check=False, verbose=verbose, use_sudo=use_sudo)
+                run_command(
+                    cmd, shell=True, check=False, verbose=verbose, use_sudo=use_sudo
+                )
             except Exception as e:
                 print_warning(f"Post-installation command failed: {e}")
 
@@ -703,8 +762,12 @@ def install_tool(tool, verbose=False, use_sudo=False, show_progress=True):
 
         return True
     else:
-        print_error(f"Failed to install {tool.name} after trying all installation methods.")
-        log_installation_result(tool.name, False, "ALL", "All installation methods failed")
+        print_error(
+            f"Failed to install {tool.name} after trying all installation methods."
+        )
+        log_installation_result(
+            tool.name, False, "ALL", "All installation methods failed"
+        )
         return False
 
 
@@ -720,7 +783,7 @@ def get_tool_list():
                 (InstallMethod.BREW, "nmap"),
             ],
             homepage="https://nmap.org",
-            is_core=True
+            is_core=True,
         ),
         Tool(
             name="wireshark",
@@ -733,7 +796,7 @@ def get_tool_list():
             post_install=[
                 "echo 'Wireshark installed. You may need to run it from Applications folder.'",
             ],
-            homepage="https://www.wireshark.org"
+            homepage="https://www.wireshark.org",
         ),
         Tool(
             name="netcat",
@@ -742,7 +805,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "netcat"),
             ],
-            homepage="https://nc110.sourceforge.io/"
+            homepage="https://nc110.sourceforge.io/",
         ),
         Tool(
             name="masscan",
@@ -751,7 +814,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "masscan"),
             ],
-            homepage="https://github.com/robertdavidgraham/masscan"
+            homepage="https://github.com/robertdavidgraham/masscan",
         ),
         Tool(
             name="bettercap",
@@ -760,7 +823,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "bettercap"),
             ],
-            homepage="https://www.bettercap.org/"
+            homepage="https://www.bettercap.org/",
         ),
         Tool(
             name="aircrack-ng",
@@ -769,7 +832,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "aircrack-ng"),
             ],
-            homepage="https://www.aircrack-ng.org/"
+            homepage="https://www.aircrack-ng.org/",
         ),
         Tool(
             name="tcpdump",
@@ -778,7 +841,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "tcpdump"),
             ],
-            homepage="https://www.tcpdump.org/"
+            homepage="https://www.tcpdump.org/",
         ),
         Tool(
             name="kismet",
@@ -787,7 +850,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "kismet"),
             ],
-            homepage="https://www.kismetwireless.net/"
+            homepage="https://www.kismetwireless.net/",
         ),
         Tool(
             name="mitmproxy",
@@ -797,9 +860,8 @@ def get_tool_list():
                 (InstallMethod.BREW, "mitmproxy"),
                 (InstallMethod.PIP, "mitmproxy"),
             ],
-            homepage="https://mitmproxy.org/"
+            homepage="https://mitmproxy.org/",
         ),
-
         # WEB TOOLS
         Tool(
             name="burpsuite",
@@ -808,7 +870,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW_CASK, "burp-suite"),
             ],
-            homepage="https://portswigger.net/burp"
+            homepage="https://portswigger.net/burp",
         ),
         Tool(
             name="sqlmap",
@@ -818,7 +880,7 @@ def get_tool_list():
                 (InstallMethod.BREW, "sqlmap"),
                 (InstallMethod.PIP, "sqlmap"),
             ],
-            homepage="https://sqlmap.org/"
+            homepage="https://sqlmap.org/",
         ),
         Tool(
             name="owasp-zap",
@@ -827,7 +889,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW_CASK, "zap"),
             ],
-            homepage="https://www.zaproxy.org/"
+            homepage="https://www.zaproxy.org/",
         ),
         Tool(
             name="wpscan",
@@ -836,7 +898,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "wpscan"),
             ],
-            homepage="https://wpscan.org/"
+            homepage="https://wpscan.org/",
         ),
         Tool(
             name="nikto",
@@ -845,7 +907,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "nikto"),
             ],
-            homepage="https://cirt.net/Nikto2"
+            homepage="https://cirt.net/Nikto2",
         ),
         Tool(
             name="ffuf",
@@ -854,7 +916,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "ffuf"),
             ],
-            homepage="https://github.com/ffuf/ffuf"
+            homepage="https://github.com/ffuf/ffuf",
         ),
         Tool(
             name="gobuster",
@@ -863,9 +925,8 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "gobuster"),
             ],
-            homepage="https://github.com/OJ/gobuster"
+            homepage="https://github.com/OJ/gobuster",
         ),
-
         # FORENSIC TOOLS
         Tool(
             name="autopsy",
@@ -874,7 +935,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW_CASK, "autopsy"),
             ],
-            homepage="https://www.sleuthkit.org/autopsy/"
+            homepage="https://www.sleuthkit.org/autopsy/",
         ),
         Tool(
             name="volatility",
@@ -883,7 +944,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.PIP, "volatility3"),
             ],
-            homepage="https://www.volatilityfoundation.org/"
+            homepage="https://www.volatilityfoundation.org/",
         ),
         Tool(
             name="sleuthkit",
@@ -892,7 +953,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "sleuthkit"),
             ],
-            homepage="https://www.sleuthkit.org/sleuthkit/"
+            homepage="https://www.sleuthkit.org/sleuthkit/",
         ),
         Tool(
             name="binwalk",
@@ -902,7 +963,7 @@ def get_tool_list():
                 (InstallMethod.BREW, "binwalk"),
                 (InstallMethod.PIP, "binwalk"),
             ],
-            homepage="https://github.com/ReFirmLabs/binwalk"
+            homepage="https://github.com/ReFirmLabs/binwalk",
         ),
         Tool(
             name="foremost",
@@ -911,7 +972,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "foremost"),
             ],
-            homepage="http://foremost.sourceforge.net/"
+            homepage="http://foremost.sourceforge.net/",
         ),
         Tool(
             name="scalpel",
@@ -920,9 +981,8 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "scalpel"),
             ],
-            homepage="https://github.com/sleuthkit/scalpel"
+            homepage="https://github.com/sleuthkit/scalpel",
         ),
-
         # CRYPTO TOOLS
         Tool(
             name="hashcat",
@@ -931,7 +991,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "hashcat"),
             ],
-            homepage="https://hashcat.net/"
+            homepage="https://hashcat.net/",
         ),
         Tool(
             name="john",
@@ -940,7 +1000,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "john-jumbo"),
             ],
-            homepage="https://www.openwall.com/john/"
+            homepage="https://www.openwall.com/john/",
         ),
         Tool(
             name="openssl",
@@ -949,7 +1009,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "openssl"),
             ],
-            homepage="https://www.openssl.org/"
+            homepage="https://www.openssl.org/",
         ),
         Tool(
             name="sslscan",
@@ -958,9 +1018,8 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "sslscan"),
             ],
-            homepage="https://github.com/rbsec/sslscan"
+            homepage="https://github.com/rbsec/sslscan",
         ),
-
         # RECONNAISSANCE TOOLS
         Tool(
             name="amass",
@@ -969,7 +1028,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "amass"),
             ],
-            homepage="https://github.com/OWASP/Amass"
+            homepage="https://github.com/OWASP/Amass",
         ),
         Tool(
             name="subfinder",
@@ -978,7 +1037,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "subfinder"),
             ],
-            homepage="https://github.com/projectdiscovery/subfinder"
+            homepage="https://github.com/projectdiscovery/subfinder",
         ),
         Tool(
             name="nuclei",
@@ -987,7 +1046,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "nuclei"),
             ],
-            homepage="https://github.com/projectdiscovery/nuclei"
+            homepage="https://github.com/projectdiscovery/nuclei",
         ),
         Tool(
             name="theharvester",
@@ -997,7 +1056,7 @@ def get_tool_list():
                 (InstallMethod.BREW, "theharvester"),
                 (InstallMethod.PIP, "theharvester"),
             ],
-            homepage="https://github.com/laramies/theHarvester"
+            homepage="https://github.com/laramies/theHarvester",
         ),
         Tool(
             name="osquery",
@@ -1006,7 +1065,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "osquery"),
             ],
-            homepage="https://osquery.io/"
+            homepage="https://osquery.io/",
         ),
         Tool(
             name="spiderfoot",
@@ -1016,9 +1075,8 @@ def get_tool_list():
                 (InstallMethod.PIP, "spiderfoot"),
                 (InstallMethod.GIT, "https://github.com/smicallef/spiderfoot.git"),
             ],
-            homepage="https://www.spiderfoot.net/"
+            homepage="https://www.spiderfoot.net/",
         ),
-
         # EXPLOITATION TOOLS
         Tool(
             name="metasploit",
@@ -1027,7 +1085,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "metasploit"),
             ],
-            homepage="https://www.metasploit.com/"
+            homepage="https://www.metasploit.com/",
         ),
         Tool(
             name="commix",
@@ -1036,7 +1094,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.GIT, "https://github.com/commixproject/commix.git"),
             ],
-            homepage="https://github.com/commixproject/commix"
+            homepage="https://github.com/commixproject/commix",
         ),
         Tool(
             name="hydra",
@@ -1045,9 +1103,8 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "hydra"),
             ],
-            homepage="https://github.com/vanhauser-thc/thc-hydra"
+            homepage="https://github.com/vanhauser-thc/thc-hydra",
         ),
-
         # UTILITIES
         Tool(
             name="docker",
@@ -1056,7 +1113,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW_CASK, "docker"),
             ],
-            homepage="https://www.docker.com/"
+            homepage="https://www.docker.com/",
         ),
         Tool(
             name="git",
@@ -1065,7 +1122,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "git"),
             ],
-            homepage="https://git-scm.com/"
+            homepage="https://git-scm.com/",
         ),
         Tool(
             name="python3",
@@ -1074,7 +1131,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "python"),
             ],
-            homepage="https://www.python.org/"
+            homepage="https://www.python.org/",
         ),
         Tool(
             name="go",
@@ -1083,7 +1140,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "go"),
             ],
-            homepage="https://golang.org/"
+            homepage="https://golang.org/",
         ),
         Tool(
             name="rust",
@@ -1092,7 +1149,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "rust"),
             ],
-            homepage="https://www.rust-lang.org/"
+            homepage="https://www.rust-lang.org/",
         ),
         Tool(
             name="tor",
@@ -1101,7 +1158,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "tor"),
             ],
-            homepage="https://www.torproject.org/"
+            homepage="https://www.torproject.org/",
         ),
         Tool(
             name="tor-browser",
@@ -1110,7 +1167,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW_CASK, "tor-browser"),
             ],
-            homepage="https://www.torproject.org/download/"
+            homepage="https://www.torproject.org/download/",
         ),
         Tool(
             name="iterm2",
@@ -1119,7 +1176,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW_CASK, "iterm2"),
             ],
-            homepage="https://iterm2.com/"
+            homepage="https://iterm2.com/",
         ),
         Tool(
             name="vim",
@@ -1128,9 +1185,8 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "vim"),
             ],
-            homepage="https://www.vim.org/"
+            homepage="https://www.vim.org/",
         ),
-
         # PASSWORD TOOLS
         Tool(
             name="cracklib",
@@ -1139,7 +1195,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "cracklib"),
             ],
-            homepage="https://github.com/cracklib/cracklib"
+            homepage="https://github.com/cracklib/cracklib",
         ),
         Tool(
             name="pwgen",
@@ -1148,7 +1204,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "pwgen"),
             ],
-            homepage="https://sourceforge.net/projects/pwgen/"
+            homepage="https://sourceforge.net/projects/pwgen/",
         ),
         Tool(
             name="1password-cli",
@@ -1157,9 +1213,8 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "1password-cli"),
             ],
-            homepage="https://1password.com/downloads/command-line/"
+            homepage="https://1password.com/downloads/command-line/",
         ),
-
         # MOBILE TOOLS
         Tool(
             name="apktool",
@@ -1168,7 +1223,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "apktool"),
             ],
-            homepage="https://ibotpeaches.github.io/Apktool/"
+            homepage="https://ibotpeaches.github.io/Apktool/",
         ),
         Tool(
             name="jadx",
@@ -1177,7 +1232,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "jadx"),
             ],
-            homepage="https://github.com/skylot/jadx"
+            homepage="https://github.com/skylot/jadx",
         ),
         Tool(
             name="adb",
@@ -1186,9 +1241,8 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "android-platform-tools"),
             ],
-            homepage="https://developer.android.com/studio/command-line/adb"
+            homepage="https://developer.android.com/studio/command-line/adb",
         ),
-
         # REVERSE ENGINEERING TOOLS
         Tool(
             name="radare2",
@@ -1197,7 +1251,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "radare2"),
             ],
-            homepage="https://rada.re/r/"
+            homepage="https://rada.re/r/",
         ),
         Tool(
             name="ghidra",
@@ -1206,7 +1260,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW_CASK, "ghidra"),
             ],
-            homepage="https://ghidra-sre.org/"
+            homepage="https://ghidra-sre.org/",
         ),
         Tool(
             name="gdb",
@@ -1215,7 +1269,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "gdb"),
             ],
-            homepage="https://www.gnu.org/software/gdb/"
+            homepage="https://www.gnu.org/software/gdb/",
         ),
         Tool(
             name="lldb",
@@ -1224,8 +1278,10 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW, "llvm"),
             ],
-            post_install=["ln -s /usr/local/opt/llvm/bin/lldb /usr/local/bin/lldb 2>/dev/null || true"],
-            homepage="https://lldb.llvm.org/"
+            post_install=[
+                "ln -s /usr/local/opt/llvm/bin/lldb /usr/local/bin/lldb 2>/dev/null || true"
+            ],
+            homepage="https://lldb.llvm.org/",
         ),
         Tool(
             name="hopper",
@@ -1234,7 +1290,7 @@ def get_tool_list():
             install_methods=[
                 (InstallMethod.BREW_CASK, "hopper-disassembler"),
             ],
-            homepage="https://www.hopperapp.com/"
+            homepage="https://www.hopperapp.com/",
         ),
     ]
 
@@ -1288,7 +1344,7 @@ def show_tool_details(tool_name, tools):
         f"Description: {tool.description}",
         f"Homepage: [link={tool.homepage}]{tool.homepage}[/link]",
         f"Installation Methods: {', '.join([method.name for method, _ in tool.install_methods])}",
-        f"Status: {'[green]Installed[/]' if tool.installed else '[yellow]Not installed[/]'}"
+        f"Status: {'[green]Installed[/]' if tool.installed else '[yellow]Not installed[/]'}",
     ]
 
     if tool.dependencies:
@@ -1297,16 +1353,15 @@ def show_tool_details(tool_name, tools):
     if tool.alternative_names:
         details.append(f"Alternative Names: {', '.join(tool.alternative_names)}")
 
-    display_panel(
-        f"Tool Details: {tool.name}",
-        "\n".join(details),
-        NordColors.FROST_2
-    )
+    display_panel(f"Tool Details: {tool.name}", "\n".join(details), NordColors.FROST_2)
 
     options = [
-        ("1", f"{'Reinstall' if tool.installed else 'Install'} {tool.name}",
-         f"{'Reinstall' if tool.installed else 'Install'} this tool"),
-        ("2", "Return to Tool List", "Go back to the tool list")
+        (
+            "1",
+            f"{'Reinstall' if tool.installed else 'Install'} {tool.name}",
+            f"{'Reinstall' if tool.installed else 'Install'} this tool",
+        ),
+        ("2", "Return to Tool List", "Go back to the tool list"),
     ]
 
     console.print(create_menu_table("Options", options))
@@ -1334,7 +1389,7 @@ def show_tools_by_category(category, tools):
     display_panel(
         f"{category.name} Tools",
         f"There are {len(category_tools)} tools in this category.",
-        NordColors.FROST_2
+        NordColors.FROST_2,
     )
 
     tool_table = Table(
@@ -1361,7 +1416,7 @@ def show_tools_by_category(category, tools):
         ("I", "Install All", f"Install all {category.name} tools"),
         ("S", "Install Selected", "Install specific tools"),
         ("D", "Tool Details", "View details of a specific tool"),
-        ("B", "Back", "Return to category list")
+        ("B", "Back", "Return to category list"),
     ]
 
     console.print(create_menu_table("Options", options))
@@ -1372,10 +1427,13 @@ def show_tools_by_category(category, tools):
         use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
 
         # Use the helper function to install all tools in this category
-        installed_count = install_multiple_tools(category_tools, verbose=verbose, use_sudo=use_sudo)
+        installed_count = install_multiple_tools(
+            category_tools, verbose=verbose, use_sudo=use_sudo
+        )
 
         print_success(
-            f"Completed installation of {installed_count} out of {len(category_tools)} {category.name} tools.")
+            f"Completed installation of {installed_count} out of {len(category_tools)} {category.name} tools."
+        )
         Prompt.ask("Press Enter to continue")
 
     elif choice == "S":
@@ -1385,8 +1443,16 @@ def show_tools_by_category(category, tools):
         )
 
         if tool_nums:
-            tool_nums = [int(num.strip()) for num in tool_nums.split(",") if num.strip().isdigit()]
-            selected_tools = [category_tools[num - 1] for num in tool_nums if 1 <= num <= len(category_tools)]
+            tool_nums = [
+                int(num.strip())
+                for num in tool_nums.split(",")
+                if num.strip().isdigit()
+            ]
+            selected_tools = [
+                category_tools[num - 1]
+                for num in tool_nums
+                if 1 <= num <= len(category_tools)
+            ]
 
             if not selected_tools:
                 print_warning("No valid tools selected.")
@@ -1394,12 +1460,18 @@ def show_tools_by_category(category, tools):
                 return
 
             verbose = Confirm.ask("Enable verbose output?", default=False)
-            use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
+            use_sudo = Confirm.ask(
+                "Use sudo for installation if needed?", default=False
+            )
 
             # Use the helper function to install selected tools
-            installed_count = install_multiple_tools(selected_tools, verbose=verbose, use_sudo=use_sudo)
+            installed_count = install_multiple_tools(
+                selected_tools, verbose=verbose, use_sudo=use_sudo
+            )
 
-            print_success(f"Completed installation of {installed_count} out of {len(selected_tools)} selected tools.")
+            print_success(
+                f"Completed installation of {installed_count} out of {len(selected_tools)} selected tools."
+            )
             Prompt.ask("Press Enter to continue")
 
     elif choice == "D":
@@ -1429,28 +1501,32 @@ def category_menu(tools):
         display_panel(
             "Tool Categories",
             "Choose a category to browse and install tools.",
-            NordColors.FROST_2
+            NordColors.FROST_2,
         )
 
-        categories = sorted([(cat, cat.name, sum(1 for t in tools if t.category == cat))
-                             for cat in set(t.category for t in tools)],
-                            key=lambda x: x[1])
+        categories = sorted(
+            [
+                (cat, cat.name, sum(1 for t in tools if t.category == cat))
+                for cat in set(t.category for t in tools)
+            ],
+            key=lambda x: x[1],
+        )
 
         options = []
         for i, (cat, name, count) in enumerate(categories, 1):
             options.append((str(i), name, f"{count} tools"))
 
         options.append(("A", "All Tools", f"{len(tools)} tools"))
-        options.append(("C", "Core Tools", f"{sum(1 for t in tools if t.is_core)} essential tools"))
+        options.append(
+            ("C", "Core Tools", f"{sum(1 for t in tools if t.is_core)} essential tools")
+        )
         options.append(("S", "Search", "Search for specific tools"))
         options.append(("B", "Back", "Return to main menu"))
 
         console.print(create_menu_table("Categories", options))
 
         choice = Prompt.ask(
-            "Select category",
-            choices=[opt[0] for opt in options],
-            default="B"
+            "Select category", choices=[opt[0] for opt in options], default="B"
         )
 
         if choice == "B":
@@ -1475,25 +1551,53 @@ def install_multiple_tools(tools_to_install, verbose=False, use_sudo=False):
     installed_count = 0
 
     # First, handle all non-GUI tools with a single progress bar
-    regular_tools = [t for t in tools_to_install if
-                     t.name not in ["wireshark", "burp-suite", "ghidra", "autopsy", "hopper-disassembler", "zap"]]
-    gui_tools = [t for t in tools_to_install if
-                 t.name in ["wireshark", "burp-suite", "ghidra", "autopsy", "hopper-disassembler", "zap"]]
+    regular_tools = [
+        t
+        for t in tools_to_install
+        if t.name
+        not in [
+            "wireshark",
+            "burp-suite",
+            "ghidra",
+            "autopsy",
+            "hopper-disassembler",
+            "zap",
+        ]
+    ]
+    gui_tools = [
+        t
+        for t in tools_to_install
+        if t.name
+        in [
+            "wireshark",
+            "burp-suite",
+            "ghidra",
+            "autopsy",
+            "hopper-disassembler",
+            "zap",
+        ]
+    ]
 
     if regular_tools:
         with Progress(*NordColors.get_progress_columns(), console=console) as progress:
-            install_task = progress.add_task("Installing tools", total=len(regular_tools))
+            install_task = progress.add_task(
+                "Installing tools", total=len(regular_tools)
+            )
 
             for tool in regular_tools:
                 progress.update(install_task, description=f"Installing {tool.name}...")
                 # Install without inner progress displays
-                if install_tool(tool, verbose=verbose, use_sudo=use_sudo, show_progress=False):
+                if install_tool(
+                    tool, verbose=verbose, use_sudo=use_sudo, show_progress=False
+                ):
                     installed_count += 1
                 progress.advance(install_task)
 
     # Handle GUI tools separately, one by one
     if gui_tools:
-        print_step(f"Installing {len(gui_tools)} GUI applications (these require special handling)...")
+        print_step(
+            f"Installing {len(gui_tools)} GUI applications (these require special handling)..."
+        )
         for tool in gui_tools:
             print_step(f"Installing {tool.name}...")
             # Allow progress display for GUI tools when installed individually
@@ -1513,7 +1617,7 @@ def show_all_tools(tools):
     display_panel(
         "All Tools",
         f"There are {len(tools)} tools available for macOS.",
-        NordColors.FROST_2
+        NordColors.FROST_2,
     )
 
     # Group tools by category
@@ -1544,7 +1648,9 @@ def show_all_tools(tools):
         category_table.add_column("Status", style=NordColors.FROST_3, width=12)
 
         for tool in sorted(category_tools, key=lambda t: t.name):
-            status = "[green]Installed[/]" if tool.installed else "[yellow]Not installed[/]"
+            status = (
+                "[green]Installed[/]" if tool.installed else "[yellow]Not installed[/]"
+            )
             category_table.add_row(tool.name, tool.description, status)
 
         console.print(category_table)
@@ -1554,21 +1660,30 @@ def show_all_tools(tools):
         ("I", "Install All", "Install all available tools"),
         ("C", "Install by Category", "Install tools by category"),
         ("S", "Search", "Search for specific tools"),
-        ("B", "Back", "Return to category menu")
+        ("B", "Back", "Return to category menu"),
     ]
 
     console.print(create_menu_table("Options", options))
     choice = Prompt.ask("Select option", choices=["I", "C", "S", "B"], default="B")
 
     if choice == "I":
-        if Confirm.ask("This will install all available tools. This may take a long time. Continue?", default=False):
+        if Confirm.ask(
+            "This will install all available tools. This may take a long time. Continue?",
+            default=False,
+        ):
             verbose = Confirm.ask("Enable verbose output?", default=False)
-            use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
+            use_sudo = Confirm.ask(
+                "Use sudo for installation if needed?", default=False
+            )
 
             # Use the helper function to install all tools
-            installed_count = install_multiple_tools(tools, verbose=verbose, use_sudo=use_sudo)
+            installed_count = install_multiple_tools(
+                tools, verbose=verbose, use_sudo=use_sudo
+            )
 
-            print_success(f"Completed installation of {installed_count} out of {len(tools)} tools.")
+            print_success(
+                f"Completed installation of {installed_count} out of {len(tools)} tools."
+            )
             Prompt.ask("Press Enter to continue")
     elif choice == "C":
         category_menu(tools)
@@ -1591,7 +1706,7 @@ def show_core_tools(tools):
     display_panel(
         "Core Tools",
         f"There are {len(core_tools)} essential tools for penetration testing.",
-        NordColors.FROST_2
+        NordColors.FROST_2,
     )
 
     tool_table = Table(
@@ -1611,14 +1726,16 @@ def show_core_tools(tools):
 
     for i, tool in enumerate(sorted(core_tools, key=lambda t: t.name), 1):
         status = "[green]Installed[/]" if tool.installed else "[yellow]Not installed[/]"
-        tool_table.add_row(str(i), tool.name, tool.category.name, tool.description, status)
+        tool_table.add_row(
+            str(i), tool.name, tool.category.name, tool.description, status
+        )
 
     console.print(tool_table)
 
     options = [
         ("I", "Install All Core Tools", "Install all essential tools"),
         ("S", "Install Selected", "Install specific tools"),
-        ("B", "Back", "Return to category menu")
+        ("B", "Back", "Return to category menu"),
     ]
 
     console.print(create_menu_table("Options", options))
@@ -1629,9 +1746,13 @@ def show_core_tools(tools):
         use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
 
         # Use the helper function to install core tools
-        installed_count = install_multiple_tools(core_tools, verbose=verbose, use_sudo=use_sudo)
+        installed_count = install_multiple_tools(
+            core_tools, verbose=verbose, use_sudo=use_sudo
+        )
 
-        print_success(f"Completed installation of {installed_count} out of {len(core_tools)} core tools.")
+        print_success(
+            f"Completed installation of {installed_count} out of {len(core_tools)} core tools."
+        )
         Prompt.ask("Press Enter to continue")
 
     elif choice == "S":
@@ -1641,8 +1762,14 @@ def show_core_tools(tools):
         )
 
         if tool_nums:
-            tool_nums = [int(num.strip()) for num in tool_nums.split(",") if num.strip().isdigit()]
-            selected_tools = [core_tools[num - 1] for num in tool_nums if 1 <= num <= len(core_tools)]
+            tool_nums = [
+                int(num.strip())
+                for num in tool_nums.split(",")
+                if num.strip().isdigit()
+            ]
+            selected_tools = [
+                core_tools[num - 1] for num in tool_nums if 1 <= num <= len(core_tools)
+            ]
 
             if not selected_tools:
                 print_warning("No valid tools selected.")
@@ -1650,12 +1777,18 @@ def show_core_tools(tools):
                 return
 
             verbose = Confirm.ask("Enable verbose output?", default=False)
-            use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
+            use_sudo = Confirm.ask(
+                "Use sudo for installation if needed?", default=False
+            )
 
             # Use the helper function to install selected tools
-            installed_count = install_multiple_tools(selected_tools, verbose=verbose, use_sudo=use_sudo)
+            installed_count = install_multiple_tools(
+                selected_tools, verbose=verbose, use_sudo=use_sudo
+            )
 
-            print_success(f"Completed installation of {installed_count} out of {len(selected_tools)} selected tools.")
+            print_success(
+                f"Completed installation of {installed_count} out of {len(selected_tools)} selected tools."
+            )
             Prompt.ask("Press Enter to continue")
 
 
@@ -1665,9 +1798,7 @@ def search_tools(tools):
     console.print(create_header())
 
     display_panel(
-        "Search Tools",
-        "Search for tools by name or description.",
-        NordColors.FROST_2
+        "Search Tools", "Search for tools by name or description.", NordColors.FROST_2
     )
 
     search_term = Prompt.ask("Enter search term").lower()
@@ -1678,10 +1809,11 @@ def search_tools(tools):
         return
 
     matching_tools = [
-        tool for tool in tools
-        if search_term in tool.name.lower() or
-           search_term in tool.description.lower() or
-           any(search_term in alt.lower() for alt in tool.alternative_names)
+        tool
+        for tool in tools
+        if search_term in tool.name.lower()
+        or search_term in tool.description.lower()
+        or any(search_term in alt.lower() for alt in tool.alternative_names)
     ]
 
     if not matching_tools:
@@ -1692,7 +1824,7 @@ def search_tools(tools):
     display_panel(
         "Search Results",
         f"Found {len(matching_tools)} tools matching '{search_term}'.",
-        NordColors.FROST_2
+        NordColors.FROST_2,
     )
 
     tool_table = Table(
@@ -1712,7 +1844,9 @@ def search_tools(tools):
 
     for i, tool in enumerate(matching_tools, 1):
         status = "[green]Installed[/]" if tool.installed else "[yellow]Not installed[/]"
-        tool_table.add_row(str(i), tool.name, tool.category.name, tool.description, status)
+        tool_table.add_row(
+            str(i), tool.name, tool.category.name, tool.description, status
+        )
 
     console.print(tool_table)
 
@@ -1720,7 +1854,7 @@ def search_tools(tools):
         ("I", "Install All", f"Install all {len(matching_tools)} matching tools"),
         ("S", "Install Selected", "Install specific tools"),
         ("D", "Tool Details", "View details of a specific tool"),
-        ("B", "Back", "Return to category menu")
+        ("B", "Back", "Return to category menu"),
     ]
 
     console.print(create_menu_table("Options", options))
@@ -1731,9 +1865,13 @@ def search_tools(tools):
         use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
 
         # Use the helper function to install matching tools
-        installed_count = install_multiple_tools(matching_tools, verbose=verbose, use_sudo=use_sudo)
+        installed_count = install_multiple_tools(
+            matching_tools, verbose=verbose, use_sudo=use_sudo
+        )
 
-        print_success(f"Completed installation of {installed_count} out of {len(matching_tools)} matching tools.")
+        print_success(
+            f"Completed installation of {installed_count} out of {len(matching_tools)} matching tools."
+        )
         Prompt.ask("Press Enter to continue")
 
     elif choice == "S":
@@ -1743,8 +1881,16 @@ def search_tools(tools):
         )
 
         if tool_nums:
-            tool_nums = [int(num.strip()) for num in tool_nums.split(",") if num.strip().isdigit()]
-            selected_tools = [matching_tools[num - 1] for num in tool_nums if 1 <= num <= len(matching_tools)]
+            tool_nums = [
+                int(num.strip())
+                for num in tool_nums.split(",")
+                if num.strip().isdigit()
+            ]
+            selected_tools = [
+                matching_tools[num - 1]
+                for num in tool_nums
+                if 1 <= num <= len(matching_tools)
+            ]
 
             if not selected_tools:
                 print_warning("No valid tools selected.")
@@ -1752,12 +1898,18 @@ def search_tools(tools):
                 return
 
             verbose = Confirm.ask("Enable verbose output?", default=False)
-            use_sudo = Confirm.ask("Use sudo for installation if needed?", default=False)
+            use_sudo = Confirm.ask(
+                "Use sudo for installation if needed?", default=False
+            )
 
             # Use the helper function to install selected tools
-            installed_count = install_multiple_tools(selected_tools, verbose=verbose, use_sudo=use_sudo)
+            installed_count = install_multiple_tools(
+                selected_tools, verbose=verbose, use_sudo=use_sudo
+            )
 
-            print_success(f"Completed installation of {installed_count} out of {len(selected_tools)} selected tools.")
+            print_success(
+                f"Completed installation of {installed_count} out of {len(selected_tools)} selected tools."
+            )
             Prompt.ask("Press Enter to continue")
 
     elif choice == "D":
@@ -1790,12 +1942,13 @@ def check_installed_tools(tools):
 
             for method, param in tool.install_methods:
                 try:
-                    if method == InstallMethod.BREW or method == InstallMethod.BREW_CASK:
+                    if (
+                        method == InstallMethod.BREW
+                        or method == InstallMethod.BREW_CASK
+                    ):
                         # Check if installed via Homebrew
                         result = run_command(
-                            [BREW_CMD, "list", param],
-                            check=False,
-                            capture_output=True
+                            [BREW_CMD, "list", param], check=False, capture_output=True
                         )
                         if result.returncode == 0:
                             tool.installed = True
@@ -1803,9 +1956,7 @@ def check_installed_tools(tools):
                     elif method == InstallMethod.PIP:
                         # Check if installed via pip
                         result = run_command(
-                            [PIP_CMD, "show", param],
-                            check=False,
-                            capture_output=True
+                            [PIP_CMD, "show", param], check=False, capture_output=True
                         )
                         if result.returncode == 0:
                             tool.installed = True
@@ -1837,7 +1988,7 @@ def setup_menu(tools):
     display_panel(
         "Basic Setup",
         "Set up your macOS for penetration testing with these basic steps.",
-        NordColors.FROST_2
+        NordColors.FROST_2,
     )
 
     # Check if running as root/sudo
@@ -1845,15 +1996,12 @@ def setup_menu(tools):
         display_panel(
             "Warning: Running as Root",
             "You are running this script as root. Some tools may install to root's home directory.",
-            NordColors.WARNING
+            NordColors.WARNING,
         )
 
     # Show system information
     table = Table(
-        show_header=False,
-        box=ROUNDED,
-        border_style=NordColors.FROST_3,
-        padding=(0, 2)
+        show_header=False, box=ROUNDED, border_style=NordColors.FROST_3, padding=(0, 2)
     )
     table.add_column("Property", style=f"bold {NordColors.FROST_2}")
     table.add_column("Value", style=NordColors.SNOW_STORM_1)
@@ -1875,8 +2023,13 @@ def setup_menu(tools):
     setup_steps = [
         ("1", "Install Homebrew", "Package manager for macOS", "Required"),
         ("2", "Install Command Line Tools", "Xcode Command Line Tools", "Required"),
-        ("3", "Install Core Tools", f"{sum(1 for t in tools if t.is_core)} essential pentesting tools", "Recommended"),
-        ("4", "Return to Main Menu", "", "")
+        (
+            "3",
+            "Install Core Tools",
+            f"{sum(1 for t in tools if t.is_core)} essential pentesting tools",
+            "Recommended",
+        ),
+        ("4", "Return to Main Menu", "", ""),
     ]
 
     console.print(create_menu_table("Setup Steps", setup_steps))
@@ -1895,20 +2048,23 @@ def setup_menu(tools):
 
         try:
             result = run_command(
-                ["xcode-select", "--install"],
-                check=False,
-                capture_output=True
+                ["xcode-select", "--install"], check=False, capture_output=True
             )
 
             if "already installed" in result.stderr:
                 print_success("Xcode Command Line Tools are already installed.")
             elif result.returncode != 0:
-                print_warning("Command line tool installation may have been initiated in a dialog box.")
-                print_warning("Please complete the installation if prompted, then press Enter to continue.")
+                print_warning(
+                    "Command line tool installation may have been initiated in a dialog box."
+                )
+                print_warning(
+                    "Please complete the installation if prompted, then press Enter to continue."
+                )
             else:
                 print_success("Xcode Command Line Tools installation initiated.")
                 print_warning(
-                    "Please follow the on-screen dialog to complete installation, then press Enter to continue.")
+                    "Please follow the on-screen dialog to complete installation, then press Enter to continue."
+                )
         except Exception as e:
             print_error(f"Error installing Command Line Tools: {e}")
 
@@ -1927,11 +2083,7 @@ def settings_menu():
 
     config = AppConfig.load()
 
-    display_panel(
-        "Settings",
-        "Configure application settings.",
-        NordColors.FROST_2
-    )
+    display_panel("Settings", "Configure application settings.", NordColors.FROST_2)
 
     # Format last update time
     last_update = "Never"
@@ -1961,11 +2113,19 @@ def settings_menu():
     console.print(settings_table)
 
     options = [
-        ("1", "Toggle Sudo", f"{'Disable' if config.use_sudo else 'Enable'} sudo for installations"),
-        ("2", "Toggle Verbose Output", f"{'Disable' if config.verbose_output else 'Enable'} verbose output"),
+        (
+            "1",
+            "Toggle Sudo",
+            f"{'Disable' if config.use_sudo else 'Enable'} sudo for installations",
+        ),
+        (
+            "2",
+            "Toggle Verbose Output",
+            f"{'Disable' if config.verbose_output else 'Enable'} verbose output",
+        ),
         ("3", "View Installation Log", "View the tool installation log"),
         ("4", "Update Homebrew", "Update Homebrew and its formulae"),
-        ("5", "Back", "Return to main menu")
+        ("5", "Back", "Return to main menu"),
     ]
 
     console.print(create_menu_table("Settings", options))
@@ -1974,14 +2134,18 @@ def settings_menu():
     if choice == "1":
         config.use_sudo = not config.use_sudo
         config.save()
-        print_success(f"Sudo {'enabled' if config.use_sudo else 'disabled'} for installations.")
+        print_success(
+            f"Sudo {'enabled' if config.use_sudo else 'disabled'} for installations."
+        )
         Prompt.ask("Press Enter to continue")
         settings_menu()
 
     elif choice == "2":
         config.verbose_output = not config.verbose_output
         config.save()
-        print_success(f"Verbose output {'enabled' if config.verbose_output else 'disabled'}.")
+        print_success(
+            f"Verbose output {'enabled' if config.verbose_output else 'disabled'}."
+        )
         Prompt.ask("Press Enter to continue")
         settings_menu()
 
@@ -2002,9 +2166,7 @@ def view_installation_log():
 
     if not os.path.exists(LOG_FILE):
         display_panel(
-            "Installation Log",
-            "No installation log found.",
-            NordColors.FROST_2
+            "Installation Log", "No installation log found.", NordColors.FROST_2
         )
         Prompt.ask("Press Enter to return to settings menu")
         return
@@ -2015,9 +2177,7 @@ def view_installation_log():
 
         if not log_data:
             display_panel(
-                "Installation Log",
-                "Installation log is empty.",
-                NordColors.FROST_2
+                "Installation Log", "Installation log is empty.", NordColors.FROST_2
             )
             Prompt.ask("Press Enter to return to settings menu")
             return
@@ -2039,34 +2199,38 @@ def view_installation_log():
 
         for entry in log_data[:20]:  # Show only the most recent 20 entries
             status = "[green]Success[/]" if entry.get("success") else "[red]Failure[/]"
-            timestamp = datetime.fromisoformat(entry.get("timestamp", "")).strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = datetime.fromisoformat(entry.get("timestamp", "")).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
 
             log_table.add_row(
                 entry.get("tool", "Unknown"),
                 status,
                 entry.get("method", "Unknown"),
                 timestamp,
-                entry.get("message", "")
+                entry.get("message", ""),
             )
 
         display_panel(
             "Installation Log",
             f"Showing the most recent {min(20, len(log_data))} installation events.",
-            NordColors.FROST_2
+            NordColors.FROST_2,
         )
 
         console.print(log_table)
 
         options = [
             ("1", "Clear Log", "Clear the installation log"),
-            ("2", "Back", "Return to settings menu")
+            ("2", "Back", "Return to settings menu"),
         ]
 
         console.print(create_menu_table("Options", options))
         choice = Prompt.ask("Select option", choices=["1", "2"], default="2")
 
         if choice == "1":
-            if Confirm.ask("Are you sure you want to clear the installation log?", default=False):
+            if Confirm.ask(
+                "Are you sure you want to clear the installation log?", default=False
+            ):
                 with open(LOG_FILE, "w") as f:
                     json.dump([], f)
                 print_success("Installation log cleared.")
@@ -2116,19 +2280,21 @@ def main_menu():
             "macOS Penetration Testing Toolkit",
             f"This toolkit helps you install and manage {len(tools)} penetration testing tools on macOS.\n"
             f"Currently {installed_count} tools are installed.",
-            NordColors.FROST_2
+            NordColors.FROST_2,
         )
 
         main_options = [
             ("1", "Browse Tools", "Browse and install tools by category"),
             ("2", "Basic Setup", "Set up Homebrew and core requirements"),
             ("3", "Settings", "Configure application settings"),
-            ("4", "Exit", "Exit the application")
+            ("4", "Exit", "Exit the application"),
         ]
 
         console.print(create_menu_table("Main Menu", main_options))
 
-        choice = Prompt.ask("Select an option", choices=["1", "2", "3", "4"], default="1")
+        choice = Prompt.ask(
+            "Select an option", choices=["1", "2", "3", "4"], default="1"
+        )
 
         if choice == "1":
             category_menu(tools)
@@ -2148,7 +2314,7 @@ def main_menu():
                     title_align="center",
                     border_style=NordColors.FROST_2,
                     box=HEAVY,
-                    padding=(2, 4)
+                    padding=(2, 4),
                 )
             )
             break
@@ -2160,9 +2326,9 @@ def main():
         console.print(create_header())
 
         with Progress(
-                SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
-                TextColumn(f"[bold {NordColors.FROST_2}]Starting PenMac..."),
-                console=console
+            SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
+            TextColumn(f"[bold {NordColors.FROST_2}]Starting PenMac..."),
+            console=console,
         ) as progress:
             task = progress.add_task("", total=100)
             ensure_config_directory()

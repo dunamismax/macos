@@ -27,10 +27,14 @@ def install_dependencies():
     user = os.environ.get("SUDO_USER", os.environ.get("USER"))
     try:
         if os.geteuid() != 0:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -76,7 +80,25 @@ MONITOR_DEFAULT_INTERVAL = 1.0
 MONITOR_DEFAULT_COUNT = 100
 PORT_SCAN_TIMEOUT = 1.0
 PORT_SCAN_COMMON_PORTS = [
-    21, 22, 23, 25, 53, 80, 110, 123, 143, 443, 465, 587, 993, 995, 3306, 3389, 5432, 8080, 8443
+    21,
+    22,
+    23,
+    25,
+    53,
+    80,
+    110,
+    123,
+    143,
+    443,
+    465,
+    587,
+    993,
+    995,
+    3306,
+    3389,
+    5432,
+    8080,
+    8443,
 ]
 DNS_TYPES = ["A", "AAAA", "MX", "NS", "SOA", "TXT", "CNAME"]
 BANDWIDTH_TEST_SIZE = 10 * 1024 * 1024  # 10 MB
@@ -97,9 +119,25 @@ COMMANDS = {
 }
 
 PORT_SERVICES = {
-    21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP", 53: "DNS", 80: "HTTP", 110: "POP3",
-    123: "NTP", 143: "IMAP", 443: "HTTPS", 465: "SMTP/SSL", 587: "SMTP/TLS", 993: "IMAP/SSL",
-    995: "POP3/SSL", 3306: "MySQL", 3389: "RDP", 5432: "PostgreSQL", 8080: "HTTP-ALT", 8443: "HTTPS-ALT",
+    21: "FTP",
+    22: "SSH",
+    23: "Telnet",
+    25: "SMTP",
+    53: "DNS",
+    80: "HTTP",
+    110: "POP3",
+    123: "NTP",
+    143: "IMAP",
+    443: "HTTPS",
+    465: "SMTP/SSL",
+    587: "SMTP/TLS",
+    993: "IMAP/SSL",
+    995: "POP3/SSL",
+    3306: "MySQL",
+    3389: "RDP",
+    5432: "PostgreSQL",
+    8080: "HTTP-ALT",
+    8443: "HTTPS-ALT",
 }
 
 
@@ -143,7 +181,12 @@ class NordColors:
         return [
             SpinnerColumn(spinner_name="dots", style=f"bold {cls.NORD7}"),
             TextColumn(f"[bold {cls.NORD8}]{{task.description}}[/]"),
-            BarColumn(bar_width=None, style=cls.NORD3, complete_style=cls.NORD8, finished_style=cls.NORD14),
+            BarColumn(
+                bar_width=None,
+                style=cls.NORD3,
+                complete_style=cls.NORD8,
+                finished_style=cls.NORD14,
+            ),
             TextColumn(f"[{cls.NORD4}]{{task.percentage:>3.0f}}%[/]"),
             TimeRemainingColumn(style=cls.NORD9),
         ]
@@ -262,7 +305,7 @@ def create_menu_table(title, options):
         box=box.SIMPLE,
         title_style=f"bold {NordColors.NORD8}",
         show_header=False,
-        expand=True
+        expand=True,
     )
     table.add_column(style=NordColors.NORD9, justify="right")
     table.add_column(style=NordColors.NORD4)
@@ -286,16 +329,17 @@ def format_time(seconds):
 def format_rate(bps):
     if bps < 1024:
         return f"{bps:.1f} B/s"
-    elif bps < 1024 ** 2:
+    elif bps < 1024**2:
         return f"{bps / 1024:.1f} KB/s"
-    elif bps < 1024 ** 3:
-        return f"{bps / 1024 ** 2:.1f} MB/s"
+    elif bps < 1024**3:
+        return f"{bps / 1024**2:.1f} MB/s"
     else:
-        return f"{bps / 1024 ** 3:.1f} GB/s"
+        return f"{bps / 1024**3:.1f} GB/s"
 
 
 def setup_logging(log_file=LOG_FILE):
     import logging
+
     try:
         log_dir = os.path.dirname(log_file)
         if log_dir and not os.path.exists(log_dir):
@@ -312,7 +356,15 @@ def setup_logging(log_file=LOG_FILE):
         print_message("Continuing without file logging...")
 
 
-def run_command(cmd, shell=False, check=True, capture_output=True, timeout=60, verbose=False, env=None):
+def run_command(
+    cmd,
+    shell=False,
+    check=True,
+    capture_output=True,
+    timeout=60,
+    verbose=False,
+    env=None,
+):
     if verbose:
         print_message(f"Executing: {' '.join(cmd) if not shell else cmd}")
     try:
@@ -342,7 +394,9 @@ def cleanup():
 
 
 def signal_handler(sig, frame):
-    sig_name = signal.Signals(sig).name if hasattr(signal, "Signals") else f"signal {sig}"
+    sig_name = (
+        signal.Signals(sig).name if hasattr(signal, "Signals") else f"signal {sig}"
+    )
     print_warning(f"\nScript interrupted by {sig_name}")
     cleanup()
     sys.exit(128 + sig)
@@ -460,7 +514,9 @@ class LatencyTracker:
 
     def get_statistics_str(self):
         with self._lock:
-            loss_pct = (self.loss_count / self.total_count * 100) if self.total_count else 0
+            loss_pct = (
+                (self.loss_count / self.total_count * 100) if self.total_count else 0
+            )
             min_val = self.min_rtt if self.min_rtt != float("inf") else 0
             return (
                 f"Min: {min_val:.2f} ms\n"
@@ -478,7 +534,7 @@ class LatencyTracker:
             if max_val - min_val < 5:
                 max_val = min_val + 5
             graph = ""
-            for rtt in list(self.history)[-self.width:]:
+            for rtt in list(self.history)[-self.width :]:
                 if rtt is None:
                     graph += "×"
                 else:
@@ -540,7 +596,9 @@ def get_network_interfaces():
                     current = None
                     continue
                 interfaces.append(
-                    NetworkInterface(name=current, status="unknown", mac_address="Unknown")
+                    NetworkInterface(
+                        name=current, status="unknown", mac_address="Unknown"
+                    )
                 )
             elif current and "ether" in line:
                 m = re.search(r"ether\s+([0-9a-fA-F:]+)", line)
@@ -558,24 +616,38 @@ def get_network_interfaces():
                 if "inet " in line:
                     m = re.search(r"inet\s+([0-9.]+)", line)
                     if m:
-                        iface.ip_addresses.append({"type": "IPv4", "address": m.group(1)})
+                        iface.ip_addresses.append(
+                            {"type": "IPv4", "address": m.group(1)}
+                        )
                 if "inet6 " in line:
                     m = re.search(r"inet6\s+([0-9a-f:]+)", line)
                     if m and not m.group(1).startswith("fe80"):
-                        iface.ip_addresses.append({"type": "IPv6", "address": m.group(1)})
+                        iface.ip_addresses.append(
+                            {"type": "IPv6", "address": m.group(1)}
+                        )
 
         if interfaces:
             print_success(f"Found {len(interfaces)} interfaces")
-            table = Table(title="Network Interfaces", border_style=NordColors.NORD8, box=NordColors.NORD_BOX)
+            table = Table(
+                title="Network Interfaces",
+                border_style=NordColors.NORD8,
+                box=NordColors.NORD_BOX,
+            )
             table.add_column("Interface", style=NordColors.NORD9)
             table.add_column("Status", style=NordColors.NORD14)
             table.add_column("MAC Address", style=NordColors.NORD4)
             table.add_column("IP Addresses", style=NordColors.NORD4)
             for iface in interfaces:
-                status_color = NordColors.NORD14 if iface.status.lower() in ["up", "active"] else NordColors.NORD11
+                status_color = (
+                    NordColors.NORD14
+                    if iface.status.lower() in ["up", "active"]
+                    else NordColors.NORD11
+                )
                 ip_list = []
                 for ip in iface.ip_addresses:
-                    color = NordColors.NORD8 if ip["type"] == "IPv4" else NordColors.NORD15
+                    color = (
+                        NordColors.NORD8 if ip["type"] == "IPv4" else NordColors.NORD15
+                    )
                     ip_list.append(f"[{color}]{ip['type']}:[/] {ip['address']}")
                 table.add_row(
                     iface.name,
@@ -585,7 +657,9 @@ def get_network_interfaces():
                 )
             console.print(table)
         else:
-            display_panel("No network interfaces found", style=NordColors.NORD13, title="Error")
+            display_panel(
+                "No network interfaces found", style=NordColors.NORD13, title="Error"
+            )
         return interfaces
     except Exception as e:
         print_error(f"Error collecting network interfaces: {e}")
@@ -608,11 +682,15 @@ def get_ip_addresses():
             elif current and "inet " in line:
                 m = re.search(r"inet\s+([0-9.]+)", line)
                 if m:
-                    ip_info.setdefault(current, []).append({"type": "IPv4", "address": m.group(1)})
+                    ip_info.setdefault(current, []).append(
+                        {"type": "IPv4", "address": m.group(1)}
+                    )
             elif current and "inet6 " in line:
                 m = re.search(r"inet6\s+([0-9a-f:]+)", line)
                 if m and not m.group(1).startswith("fe80"):
-                    ip_info.setdefault(current, []).append({"type": "IPv6", "address": m.group(1)})
+                    ip_info.setdefault(current, []).append(
+                        {"type": "IPv6", "address": m.group(1)}
+                    )
         if ip_info:
             print_success("IP information collected successfully")
             for iface, addrs in ip_info.items():
@@ -625,11 +703,17 @@ def get_ip_addresses():
                 table.add_column("Type", style=NordColors.NORD8, justify="center")
                 table.add_column("Address", style=NordColors.NORD4)
                 for addr in addrs:
-                    type_color = NordColors.NORD8 if addr["type"] == "IPv4" else NordColors.NORD15
+                    type_color = (
+                        NordColors.NORD8
+                        if addr["type"] == "IPv4"
+                        else NordColors.NORD15
+                    )
                     table.add_row(f"[{type_color}]{addr['type']}[/]", addr["address"])
                 console.print(table)
         else:
-            display_panel("No IP addresses found", style=NordColors.NORD13, title="Information")
+            display_panel(
+                "No IP addresses found", style=NordColors.NORD13, title="Information"
+            )
         return ip_info
     except Exception as e:
         print_error(f"Error collecting IP addresses: {e}")
@@ -677,8 +761,15 @@ def ping_target(target, count=PING_COUNT_DEFAULT, interval=PING_INTERVAL_DEFAULT
             console.print(latency_tracker.get_graph_str())
 
             loss_pct = (
-                        latency_tracker.loss_count / latency_tracker.total_count * 100) if latency_tracker.total_count else 0
-            min_rtt = latency_tracker.min_rtt if latency_tracker.min_rtt != float("inf") else 0
+                (latency_tracker.loss_count / latency_tracker.total_count * 100)
+                if latency_tracker.total_count
+                else 0
+            )
+            min_rtt = (
+                latency_tracker.min_rtt
+                if latency_tracker.min_rtt != float("inf")
+                else 0
+            )
             result = PingResult(
                 target=target,
                 sent=latency_tracker.total_count,
@@ -703,7 +794,14 @@ def traceroute_target(target, max_hops=TRACEROUTE_MAX_HOPS):
     with ProgressManager() as progress:
         task = progress.add_task("Tracing route...", total=None)
         try:
-            trace_cmd = ["traceroute", "-m", str(max_hops), "-w", str(TRACEROUTE_TIMEOUT), target]
+            trace_cmd = [
+                "traceroute",
+                "-m",
+                str(max_hops),
+                "-w",
+                str(TRACEROUTE_TIMEOUT),
+                target,
+            ]
             process = subprocess.Popen(
                 trace_cmd,
                 stdout=subprocess.PIPE,
@@ -732,7 +830,12 @@ def traceroute_target(target, max_hops=TRACEROUTE_MAX_HOPS):
                                 times.append(float(m.group(1)))
                         avg_time = sum(times) / len(times) if times else None
                         hops.append(
-                            TraceHop(hop=hop_num, host=host, times=times, avg_time_ms=avg_time)
+                            TraceHop(
+                                hop=hop_num,
+                                host=host,
+                                times=times,
+                                avg_time_ms=avg_time,
+                            )
                         )
                         progress.update(task, description=f"Tracing... (Hop {hop_num})")
                     except Exception:
@@ -740,8 +843,14 @@ def traceroute_target(target, max_hops=TRACEROUTE_MAX_HOPS):
 
             if hops:
                 print_success(f"Traceroute completed with {len(hops)} hops")
-                table = Table(title="Traceroute Hops", border_style=NordColors.NORD8, box=NordColors.NORD_BOX)
-                table.add_column("Hop", justify="center", style=f"bold {NordColors.NORD9}")
+                table = Table(
+                    title="Traceroute Hops",
+                    border_style=NordColors.NORD8,
+                    box=NordColors.NORD_BOX,
+                )
+                table.add_column(
+                    "Hop", justify="center", style=f"bold {NordColors.NORD9}"
+                )
                 table.add_column("Host", style=NordColors.NORD4)
                 table.add_column("Avg Time", justify="right", style="bold")
                 table.add_column("RTT Samples", style=f"dim {NordColors.NORD4}")
@@ -753,11 +862,22 @@ def traceroute_target(target, max_hops=TRACEROUTE_MAX_HOPS):
                     else:
                         avg_str = f"{hop.avg_time_ms:.2f} ms"
                         color = (
-                            NordColors.NORD14 if hop.avg_time_ms < 20
-                            else (NordColors.NORD13 if hop.avg_time_ms < 100 else NordColors.NORD11)
+                            NordColors.NORD14
+                            if hop.avg_time_ms < 20
+                            else (
+                                NordColors.NORD13
+                                if hop.avg_time_ms < 100
+                                else NordColors.NORD11
+                            )
                         )
-                    times_str = ", ".join(f"{t:.1f}ms" for t in hop.times) if hop.times else "---"
-                    table.add_row(hop.hop, hop.host, f"[{color}]{avg_str}[/{color}]", times_str)
+                    times_str = (
+                        ", ".join(f"{t:.1f}ms" for t in hop.times)
+                        if hop.times
+                        else "---"
+                    )
+                    table.add_row(
+                        hop.hop, hop.host, f"[{color}]{avg_str}[/{color}]", times_str
+                    )
 
                 console.print(table)
             else:
@@ -800,12 +920,14 @@ def dns_lookup(hostname, record_types=None):
                         for line in dig_out.splitlines():
                             parts = line.split()
                             if len(parts) >= 5:
-                                recs.append({
-                                    "name": parts[0],
-                                    "ttl": parts[1],
-                                    "type": parts[3],
-                                    "value": " ".join(parts[4:]),
-                                })
+                                recs.append(
+                                    {
+                                        "name": parts[0],
+                                        "ttl": parts[1],
+                                        "type": parts[3],
+                                        "value": " ".join(parts[4:]),
+                                    }
+                                )
                         if recs:
                             results[rt] = recs
                     except Exception:
@@ -819,25 +941,38 @@ def dns_lookup(hostname, record_types=None):
                         recs = []
                         for line in ns_out.splitlines():
                             if "Address: " in line and not line.startswith("Server:"):
-                                recs.append({
-                                    "name": hostname,
-                                    "type": rt,
-                                    "value": line.split("Address: ")[1].strip(),
-                                })
+                                recs.append(
+                                    {
+                                        "name": hostname,
+                                        "type": rt,
+                                        "value": line.split("Address: ")[1].strip(),
+                                    }
+                                )
                         if recs:
                             results[rt] = recs
                     except Exception:
                         continue
 
             if len(results) <= 1:
-                display_panel(f"No DNS records found for {hostname}", style=NordColors.NORD13, title="Error")
+                display_panel(
+                    f"No DNS records found for {hostname}",
+                    style=NordColors.NORD13,
+                    title="Error",
+                )
             else:
                 print_success("DNS lookup completed")
-                table = Table(title=f"DNS Records for {hostname}", border_style=NordColors.NORD8,
-                              box=NordColors.NORD_BOX)
-                table.add_column("Type", justify="center", style=f"bold {NordColors.NORD9}")
+                table = Table(
+                    title=f"DNS Records for {hostname}",
+                    border_style=NordColors.NORD8,
+                    box=NordColors.NORD_BOX,
+                )
+                table.add_column(
+                    "Type", justify="center", style=f"bold {NordColors.NORD9}"
+                )
                 table.add_column("Value", style=NordColors.NORD4)
-                table.add_column("TTL", justify="right", style=f"dim {NordColors.NORD4}")
+                table.add_column(
+                    "TTL", justify="right", style=f"dim {NordColors.NORD4}"
+                )
 
                 for rt, recs in results.items():
                     if rt == "hostname":
@@ -882,7 +1017,9 @@ def port_scan(target, ports="common", timeout=PORT_SCAN_TIMEOUT):
 
     open_ports = {}
     with ProgressManager() as progress:
-        task = progress.add_task(f"Scanning {len(port_list)} ports...", total=len(port_list))
+        task = progress.add_task(
+            f"Scanning {len(port_list)} ports...", total=len(port_list)
+        )
         try:
             ip_addr = socket.gethostbyname(target)
             console.print(f"Resolved {target} to [bold]{ip_addr}[/]")
@@ -896,15 +1033,25 @@ def port_scan(target, ports="common", timeout=PORT_SCAN_TIMEOUT):
                     except Exception:
                         service = PORT_SERVICES.get(port, "unknown")
                     open_ports[port] = {"state": "open", "service": service}
-                    console.print(f"\r[bold {NordColors.NORD14}]Port {port} is open: {service}[/]")
+                    console.print(
+                        f"\r[bold {NordColors.NORD14}]Port {port} is open: {service}[/]"
+                    )
                 sock.close()
                 progress.update(task, advance=1)
 
             console.print("")
             if open_ports:
-                print_success(f"Found {len(open_ports)} open ports on {target} ({ip_addr})")
-                table = Table(title="Port Scan Results", border_style=NordColors.NORD8, box=NordColors.NORD_BOX)
-                table.add_column("Port", justify="center", style=f"bold {NordColors.NORD8}")
+                print_success(
+                    f"Found {len(open_ports)} open ports on {target} ({ip_addr})"
+                )
+                table = Table(
+                    title="Port Scan Results",
+                    border_style=NordColors.NORD8,
+                    box=NordColors.NORD_BOX,
+                )
+                table.add_column(
+                    "Port", justify="center", style=f"bold {NordColors.NORD8}"
+                )
                 table.add_column("State", justify="center", style=NordColors.NORD14)
                 table.add_column("Service", justify="left", style=NordColors.NORD4)
 
@@ -914,8 +1061,11 @@ def port_scan(target, ports="common", timeout=PORT_SCAN_TIMEOUT):
 
                 console.print(table)
             else:
-                display_panel(f"No open ports found on {target} ({ip_addr})", style=NordColors.NORD13,
-                              title="Information")
+                display_panel(
+                    f"No open ports found on {target} ({ip_addr})",
+                    style=NordColors.NORD13,
+                    title="Information",
+                )
 
             return open_ports
         except Exception as e:
@@ -923,13 +1073,17 @@ def port_scan(target, ports="common", timeout=PORT_SCAN_TIMEOUT):
             return {}
 
 
-def monitor_latency(target, count=MONITOR_DEFAULT_COUNT, interval=MONITOR_DEFAULT_INTERVAL):
+def monitor_latency(
+    target, count=MONITOR_DEFAULT_COUNT, interval=MONITOR_DEFAULT_INTERVAL
+):
     print_section(f"Latency Monitor: {target}")
     if not validate_target(target):
         return
 
     tracker = LatencyTracker(width=60)
-    print_message(f"Monitoring latency to {target}. Press Ctrl+C to stop.", NordColors.NORD9)
+    print_message(
+        f"Monitoring latency to {target}. Press Ctrl+C to stop.", NordColors.NORD9
+    )
 
     try:
         if not check_command_availability("ping"):
@@ -945,7 +1099,9 @@ def monitor_latency(target, count=MONITOR_DEFAULT_COUNT, interval=MONITOR_DEFAUL
                 start = time.time()
 
                 try:
-                    output = subprocess.check_output(ping_cmd, universal_newlines=True, stderr=subprocess.STDOUT)
+                    output = subprocess.check_output(
+                        ping_cmd, universal_newlines=True, stderr=subprocess.STDOUT
+                    )
                     m = re.search(r"time=(\d+\.?\d*)", output)
                     if m:
                         rtt = float(m.group(1))
@@ -957,8 +1113,11 @@ def monitor_latency(target, count=MONITOR_DEFAULT_COUNT, interval=MONITOR_DEFAUL
 
                 elapsed = time.time() - start
                 now = datetime.datetime.now().strftime("%H:%M:%S")
-                current = f"{tracker.history[-1]:.2f}" if tracker.history and tracker.history[
-                    -1] is not None else "timeout"
+                current = (
+                    f"{tracker.history[-1]:.2f}"
+                    if tracker.history and tracker.history[-1] is not None
+                    else "timeout"
+                )
 
                 panel_content = (
                     f"[bold]Target:[/bold] {target}\n"
@@ -1015,10 +1174,13 @@ def bandwidth_test(target="example.com", size=BANDWIDTH_TEST_SIZE):
                 start = time.time()
                 curl_cmd = [
                     "curl",
-                    "-o", output_file,
+                    "-o",
+                    output_file,
                     "-s",
-                    "--connect-timeout", "5",
-                    "-w", "%{time_total} %{size_download} %{speed_download}",
+                    "--connect-timeout",
+                    "5",
+                    "-w",
+                    "%{time_total} %{size_download} %{speed_download}",
                     f"http://{target}",
                 ]
                 output = run_command(curl_cmd, check=False).stdout
@@ -1037,14 +1199,24 @@ def bandwidth_test(target="example.com", size=BANDWIDTH_TEST_SIZE):
 
                     console.print("")
                     print_success("Download test completed")
-                    table = Table(title="Bandwidth Test Results", border_style=NordColors.NORD8,
-                                  box=NordColors.NORD_BOX)
-                    table.add_column("Metric", style=f"bold {NordColors.NORD9}", justify="right")
+                    table = Table(
+                        title="Bandwidth Test Results",
+                        border_style=NordColors.NORD8,
+                        box=NordColors.NORD_BOX,
+                    )
+                    table.add_column(
+                        "Metric", style=f"bold {NordColors.NORD9}", justify="right"
+                    )
                     table.add_column("Value", style=NordColors.NORD4, justify="left")
 
                     table.add_row("Response time", f"{total_time:.2f} s")
-                    table.add_row("Downloaded", f"{size_download / (1024 * 1024):.2f} MB")
-                    table.add_row("Speed", f"{speed_download / (1024 * 1024):.2f} MB/s ({download_mbps:.2f} Mbps)")
+                    table.add_row(
+                        "Downloaded", f"{size_download / (1024 * 1024):.2f} MB"
+                    )
+                    table.add_row(
+                        "Speed",
+                        f"{speed_download / (1024 * 1024):.2f} MB/s ({download_mbps:.2f} Mbps)",
+                    )
 
                     console.print(table)
             else:
@@ -1055,7 +1227,9 @@ def bandwidth_test(target="example.com", size=BANDWIDTH_TEST_SIZE):
                 sock.connect((ip_addr, 80))
                 conn_time = time.time() - start
 
-                request = f"GET / HTTP/1.1\r\nHost: {target}\r\nConnection: close\r\n\r\n"
+                request = (
+                    f"GET / HTTP/1.1\r\nHost: {target}\r\nConnection: close\r\n\r\n"
+                )
                 start = time.time()
                 sock.sendall(request.encode())
 
@@ -1080,13 +1254,21 @@ def bandwidth_test(target="example.com", size=BANDWIDTH_TEST_SIZE):
 
                 console.print("")
                 print_success("Basic bandwidth test completed")
-                table = Table(title="Bandwidth Test Results", border_style=NordColors.NORD8, box=NordColors.NORD_BOX)
-                table.add_column("Metric", style=f"bold {NordColors.NORD9}", justify="right")
+                table = Table(
+                    title="Bandwidth Test Results",
+                    border_style=NordColors.NORD8,
+                    box=NordColors.NORD_BOX,
+                )
+                table.add_column(
+                    "Metric", style=f"bold {NordColors.NORD9}", justify="right"
+                )
                 table.add_column("Value", style=NordColors.NORD4, justify="left")
 
                 table.add_row("Connection time", f"{conn_time:.2f} s")
                 table.add_row("Downloaded", f"{bytes_received / 1024:.2f} KB")
-                table.add_row("Speed", f"{speed / 1024:.2f} KB/s ({download_mbps:.2f} Mbps)")
+                table.add_row(
+                    "Speed", f"{speed / 1024:.2f} KB/s ({download_mbps:.2f} Mbps)"
+                )
 
                 console.print(table)
 
@@ -1118,7 +1300,9 @@ def ping_menu():
         pause()
         return
 
-    interval_input = get_user_input("Time between pings (seconds)", str(PING_INTERVAL_DEFAULT))
+    interval_input = get_user_input(
+        "Time between pings (seconds)", str(PING_INTERVAL_DEFAULT)
+    )
     try:
         interval = float(interval_input)
         if interval <= 0:
@@ -1193,7 +1377,9 @@ def scan_menu():
         pause()
         return
 
-    port_spec = get_user_input("Ports to scan (common, comma-separated, or range like 80-443)", "common")
+    port_spec = get_user_input(
+        "Ports to scan (common, comma-separated, or range like 80-443)", "common"
+    )
     timeout_input = get_user_input("Timeout per port (seconds)", str(PORT_SCAN_TIMEOUT))
 
     try:
@@ -1223,7 +1409,9 @@ def monitor_menu():
         pause()
         return
 
-    count_input = get_user_input("Number of pings (0 for unlimited)", str(MONITOR_DEFAULT_COUNT))
+    count_input = get_user_input(
+        "Number of pings (0 for unlimited)", str(MONITOR_DEFAULT_COUNT)
+    )
     try:
         count = int(count_input)
         if count < 0:
@@ -1235,7 +1423,9 @@ def monitor_menu():
         pause()
         return
 
-    interval_input = get_user_input("Time between pings (seconds)", str(MONITOR_DEFAULT_INTERVAL))
+    interval_input = get_user_input(
+        "Time between pings (seconds)", str(MONITOR_DEFAULT_INTERVAL)
+    )
     try:
         interval = float(interval_input)
         if interval <= 0:
@@ -1324,7 +1514,11 @@ def main_menu():
         elif choice == "0":
             clear_screen()
             console.print(create_header())
-            display_panel("Thank you for using the Network Toolkit!", style=NordColors.NORD14, title="Goodbye")
+            display_panel(
+                "Thank you for using the Network Toolkit!",
+                style=NordColors.NORD14,
+                title="Goodbye",
+            )
             time.sleep(1)
             sys.exit(0)
         else:
@@ -1336,7 +1530,9 @@ def main():
     try:
         setup_logging()
         if not check_root():
-            print_warning("Some operations may have limited functionality without root privileges.")
+            print_warning(
+                "Some operations may have limited functionality without root privileges."
+            )
         main_menu()
     except KeyboardInterrupt:
         print_warning("\nProcess interrupted by user.")

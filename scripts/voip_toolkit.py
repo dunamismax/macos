@@ -25,10 +25,14 @@ def install_dependencies():
     user = os.environ.get("SUDO_USER", os.environ.get("USER", getpass.getuser()))
     try:
         if os.geteuid() != 0:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -36,8 +40,11 @@ def install_dependencies():
 
 def check_homebrew():
     from shutil import which
+
     if not which("brew"):
-        print("Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun this script.")
+        print(
+            "Homebrew is not installed. Please install Homebrew from https://brew.sh/ and rerun this script."
+        )
         sys.exit(1)
 
 
@@ -48,7 +55,14 @@ try:
     from rich.panel import Panel
     from rich.table import Table
     from rich.prompt import Prompt, Confirm
-    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+    from rich.progress import (
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        BarColumn,
+        TaskProgressColumn,
+        TimeRemainingColumn,
+    )
     from rich.align import Align
     from rich.box import ROUNDED
     from rich.style import Style
@@ -108,8 +122,14 @@ def render_banner(text: str, adjusted_width: int) -> str:
     except Exception:
         ascii_art = text
 
-    nord_colors = [NordColors.FROST_1, NordColors.FROST_2, NordColors.FROST_3, NordColors.FROST_4,
-                   NordColors.GREEN, NordColors.PURPLE]
+    nord_colors = [
+        NordColors.FROST_1,
+        NordColors.FROST_2,
+        NordColors.FROST_3,
+        NordColors.FROST_4,
+        NordColors.GREEN,
+        NordColors.PURPLE,
+    ]
     lines = ascii_art.splitlines()
     styled_lines = []
     for i, line in enumerate(lines):
@@ -141,20 +161,30 @@ def get_default_gateway() -> str:
     try:
         result = subprocess.run(
             ["route", "-n", "get", "default"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
         )
         for line in result.stdout.splitlines():
             if "gateway:" in line:
                 return line.split("gateway:")[-1].strip()
     except Exception as e:
-        console.print(f"[bold {NordColors.RED}]Error retrieving default gateway: {e}[/]")
+        console.print(
+            f"[bold {NordColors.RED}]Error retrieving default gateway: {e}[/]"
+        )
     return ""
 
 
 def get_local_ip() -> str:
     try:
-        ip = subprocess.check_output(["ipconfig", "getifaddr", "en0"], stderr=subprocess.DEVNULL).strip().decode(
-            "utf-8")
+        ip = (
+            subprocess.check_output(
+                ["ipconfig", "getifaddr", "en0"], stderr=subprocess.DEVNULL
+            )
+            .strip()
+            .decode("utf-8")
+        )
         return ip
     except Exception:
         return "127.0.0.1"
@@ -192,8 +222,11 @@ class SpinnerProgressManager:
         self.progress = Progress(
             SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
             TextColumn(f"[bold {NordColors.FROST_2}]{{task.description}}"),
-            BarColumn(style=NordColors.POLAR_NIGHT_3, complete_style=NordColors.FROST_2,
-                      finished_style=NordColors.GREEN),
+            BarColumn(
+                style=NordColors.POLAR_NIGHT_3,
+                complete_style=NordColors.FROST_2,
+                finished_style=NordColors.GREEN,
+            ),
             TaskProgressColumn(style=NordColors.SNOW_STORM_1),
             TimeRemainingColumn(),
             console=console,
@@ -221,7 +254,9 @@ def sip_checker() -> None:
     console.print(create_header("SIP Checker"))
     gateway = get_default_gateway()
     if not gateway:
-        console.print(f"[bold {NordColors.RED}]Default gateway not found. Cannot perform SIP check.[/]")
+        console.print(
+            f"[bold {NordColors.RED}]Default gateway not found. Cannot perform SIP check.[/]"
+        )
         wait_for_key()
         return
     console.print(f"Default Gateway: [bold]{gateway}[/]")
@@ -256,7 +291,9 @@ def sip_checker() -> None:
             if sip_detected:
                 console.print(f"[bold {NordColors.RED}]SIP Enabled[/]")
             else:
-                console.print(f"[bold {NordColors.YELLOW}]SIP Enabled (response received but unrecognized format)[/]")
+                console.print(
+                    f"[bold {NordColors.YELLOW}]SIP Enabled (response received but unrecognized format)[/]"
+                )
         else:
             console.print(f"[bold {NordColors.GREEN}]SIP Not Detected[/]")
     except Exception as e:
@@ -272,7 +309,11 @@ def voip_network_info() -> None:
     gateway = get_default_gateway()
 
     try:
-        external_ip = subprocess.check_output(["curl", "-s", "https://api.ipify.org"]).strip().decode("utf-8")
+        external_ip = (
+            subprocess.check_output(["curl", "-s", "https://api.ipify.org"])
+            .strip()
+            .decode("utf-8")
+        )
     except Exception:
         external_ip = "Not found"
 
@@ -297,7 +338,9 @@ def voip_network_info() -> None:
     airport_path = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
     if os.path.exists(airport_path):
         try:
-            result = subprocess.run([airport_path, "-I"], capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                [airport_path, "-I"], capture_output=True, text=True, check=True
+            )
             for line in result.stdout.splitlines():
                 if "SSID:" in line:
                     wifi_ssid = line.split("SSID:")[-1].strip()
@@ -307,8 +350,12 @@ def voip_network_info() -> None:
     else:
         wifi_ssid = "Unavailable"
 
-    info_table = Table(title="Network Information", show_header=True, header_style=NordColors.HEADER,
-                       box=NordColors.NORD_BOX)
+    info_table = Table(
+        title="Network Information",
+        show_header=True,
+        header_style=NordColors.HEADER,
+        box=NordColors.NORD_BOX,
+    )
     info_table.add_column("Property", style="bold")
     info_table.add_column("Value", style=f"{NordColors.FROST_2}")
     info_table.add_row("Local IP", local_ip)
@@ -326,7 +373,9 @@ def sip_port_scanner() -> None:
     console.print(create_header("Port Scanner"))
     local_ip = get_local_ip()
     if local_ip == "127.0.0.1":
-        console.print(f"[bold {NordColors.RED}]Unable to determine local IP address from en0.[/]")
+        console.print(
+            f"[bold {NordColors.RED}]Unable to determine local IP address from en0.[/]"
+        )
         wait_for_key()
         return
 
@@ -357,7 +406,9 @@ def sip_port_scanner() -> None:
         task_id = spinner.add_task("Scanning hosts", total=total_hosts)
         completed = 0
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            futures = {executor.submit(scan_ip, i): i for i in range(1, total_hosts + 1)}
+            futures = {
+                executor.submit(scan_ip, i): i for i in range(1, total_hosts + 1)
+            }
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
                 if result:
@@ -369,16 +420,24 @@ def sip_port_scanner() -> None:
 
     if found_devices:
         found_devices.sort(key=lambda ip: list(map(int, ip.split("."))))
-        table = Table(title="SIP Devices Detected", show_header=True, header_style=NordColors.HEADER,
-                      box=NordColors.NORD_BOX)
+        table = Table(
+            title="SIP Devices Detected",
+            show_header=True,
+            header_style=NordColors.HEADER,
+            box=NordColors.NORD_BOX,
+        )
         table.add_column("IP Address", style=f"bold {NordColors.RED}")
         for ip in found_devices:
             table.add_row(ip)
         console.print(table)
     else:
-        console.print(f"[bold {NordColors.GREEN}]No devices with SIP port 5060 detected.[/]")
+        console.print(
+            f"[bold {NordColors.GREEN}]No devices with SIP port 5060 detected.[/]"
+        )
 
-    console.print(f"[bold {NordColors.FROST_2}]Scan completed in {elapsed_time:.2f} seconds.[/]")
+    console.print(
+        f"[bold {NordColors.FROST_2}]Scan completed in {elapsed_time:.2f} seconds.[/]"
+    )
     wait_for_key()
 
 
@@ -394,7 +453,9 @@ def bandwidth_qos_monitor() -> None:
         packet_loss_match = re.search(r"(\d+(?:\.\d+)?)% packet loss", ping_output)
         packet_loss = packet_loss_match.group(1) if packet_loss_match else "N/A"
 
-        latency_match = re.search(r"round-trip.* = ([\d\.]+)/([\d\.]+)/([\d\.]+)/([\d\.]+) ms", ping_output)
+        latency_match = re.search(
+            r"round-trip.* = ([\d\.]+)/([\d\.]+)/([\d\.]+)/([\d\.]+) ms", ping_output
+        )
         if latency_match:
             min_latency, avg_latency, max_latency, stddev = latency_match.groups()
         else:
@@ -404,7 +465,12 @@ def bandwidth_qos_monitor() -> None:
 
     try:
         curl_cmd = [
-            "curl", "-o", "/dev/null", "-s", "-w", "%{size_download} %{time_total}",
+            "curl",
+            "-o",
+            "/dev/null",
+            "-s",
+            "-w",
+            "%{size_download} %{time_total}",
             "https://nbg1-speed.hetzner.com/100MB.bin",
         ]
         result = subprocess.run(curl_cmd, capture_output=True, text=True, check=True)
@@ -424,8 +490,15 @@ def bandwidth_qos_monitor() -> None:
     except Exception:
         try:
             result = subprocess.run(
-                ["defaults", "read", "/Library/Preferences/com.apple.alf", "globalstate"],
-                capture_output=True, text=True, check=True
+                [
+                    "defaults",
+                    "read",
+                    "/Library/Preferences/com.apple.alf",
+                    "globalstate",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
             )
             state_val = result.stdout.strip()
             firewall_state = "Enabled" if state_val != "0" else "Disabled"
@@ -433,22 +506,30 @@ def bandwidth_qos_monitor() -> None:
             firewall_state = "Unknown"
 
     try:
-        result = subprocess.run(["pfctl", "-s", "info"], capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["pfctl", "-s", "info"], capture_output=True, text=True, check=True
+        )
         pf_info = result.stdout
         pf_state = "Enabled" if "Status: Enabled" in pf_info else "Disabled"
     except Exception:
         pf_state = "Error"
 
     try:
-        result = subprocess.run(["sysctl", "net.inet.ip.dscp"], capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["sysctl", "net.inet.ip.dscp"], capture_output=True, text=True, check=True
+        )
         dscp_output = result.stdout.strip()
-        dscp_value = dscp_output.split(":")[-1].strip() if ":" in dscp_output else dscp_output
+        dscp_value = (
+            dscp_output.split(":")[-1].strip() if ":" in dscp_output else dscp_output
+        )
     except Exception:
         dscp_value = "Not Configured"
 
     try:
         traceroute_cmd = ["traceroute", "google.com"]
-        result = subprocess.run(traceroute_cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            traceroute_cmd, capture_output=True, text=True, check=True
+        )
         traceroute_lines = result.stdout.strip().splitlines()
         num_hops = len(traceroute_lines) - 1 if len(traceroute_lines) > 1 else "N/A"
         traceroute_result = f"{num_hops} hops"
@@ -465,8 +546,12 @@ def bandwidth_qos_monitor() -> None:
 
     total_duration = time.time() - start_time
 
-    result_table = Table(title="Network Test Summary", show_header=True, header_style=NordColors.HEADER,
-                         box=NordColors.NORD_BOX)
+    result_table = Table(
+        title="Network Test Summary",
+        show_header=True,
+        header_style=NordColors.HEADER,
+        box=NordColors.NORD_BOX,
+    )
     result_table.add_column("Test", style="bold", justify="left")
     result_table.add_column("Result", style=f"{NordColors.FROST_2}", justify="right")
 
@@ -518,7 +603,9 @@ def signal_handler(sig, frame) -> None:
         sig_name = signal.Signals(sig).name
         console.print(f"[bold {NordColors.YELLOW}]Process interrupted by {sig_name}[/]")
     except Exception:
-        console.print(f"[bold {NordColors.YELLOW}]Process interrupted by signal {sig}[/]")
+        console.print(
+            f"[bold {NordColors.YELLOW}]Process interrupted by signal {sig}[/]"
+        )
     cleanup()
     sys.exit(128 + sig)
 
@@ -533,10 +620,14 @@ def main_menu() -> None:
         console.clear()
         console.print(create_header())
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        console.print(Align.center(f"[bold {NordColors.FROST_2}]Current Time: {current_time}[/]"))
+        console.print(
+            Align.center(f"[bold {NordColors.FROST_2}]Current Time: {current_time}[/]")
+        )
         console.print()
 
-        table = Table(show_header=True, header_style=NordColors.HEADER, box=NordColors.NORD_BOX)
+        table = Table(
+            show_header=True, header_style=NordColors.HEADER, box=NordColors.NORD_BOX
+        )
         table.add_column("Option", style="bold", width=8)
         table.add_column("Description", style=f"bold {NordColors.FROST_2}")
 
@@ -564,7 +655,10 @@ def main_menu() -> None:
         if choice == "0":
             console.print(
                 Panel(
-                    Text("Thank you for using the macOS VoIP Toolkit!", style=f"bold {NordColors.FROST_2}"),
+                    Text(
+                        "Thank you for using the macOS VoIP Toolkit!",
+                        style=f"bold {NordColors.FROST_2}",
+                    ),
                     border_style=NordColors.FROST_1,
                     box=NordColors.NORD_BOX,
                 )

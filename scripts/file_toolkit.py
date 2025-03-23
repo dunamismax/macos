@@ -26,10 +26,14 @@ def install_dependencies():
     user = os.environ.get("SUDO_USER", os.environ.get("USER"))
     try:
         if os.geteuid() != 0:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -39,7 +43,13 @@ try:
     import pyfiglet
     from rich.console import Console
     from rich.panel import Panel
-    from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
+    from rich.progress import (
+        Progress,
+        SpinnerColumn,
+        BarColumn,
+        TextColumn,
+        TimeRemainingColumn,
+    )
     from rich.prompt import Prompt, Confirm
     from rich.table import Table
     from rich.text import Text
@@ -69,7 +79,7 @@ FILE_CATEGORIES = {
     "Video": {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv"},
     "Audio": {".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac"},
     "Archive": {".zip", ".tar", ".gz", ".rar", ".7z", ".bz2"},
-    "Code": {".py", ".js", ".java", ".c", ".cpp", ".h", ".php", ".html", ".css"}
+    "Code": {".py", ".js", ".java", ".c", ".cpp", ".h", ".php", ".html", ".css"},
 }
 
 CHECKSUM_ALGORITHMS = ["md5", "sha1", "sha256", "sha512"]
@@ -108,16 +118,25 @@ class NordColors:
 
     @classmethod
     def get_polar_gradient(cls, steps=4):
-        return [cls.POLAR_NIGHT_1, cls.POLAR_NIGHT_2, cls.POLAR_NIGHT_3, cls.POLAR_NIGHT_4][:steps]
+        return [
+            cls.POLAR_NIGHT_1,
+            cls.POLAR_NIGHT_2,
+            cls.POLAR_NIGHT_3,
+            cls.POLAR_NIGHT_4,
+        ][:steps]
 
 
-console = Console(theme=Theme({
-    "info": f"bold {NordColors.FROST_2}",
-    "warning": f"bold {NordColors.YELLOW}",
-    "error": f"bold {NordColors.RED}",
-    "success": f"bold {NordColors.GREEN}",
-    "prompt": f"bold {NordColors.PURPLE}",
-}))
+console = Console(
+    theme=Theme(
+        {
+            "info": f"bold {NordColors.FROST_2}",
+            "warning": f"bold {NordColors.YELLOW}",
+            "error": f"bold {NordColors.RED}",
+            "success": f"bold {NordColors.GREEN}",
+            "prompt": f"bold {NordColors.PURPLE}",
+        }
+    )
+)
 
 
 def create_header():
@@ -204,10 +223,12 @@ def create_menu_table(title, options):
         box=None,
         expand=True,
         border_style=NordColors.FROST_3,
-        show_header=False
+        show_header=False,
     )
 
-    table.add_column("Option", style=f"bold {NordColors.FROST_3}", width=4, justify="right")
+    table.add_column(
+        "Option", style=f"bold {NordColors.FROST_3}", width=4, justify="right"
+    )
     table.add_column("Description", style=NordColors.SNOW_STORM_1)
 
     for num, desc in options:
@@ -249,7 +270,9 @@ class ProgressManager:
         self.progress = Progress(
             SpinnerColumn(style=f"bold {NordColors.FROST_1}"),
             TextColumn("[bold {task.fields[color]}]{task.description}"),
-            BarColumn(complete_style=NordColors.FROST_2, finished_style=NordColors.GREEN),
+            BarColumn(
+                complete_style=NordColors.FROST_2, finished_style=NordColors.GREEN
+            ),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TimeRemainingColumn(),
             console=console,
@@ -297,9 +320,13 @@ class Spinner:
             self.thread.join()
         console.print("\r" + " " * TERM_WIDTH, end="\r")
         if exc_type is None:
-            console.print(f"[{NordColors.GREEN}]✓[/] [{NordColors.FROST_2}]{self.message}[/] [green]completed[/]")
+            console.print(
+                f"[{NordColors.GREEN}]✓[/] [{NordColors.FROST_2}]{self.message}[/] [green]completed[/]"
+            )
         else:
-            console.print(f"[{NordColors.RED}]✗[/] [{NordColors.FROST_2}]{self.message}[/] [red]failed[/]")
+            console.print(
+                f"[{NordColors.RED}]✗[/] [{NordColors.FROST_2}]{self.message}[/] [red]failed[/]"
+            )
 
 
 def check_root_privileges():
@@ -322,14 +349,18 @@ def copy_item(src, dest):
         return False
     try:
         if Path(src).is_dir():
-            total_size = sum(f.stat().st_size for f in Path(src).rglob("*") if f.is_file())
+            total_size = sum(
+                f.stat().st_size for f in Path(src).rglob("*") if f.is_file()
+            )
             if total_size == 0:
                 print_warning("Directory is empty; nothing to copy.")
                 return True
 
             start_time = time.time()
             with ProgressManager() as progress:
-                task = progress.add_task("Copying directory", total=total_size, color=NordColors.FROST_2)
+                task = progress.add_task(
+                    "Copying directory", total=total_size, color=NordColors.FROST_2
+                )
                 for root, dirs, files in os.walk(src):
                     rel = os.path.relpath(root, src)
                     target = Path(dest) / rel if rel != "." else Path(dest)
@@ -344,19 +375,27 @@ def copy_item(src, dest):
                         shutil.copystat(src_file, dst_file)
 
             elapsed = time.time() - start_time
-            print_success(f"Copied directory ({format_size(total_size)}) in {format_time(elapsed)}")
+            print_success(
+                f"Copied directory ({format_size(total_size)}) in {format_time(elapsed)}"
+            )
         else:
             file_size = Path(src).stat().st_size
             start_time = time.time()
             with ProgressManager() as progress:
-                task = progress.add_task(f"Copying {Path(src).name}", total=file_size, color=NordColors.FROST_2)
+                task = progress.add_task(
+                    f"Copying {Path(src).name}",
+                    total=file_size,
+                    color=NordColors.FROST_2,
+                )
                 with open(src, "rb") as fin, open(dest, "wb") as fout:
                     while buf := fin.read(DEFAULT_BUFFER_SIZE):
                         fout.write(buf)
                         progress.update(task, advance=len(buf))
             shutil.copystat(src, dest)
             elapsed = time.time() - start_time
-            print_success(f"Copied file ({format_size(file_size)}) in {format_time(elapsed)}")
+            print_success(
+                f"Copied file ({format_size(file_size)}) in {format_time(elapsed)}"
+            )
         return True
     except Exception as e:
         print_error(f"Error copying {src}: {e}")
@@ -374,9 +413,15 @@ def move_item(src, dest):
 
         if same_fs:
             os.rename(src, dest)
-            print_success(f"Moved {src} to {dest} in {format_time(time.time() - start_time)}")
+            print_success(
+                f"Moved {src} to {dest} in {format_time(time.time() - start_time)}"
+            )
         else:
-            print_message("Different filesystem detected: copying then deleting source...", NordColors.FROST_2, "➜")
+            print_message(
+                "Different filesystem detected: copying then deleting source...",
+                NordColors.FROST_2,
+                "➜",
+            )
             if not copy_item(src, dest):
                 return False
             if Path(src).is_dir():
@@ -395,7 +440,9 @@ def delete_item(path, force=False):
     if not Path(path).exists():
         print_error(f"Path not found: {path}")
         return False
-    if not force and not get_user_confirmation(f"Are you sure you want to delete {path}?"):
+    if not force and not get_user_confirmation(
+        f"Are you sure you want to delete {path}?"
+    ):
         print_message("Deletion cancelled", NordColors.FROST_2, "➜")
         return False
     try:
@@ -448,7 +495,9 @@ def find_files():
             try:
                 p = Path(match)
                 size = format_size(p.stat().st_size)
-                modified = dt.fromtimestamp(p.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                modified = dt.fromtimestamp(p.stat().st_mtime).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
 
                 ext = p.suffix.lower()
                 file_type = "Other"
@@ -466,7 +515,9 @@ def find_files():
             print_warning(f"Showing first 100 of {len(matches)} matches")
     else:
         for match in matches[:100]:
-            console.print(f"[{NordColors.SNOW_STORM_1}]{match}[/{NordColors.SNOW_STORM_1}]")
+            console.print(
+                f"[{NordColors.SNOW_STORM_1}]{match}[/{NordColors.SNOW_STORM_1}]"
+            )
         if len(matches) > 100:
             print_warning(f"Showing first 100 of {len(matches)} matches")
 
@@ -490,7 +541,9 @@ def compress_files():
 
     if Path(src).is_dir():
         with Spinner("Calculating total size"):
-            total_size = sum(f.stat().st_size for f in Path(src).rglob("*") if f.is_file())
+            total_size = sum(
+                f.stat().st_size for f in Path(src).rglob("*") if f.is_file()
+            )
     else:
         total_size = Path(src).stat().st_size
 
@@ -501,10 +554,17 @@ def compress_files():
     start_time = time.time()
     try:
         with ProgressManager() as progress:
-            task = progress.add_task("Compressing files", total=total_size, color=NordColors.FROST_2)
+            task = progress.add_task(
+                "Compressing files", total=total_size, color=NordColors.FROST_2
+            )
 
-            with open(dest, "wb") as fout, tarfile.open(fileobj=fout, mode="w:gz",
-                                                        compresslevel=COMPRESSION_LEVEL) as tar:
+            with (
+                open(dest, "wb") as fout,
+                tarfile.open(
+                    fileobj=fout, mode="w:gz", compresslevel=COMPRESSION_LEVEL
+                ) as tar,
+            ):
+
                 def progress_filter(ti):
                     if ti.size:
                         progress.update(task, advance=ti.size)
@@ -545,7 +605,9 @@ def calculate_checksum():
         print_error("Invalid file path")
         return False
 
-    algo_options = [(str(i + 1), algo.upper()) for i, algo in enumerate(CHECKSUM_ALGORITHMS)]
+    algo_options = [
+        (str(i + 1), algo.upper()) for i, algo in enumerate(CHECKSUM_ALGORITHMS)
+    ]
     console.print(create_menu_table("Select Checksum Algorithm", algo_options))
     choice = get_user_input("Select algorithm (1-4)", "1")
 
@@ -563,7 +625,9 @@ def calculate_checksum():
         start_time = time.time()
 
         with ProgressManager() as progress:
-            task = progress.add_task("Reading file", total=file_size, color=NordColors.FROST_2)
+            task = progress.add_task(
+                "Reading file", total=file_size, color=NordColors.FROST_2
+            )
             with open(path, "rb") as fin:
                 while chunk := fin.read(CHUNK_SIZE):
                     hash_func.update(chunk)
@@ -651,7 +715,9 @@ def disk_usage():
         cat_table.add_column("Size", style=NordColors.SNOW_STORM_1, justify="right")
         cat_table.add_column("Percentage", style=NordColors.FROST_1, justify="right")
 
-        for cat, size in sorted(category_sizes.items(), key=lambda x: x[1], reverse=True):
+        for cat, size in sorted(
+            category_sizes.items(), key=lambda x: x[1], reverse=True
+        ):
             perc = (size / total_size * 100) if total_size > 0 else 0
             cat_table.add_row(cat, format_size(size), f"{perc:.1f}%")
 
@@ -820,7 +886,11 @@ def cleanup():
 
 
 def signal_handler(signum, frame):
-    sig_name = signal.Signals(signum).name if hasattr(signal, "Signals") else f"signal {signum}"
+    sig_name = (
+        signal.Signals(signum).name
+        if hasattr(signal, "Signals")
+        else f"signal {signum}"
+    )
     print_warning(f"\nScript interrupted by {sig_name}.")
     cleanup()
     sys.exit(128 + signum)

@@ -24,10 +24,14 @@ def install_dependencies():
     user = os.environ.get("SUDO_USER", os.environ.get("USER", getpass.getuser()))
     try:
         if os.geteuid() != 0:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--user"] + required_packages
+            )
         else:
             subprocess.check_call(
-                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"] + required_packages)
+                ["sudo", "-u", user, sys.executable, "-m", "pip", "install", "--user"]
+                + required_packages
+            )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         sys.exit(1)
@@ -42,7 +46,13 @@ try:
     from rich.table import Table
     from rich.panel import Panel
     from rich.prompt import Prompt, Confirm, IntPrompt
-    from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn
+    from rich.progress import (
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        TimeElapsedColumn,
+        TimeRemainingColumn,
+    )
     from rich.live import Live
     from rich.align import Align
     from rich.style import Style
@@ -60,7 +70,9 @@ install_rich_traceback(show_locals=True)
 console = Console()
 
 HOSTNAME = socket.gethostname()
-DEFAULT_USERNAME = os.environ.get("SUDO_USER") or os.environ.get("USER") or getpass.getuser()
+DEFAULT_USERNAME = (
+    os.environ.get("SUDO_USER") or os.environ.get("USER") or getpass.getuser()
+)
 SFTP_DEFAULT_PORT = 22
 VERSION = "3.1.0"
 APP_NAME = "macOS SFTP Toolkit"
@@ -68,8 +80,13 @@ APP_SUBTITLE = "Advanced File Transfer Manager for macOS"
 OPERATION_TIMEOUT = 30
 
 DEFAULT_LOCAL_FOLDER = os.path.expanduser(
-    f"~{os.environ.get('SUDO_USER', '')}/Downloads" if os.environ.get('SUDO_USER') else "~/Downloads")
-HISTORY_DIR = os.path.expanduser(f"~{os.environ.get('SUDO_USER', DEFAULT_USERNAME)}/.sftp_toolkit")
+    f"~{os.environ.get('SUDO_USER', '')}/Downloads"
+    if os.environ.get("SUDO_USER")
+    else "~/Downloads"
+)
+HISTORY_DIR = os.path.expanduser(
+    f"~{os.environ.get('SUDO_USER', DEFAULT_USERNAME)}/.sftp_toolkit"
+)
 os.makedirs(HISTORY_DIR, exist_ok=True)
 COMMAND_HISTORY = os.path.join(HISTORY_DIR, "command_history")
 PATH_HISTORY = os.path.join(HISTORY_DIR, "path_history")
@@ -123,36 +140,83 @@ class SFTPConnection:
     connected_at: Optional[datetime] = None
 
     def is_connected(self) -> bool:
-        return self.sftp is not None and self.transport is not None and self.transport.is_active()
+        return (
+            self.sftp is not None
+            and self.transport is not None
+            and self.transport.is_active()
+        )
 
     def get_connection_info(self) -> str:
         if not self.is_connected():
             return "Not connected"
-        connected_time = f"Connected at: {self.connected_at.strftime('%Y-%m-%d %H:%M:%S')}" if self.connected_at else ""
+        connected_time = (
+            f"Connected at: {self.connected_at.strftime('%Y-%m-%d %H:%M:%S')}"
+            if self.connected_at
+            else ""
+        )
         return f"{self.username}@{self.hostname}:{self.port} | {connected_time}"
 
 
 sftp_connection = SFTPConnection()
 
 STATIC_TAILSCALE_DEVICES = [
-    Device(name="fedora-server", ip_address="100.109.43.88", device_type="tailscale", description="Main Fedora Server",
-           username="fedorauser"),
-    Device(name="fedora-workstation", ip_address="100.88.172.104", device_type="tailscale",
-           description="Fedora Workstation", username="fedorauser"),
-    Device(name="fedora-vm-01", ip_address="100.84.119.114", device_type="tailscale", description="VM 01",
-           username="fedorauser"),
-    Device(name="fedora-vm-02", ip_address="100.122.237.56", device_type="tailscale", description="VM 02",
-           username="fedorauser"),
-    Device(name="fedora-vm-03", ip_address="100.97.229.120", device_type="tailscale", description="VM 03",
-           username="fedorauser"),
-    Device(name="fedora-vm-04", ip_address="100.73.171.7", device_type="tailscale", description="VM 04",
-           username="fedorauser"),
+    Device(
+        name="fedora-server",
+        ip_address="100.109.43.88",
+        device_type="tailscale",
+        description="Main Fedora Server",
+        username="fedorauser",
+    ),
+    Device(
+        name="fedora-workstation",
+        ip_address="100.88.172.104",
+        device_type="tailscale",
+        description="Fedora Workstation",
+        username="fedorauser",
+    ),
+    Device(
+        name="fedora-vm-01",
+        ip_address="100.84.119.114",
+        device_type="tailscale",
+        description="VM 01",
+        username="fedorauser",
+    ),
+    Device(
+        name="fedora-vm-02",
+        ip_address="100.122.237.56",
+        device_type="tailscale",
+        description="VM 02",
+        username="fedorauser",
+    ),
+    Device(
+        name="fedora-vm-03",
+        ip_address="100.97.229.120",
+        device_type="tailscale",
+        description="VM 03",
+        username="fedorauser",
+    ),
+    Device(
+        name="fedora-vm-04",
+        ip_address="100.73.171.7",
+        device_type="tailscale",
+        description="VM 04",
+        username="fedorauser",
+    ),
 ]
 
 STATIC_LOCAL_DEVICES = [
-    Device(name="fedora-server", ip_address="192.168.68.52", device_type="local", description="Main Fedora Server"),
-    Device(name="fedora-workstation", ip_address="192.168.68.54", device_type="local",
-           description="Fedora Workstation"),
+    Device(
+        name="fedora-server",
+        ip_address="192.168.68.52",
+        device_type="local",
+        description="Main Fedora Server",
+    ),
+    Device(
+        name="fedora-workstation",
+        ip_address="192.168.68.54",
+        device_type="local",
+        description="Fedora Workstation",
+    ),
 ]
 
 
@@ -194,7 +258,9 @@ class RemotePathCompleter(Completer):
                         suggestion,
                         start_position=-len(prefix),
                         display=suggestion,
-                        style="bg:#3B4252 fg:#A3BE8C" if is_dir else "bg:#3B4252 fg:#88C0D0",
+                        style="bg:#3B4252 fg:#A3BE8C"
+                        if is_dir
+                        else "bg:#3B4252 fg:#88C0D0",
                     )
                 except Exception:
                     continue
@@ -264,7 +330,9 @@ class SpinnerProgressManager:
                     eta_str += f" • {speed_str}"
             else:
                 eta_str = f"[{NordColors.FROST_4}]Calculating..."
-            status_with_percentage = f"[{NordColors.FROST_3}]{status} [{NordColors.GREEN}]{percentage}%[/]"
+            status_with_percentage = (
+                f"[{NordColors.FROST_3}]{status} [{NordColors.GREEN}]{percentage}%[/]"
+            )
             self.progress.update(task, status=status_with_percentage, eta=eta_str)
 
     def complete_task(self, task_id, success=True):
@@ -319,7 +387,12 @@ def create_header():
         except Exception:
             continue
     ascii_lines = [line for line in ascii_art.splitlines() if line.strip()]
-    colors = [NordColors.FROST_1, NordColors.FROST_2, NordColors.FROST_3, NordColors.FROST_4]
+    colors = [
+        NordColors.FROST_1,
+        NordColors.FROST_2,
+        NordColors.FROST_3,
+        NordColors.FROST_4,
+    ]
     styled_text = ""
     for i, line in enumerate(ascii_lines):
         color = colors[i % len(colors)]
@@ -393,7 +466,10 @@ def get_prompt_style():
 
 
 def wait_for_key():
-    pt_prompt("Press Enter to continue...", style=PtStyle.from_dict({"prompt": f"{NordColors.FROST_2}"}))
+    pt_prompt(
+        "Press Enter to continue...",
+        style=PtStyle.from_dict({"prompt": f"{NordColors.FROST_2}"}),
+    )
 
 
 def load_env():
@@ -428,13 +504,17 @@ def load_private_key():
     except paramiko.PasswordRequiredException:
         key_password = os.environ.get("SSH_KEY_PASSWORD")
         if not key_password:
-            key_password = pt_prompt("Enter SSH key password: ", is_password=True, style=get_prompt_style())
+            key_password = pt_prompt(
+                "Enter SSH key password: ", is_password=True, style=get_prompt_style()
+            )
             os.environ["SSH_KEY_PASSWORD"] = key_password
         try:
             key = paramiko.RSAKey.from_private_key_file(key_path, password=key_password)
             return key
         except Exception as e:
-            console.print(f"[bold {NordColors.RED}]Error loading private key with passphrase: {e}[/]")
+            console.print(
+                f"[bold {NordColors.RED}]Error loading private key with passphrase: {e}[/]"
+            )
             return None
     except Exception as e:
         console.print(f"[bold {NordColors.RED}]Error loading private key: {e}[/]")
@@ -469,16 +549,26 @@ atexit.register(cleanup)
 
 
 def select_device_menu():
-    console.print(Panel(f"[bold {NordColors.FROST_2}]Select Device Type[/]", expand=False))
-    device_type = Prompt.ask(f"[bold {NordColors.PURPLE}]Choose device type[/]",
-                             choices=["tailscale", "local", "cancel"], default="local")
+    console.print(
+        Panel(f"[bold {NordColors.FROST_2}]Select Device Type[/]", expand=False)
+    )
+    device_type = Prompt.ask(
+        f"[bold {NordColors.PURPLE}]Choose device type[/]",
+        choices=["tailscale", "local", "cancel"],
+        default="local",
+    )
     if device_type == "cancel":
         print_warning("Device selection canceled")
         return None
 
-    devices = load_tailscale_devices() if device_type == "tailscale" else load_local_devices()
-    table = Table(title=f"Available {device_type.capitalize()} Devices", show_header=True,
-                  header_style=f"bold {NordColors.FROST_3}")
+    devices = (
+        load_tailscale_devices() if device_type == "tailscale" else load_local_devices()
+    )
+    table = Table(
+        title=f"Available {device_type.capitalize()} Devices",
+        show_header=True,
+        header_style=f"bold {NordColors.FROST_3}",
+    )
     table.add_column("No.", style="bold", width=4)
     table.add_column("Name", style="bold")
     table.add_column("IP Address", style=f"bold {NordColors.GREEN}")
@@ -496,7 +586,9 @@ def select_device_menu():
 
     console.print(table)
     console.print(f"[{NordColors.YELLOW}]Enter 0 to cancel selection[/]")
-    choice = IntPrompt.ask(f"[bold {NordColors.PURPLE}]Select device number[/]", default=1)
+    choice = IntPrompt.ask(
+        f"[bold {NordColors.PURPLE}]Select device number[/]", default=1
+    )
 
     if choice == 0:
         print_warning("Device selection canceled")
@@ -505,7 +597,8 @@ def select_device_menu():
     try:
         selected_device = devices[choice - 1]
         console.print(
-            f"[bold {NordColors.GREEN}]Selected device:[/] {selected_device.name} ({selected_device.ip_address})")
+            f"[bold {NordColors.GREEN}]Selected device:[/] {selected_device.name} ({selected_device.ip_address})"
+        )
         return selected_device
     except (IndexError, TypeError):
         console.print(f"[bold {NordColors.RED}]Invalid selection. Please try again.[/]")
@@ -520,7 +613,9 @@ def connect_device_via_menu():
 
 
 def connect_sftp():
-    console.print(Panel(f"[bold {NordColors.FROST_2}]SFTP Connection Setup[/]", expand=False))
+    console.print(
+        Panel(f"[bold {NordColors.FROST_2}]SFTP Connection Setup[/]", expand=False)
+    )
     hostname = pt_prompt(
         "Enter SFTP Hostname: ",
         history=FileHistory(COMMAND_HISTORY),
@@ -531,7 +626,9 @@ def connect_sftp():
         print_warning("Connection canceled - hostname required")
         return False
 
-    port = IntPrompt.ask(f"[bold {NordColors.PURPLE}]Enter Port[/]", default=SFTP_DEFAULT_PORT)
+    port = IntPrompt.ask(
+        f"[bold {NordColors.PURPLE}]Enter Port[/]", default=SFTP_DEFAULT_PORT
+    )
     username = pt_prompt(
         "Enter Username: ",
         default=DEFAULT_USERNAME,
@@ -542,7 +639,9 @@ def connect_sftp():
 
     key = load_private_key()
     if key is None:
-        console.print(f"[bold {NordColors.RED}]Could not load SSH private key. Connection aborted.[/]")
+        console.print(
+            f"[bold {NordColors.RED}]Could not load SSH private key. Connection aborted.[/]"
+        )
         return False
 
     spinner = SpinnerProgressManager("SFTP Connection")
@@ -571,7 +670,8 @@ def connect_sftp():
         sftp_connection.connected_at = datetime.now()
 
         console.print(
-            f"[bold {NordColors.GREEN}]Successfully connected to SFTP server using key-based authentication.[/]")
+            f"[bold {NordColors.GREEN}]Successfully connected to SFTP server using key-based authentication.[/]"
+        )
         return True
     except Exception as e:
         spinner.complete_task(task_id, False)
@@ -583,8 +683,14 @@ def connect_sftp():
 
 def connect_sftp_device(device):
     console.print(
-        Panel(f"[bold {NordColors.FROST_2}]Connecting to {device.name} ({device.ip_address})[/]", expand=False))
-    port = IntPrompt.ask(f"[bold {NordColors.PURPLE}]Enter Port[/]", default=device.port)
+        Panel(
+            f"[bold {NordColors.FROST_2}]Connecting to {device.name} ({device.ip_address})[/]",
+            expand=False,
+        )
+    )
+    port = IntPrompt.ask(
+        f"[bold {NordColors.PURPLE}]Enter Port[/]", default=device.port
+    )
     default_user = device.username if device.username else DEFAULT_USERNAME
     username = pt_prompt(
         "Enter Username: ",
@@ -596,7 +702,9 @@ def connect_sftp_device(device):
 
     key = load_private_key()
     if key is None:
-        console.print(f"[bold {NordColors.RED}]Could not load SSH private key. Connection aborted.[/]")
+        console.print(
+            f"[bold {NordColors.RED}]Could not load SSH private key. Connection aborted.[/]"
+        )
         return False
 
     spinner = SpinnerProgressManager("Device Connection")
@@ -610,7 +718,9 @@ def connect_sftp_device(device):
         spinner.update_task(task_id, "Negotiating encryption parameters...")
         time.sleep(0.5)
         transport.connect(username=username, pkey=key)
-        spinner.update_task(task_id, f"Establishing SFTP connection to {device.name}...")
+        spinner.update_task(
+            task_id, f"Establishing SFTP connection to {device.name}..."
+        )
         time.sleep(0.5)
         sftp = paramiko.SFTPClient.from_transport(transport)
         spinner.update_task(task_id, "Connection established successfully!")
@@ -626,11 +736,14 @@ def connect_sftp_device(device):
         device.last_connected = datetime.now()
 
         console.print(
-            f"[bold {NordColors.GREEN}]Successfully connected to {device.name} using key-based authentication.[/]")
+            f"[bold {NordColors.GREEN}]Successfully connected to {device.name} using key-based authentication.[/]"
+        )
         return True
     except Exception as e:
         spinner.complete_task(task_id, False)
-        console.print(f"[bold {NordColors.RED}]Error connecting to {device.name}: {e}[/]")
+        console.print(
+            f"[bold {NordColors.RED}]Error connecting to {device.name}: {e}[/]"
+        )
         return False
     finally:
         spinner.stop()
@@ -675,7 +788,10 @@ def check_connection():
         return True
 
     console.print(f"[bold {NordColors.RED}]Not connected to any SFTP server.[/]")
-    if Confirm.ask(f"[bold {NordColors.YELLOW}]Would you like to establish a connection now?[/]", default=True):
+    if Confirm.ask(
+        f"[bold {NordColors.YELLOW}]Would you like to establish a connection now?[/]",
+        default=True,
+    ):
         connect_method = Prompt.ask(
             f"[bold {NordColors.PURPLE}]Connection method[/]",
             choices=["device", "manual", "cancel"],
@@ -709,16 +825,24 @@ def list_remote_directory():
 
     try:
         spinner.start()
-        spinner.update_task(task_id, f"Retrieving directory listing for {remote_path}...")
+        spinner.update_task(
+            task_id, f"Retrieving directory listing for {remote_path}..."
+        )
         file_list = sftp_connection.sftp.listdir_attr(remote_path)
         spinner.update_task(task_id, f"Retrieved {len(file_list)} items")
         time.sleep(0.5)
         spinner.complete_task(task_id, True)
         spinner.stop()
 
-        sorted_items = sorted(file_list, key=lambda x: (not (x.st_mode & 0o40000), x.filename.lower()))
-        table = Table(title=f"Contents of {remote_path}", show_header=True, header_style=f"bold {NordColors.FROST_3}",
-                      expand=True)
+        sorted_items = sorted(
+            file_list, key=lambda x: (not (x.st_mode & 0o40000), x.filename.lower())
+        )
+        table = Table(
+            title=f"Contents of {remote_path}",
+            show_header=True,
+            header_style=f"bold {NordColors.FROST_3}",
+            expand=True,
+        )
         table.add_column("Type", style="bold", width=4)
         table.add_column("Name", style="bold")
         table.add_column("Size", justify="right")
@@ -743,20 +867,33 @@ def list_remote_directory():
             mod_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(item.st_mtime))
             perm = ""
             modes = [
-                (0o400, "r"), (0o200, "w"), (0o100, "x"),
-                (0o040, "r"), (0o020, "w"), (0o010, "x"),
-                (0o004, "r"), (0o002, "w"), (0o001, "x"),
+                (0o400, "r"),
+                (0o200, "w"),
+                (0o100, "x"),
+                (0o040, "r"),
+                (0o020, "w"),
+                (0o010, "x"),
+                (0o004, "r"),
+                (0o002, "w"),
+                (0o001, "x"),
             ]
             for mask, char in modes:
                 perm += char if (item.st_mode & mask) else "-"
 
             type_indicator = "📁" if is_dir else "📄"
             name_style = f"link {NordColors.FROST_3}" if is_dir else ""
-            table.add_row(type_indicator, f"[{name_style}]{item.filename}[/]", size_str, perm, mod_time)
+            table.add_row(
+                type_indicator,
+                f"[{name_style}]{item.filename}[/]",
+                size_str,
+                perm,
+                mod_time,
+            )
 
         console.print(table)
         console.print(
-            f"[{NordColors.FROST_3}]Total: {dir_count} directories, {file_count} files, {format_bytes(total_size)}[/]")
+            f"[{NordColors.FROST_3}]Total: {dir_count} directories, {file_count} files, {format_bytes(total_size)}[/]"
+        )
     except Exception as e:
         spinner.complete_task(task_id, False)
         spinner.stop()
@@ -778,7 +915,9 @@ def upload_file():
     )
 
     if not os.path.isfile(local_path):
-        console.print(f"[bold {NordColors.RED}]Local file does not exist: {local_path}[/]")
+        console.print(
+            f"[bold {NordColors.RED}]Local file does not exist: {local_path}[/]"
+        )
         return
 
     remote_completer = RemotePathCompleter(sftp_connection.sftp)
@@ -794,13 +933,16 @@ def upload_file():
 
     file_size = os.path.getsize(local_path)
     if not Confirm.ask(
-            f"[bold {NordColors.YELLOW}]Upload {os.path.basename(local_path)} ({format_bytes(file_size)}) to {remote_path}?[/]",
-            default=True):
+        f"[bold {NordColors.YELLOW}]Upload {os.path.basename(local_path)} ({format_bytes(file_size)}) to {remote_path}?[/]",
+        default=True,
+    ):
         print_warning("Upload canceled")
         return
 
     spinner = SpinnerProgressManager("Upload Operation")
-    upload_task_id = spinner.add_task(f"Uploading {os.path.basename(local_path)}", total_size=file_size)
+    upload_task_id = spinner.add_task(
+        f"Uploading {os.path.basename(local_path)}", total_size=file_size
+    )
 
     def progress_callback(transferred, total):
         spinner.update_task(upload_task_id, "Uploading", completed=transferred)
@@ -841,8 +983,13 @@ def download_file():
     )
 
     if not os.path.isdir(local_dest):
-        console.print(f"[bold {NordColors.RED}]Local directory does not exist: {local_dest}[/]")
-        if Confirm.ask(f"[bold {NordColors.YELLOW}]Would you like to create this directory?[/]", default=True):
+        console.print(
+            f"[bold {NordColors.RED}]Local directory does not exist: {local_dest}[/]"
+        )
+        if Confirm.ask(
+            f"[bold {NordColors.YELLOW}]Would you like to create this directory?[/]",
+            default=True,
+        ):
             try:
                 os.makedirs(local_dest, exist_ok=True)
                 print_success(f"Created directory: {local_dest}")
@@ -868,30 +1015,39 @@ def download_file():
 
         remote_filename = os.path.basename(remote_path)
         dest_path = os.path.join(local_dest, remote_filename)
-        info_spinner.update_task(info_task_id, f"Retrieved info: {format_bytes(file_size)}")
+        info_spinner.update_task(
+            info_task_id, f"Retrieved info: {format_bytes(file_size)}"
+        )
         time.sleep(0.5)
         info_spinner.complete_task(info_task_id, True)
         info_spinner.stop()
 
         if os.path.exists(dest_path):
-            if not Confirm.ask(f"[bold {NordColors.YELLOW}]File {dest_path} already exists. Overwrite?[/]",
-                               default=False):
+            if not Confirm.ask(
+                f"[bold {NordColors.YELLOW}]File {dest_path} already exists. Overwrite?[/]",
+                default=False,
+            ):
                 print_warning("Download canceled")
                 return
     except Exception as e:
         info_spinner.complete_task(info_task_id, False)
         info_spinner.stop()
-        console.print(f"[bold {NordColors.RED}]Could not retrieve file information: {e}[/]")
+        console.print(
+            f"[bold {NordColors.RED}]Could not retrieve file information: {e}[/]"
+        )
         return
 
     if not Confirm.ask(
-            f"[bold {NordColors.YELLOW}]Download {os.path.basename(remote_path)} ({format_bytes(file_size)}) to {local_dest}?[/]",
-            default=True):
+        f"[bold {NordColors.YELLOW}]Download {os.path.basename(remote_path)} ({format_bytes(file_size)}) to {local_dest}?[/]",
+        default=True,
+    ):
         print_warning("Download canceled")
         return
 
     spinner = SpinnerProgressManager("Download Operation")
-    download_task_id = spinner.add_task(f"Downloading {os.path.basename(remote_path)}", total_size=file_size)
+    download_task_id = spinner.add_task(
+        f"Downloading {os.path.basename(remote_path)}", total_size=file_size
+    )
 
     def progress_callback(transferred, total):
         spinner.update_task(download_task_id, "Downloading", completed=transferred)
@@ -932,14 +1088,19 @@ def delete_remote_file():
         if is_dir:
             spinner.complete_task(task_id, False)
             spinner.stop()
-            print_warning(f"{remote_path} is a directory. Use the delete directory option instead.")
+            print_warning(
+                f"{remote_path} is a directory. Use the delete directory option instead."
+            )
             return
 
         spinner.update_task(task_id, "Verification complete")
         spinner.complete_task(task_id, True)
         spinner.stop()
 
-        if Confirm.ask(f"[bold {NordColors.RED}]Are you sure you want to delete {remote_path}?[/]", default=False):
+        if Confirm.ask(
+            f"[bold {NordColors.RED}]Are you sure you want to delete {remote_path}?[/]",
+            default=False,
+        ):
             delete_spinner = SpinnerProgressManager("Delete Operation")
             delete_task = delete_spinner.add_task(f"Deleting {remote_path}...")
 
@@ -989,7 +1150,9 @@ def rename_remote_file():
 
         parent_dir = os.path.dirname(old_name)
         file_name = os.path.basename(old_name)
-        same_dir_completer = RemotePathCompleter(sftp_connection.sftp, parent_dir if parent_dir else ".")
+        same_dir_completer = RemotePathCompleter(
+            sftp_connection.sftp, parent_dir if parent_dir else "."
+        )
 
         new_name = pt_prompt(
             "Enter the new remote file name/path: ",
@@ -1003,8 +1166,10 @@ def rename_remote_file():
         if "/" not in new_name and parent_dir:
             new_name = f"{parent_dir}/{new_name}"
 
-        if not Confirm.ask(f"[bold {NordColors.YELLOW}]Rename {entity_type} from {old_name} to {new_name}?[/]",
-                           default=True):
+        if not Confirm.ask(
+            f"[bold {NordColors.YELLOW}]Rename {entity_type} from {old_name} to {new_name}?[/]",
+            default=True,
+        ):
             print_warning("Rename canceled")
             return
 
@@ -1014,7 +1179,9 @@ def rename_remote_file():
         try:
             rename_spinner.start()
             sftp_connection.sftp.rename(old_name, new_name)
-            rename_spinner.update_task(rename_task, f"{entity_type.capitalize()} renamed successfully")
+            rename_spinner.update_task(
+                rename_task, f"{entity_type.capitalize()} renamed successfully"
+            )
             time.sleep(0.5)
             rename_spinner.complete_task(rename_task, True)
             print_success(f"Renamed remote {entity_type}: {old_name} → {new_name}")
@@ -1118,27 +1285,41 @@ def delete_remote_directory():
             contents = sftp_connection.sftp.listdir(remote_dir)
 
             if contents:
-                contents_spinner.update_task(contents_task, f"Directory contains {len(contents)} items")
+                contents_spinner.update_task(
+                    contents_task, f"Directory contains {len(contents)} items"
+                )
                 contents_spinner.complete_task(contents_task, True)
                 contents_spinner.stop()
-                print_warning(f"Directory is not empty. Contains {len(contents)} items.")
+                print_warning(
+                    f"Directory is not empty. Contains {len(contents)} items."
+                )
 
-                if not Confirm.ask(f"[bold {NordColors.RED}]Force delete non-empty directory?[/]", default=False):
+                if not Confirm.ask(
+                    f"[bold {NordColors.RED}]Force delete non-empty directory?[/]",
+                    default=False,
+                ):
                     return
 
-                if Confirm.ask(f"[bold {NordColors.RED}]WARNING: This will delete ALL contents. Proceed?[/]",
-                               default=False):
+                if Confirm.ask(
+                    f"[bold {NordColors.RED}]WARNING: This will delete ALL contents. Proceed?[/]",
+                    default=False,
+                ):
+
                     def rm_rf(path):
                         try:
                             files = sftp_connection.sftp.listdir(path)
                             delete_spinner = SpinnerProgressManager("Recursive Delete")
-                            path_task = delete_spinner.add_task(f"Recursively deleting {path}...")
+                            path_task = delete_spinner.add_task(
+                                f"Recursively deleting {path}..."
+                            )
 
                             try:
                                 delete_spinner.start()
                                 for f in files:
                                     filepath = os.path.join(path, f)
-                                    delete_spinner.update_task(path_task, f"Processing {filepath}")
+                                    delete_spinner.update_task(
+                                        path_task, f"Processing {filepath}"
+                                    )
                                     try:
                                         try:
                                             sftp_connection.sftp.listdir(filepath)
@@ -1152,9 +1333,13 @@ def delete_remote_directory():
                                         delete_spinner.stop()
                                         return False
 
-                                delete_spinner.update_task(path_task, f"Removing directory {path}")
+                                delete_spinner.update_task(
+                                    path_task, f"Removing directory {path}"
+                                )
                                 sftp_connection.sftp.rmdir(path)
-                                delete_spinner.update_task(path_task, "Directory deleted successfully")
+                                delete_spinner.update_task(
+                                    path_task, "Directory deleted successfully"
+                                )
                                 delete_spinner.complete_task(path_task, True)
                                 delete_spinner.stop()
                                 return True
@@ -1169,19 +1354,29 @@ def delete_remote_directory():
                             return False
 
                     recursive_spinner = SpinnerProgressManager("Recursive Deletion")
-                    recursive_task = recursive_spinner.add_task(f"Recursively deleting {remote_dir}...")
+                    recursive_task = recursive_spinner.add_task(
+                        f"Recursively deleting {remote_dir}..."
+                    )
 
                     try:
                         recursive_spinner.start()
                         success = rm_rf(remote_dir)
                         if success:
-                            recursive_spinner.update_task(recursive_task, "Directory and all contents deleted")
+                            recursive_spinner.update_task(
+                                recursive_task, "Directory and all contents deleted"
+                            )
                             recursive_spinner.complete_task(recursive_task, True)
-                            print_success(f"Recursively deleted remote directory: {remote_dir}")
+                            print_success(
+                                f"Recursively deleted remote directory: {remote_dir}"
+                            )
                         else:
-                            recursive_spinner.update_task(recursive_task, "Failed to delete all contents")
+                            recursive_spinner.update_task(
+                                recursive_task, "Failed to delete all contents"
+                            )
                             recursive_spinner.complete_task(recursive_task, False)
-                            print_error(f"Failed to recursively delete directory: {remote_dir}")
+                            print_error(
+                                f"Failed to recursively delete directory: {remote_dir}"
+                            )
                     finally:
                         recursive_spinner.stop()
                     return
@@ -1197,14 +1392,19 @@ def delete_remote_directory():
             print_error(f"Failed to check directory contents: {e}")
             return
 
-        if Confirm.ask(f"[bold {NordColors.RED}]Are you sure you want to delete this directory?[/]", default=False):
+        if Confirm.ask(
+            f"[bold {NordColors.RED}]Are you sure you want to delete this directory?[/]",
+            default=False,
+        ):
             delete_spinner = SpinnerProgressManager("Directory Deletion")
             delete_task = delete_spinner.add_task(f"Deleting directory {remote_dir}...")
 
             try:
                 delete_spinner.start()
                 sftp_connection.sftp.rmdir(remote_dir)
-                delete_spinner.update_task(delete_task, "Directory deleted successfully")
+                delete_spinner.update_task(
+                    delete_task, "Directory deleted successfully"
+                )
                 time.sleep(0.5)
                 delete_spinner.complete_task(delete_task, True)
                 print_success(f"Deleted remote directory: {remote_dir}")
@@ -1221,11 +1421,15 @@ def delete_remote_directory():
 
 def display_status_bar():
     connection_status = sftp_connection.get_connection_info()
-    status_color = NordColors.GREEN if sftp_connection.is_connected() else NordColors.RED
+    status_color = (
+        NordColors.GREEN if sftp_connection.is_connected() else NordColors.RED
+    )
     status_text = "CONNECTED" if sftp_connection.is_connected() else "DISCONNECTED"
     console.print(
         Panel(
-            Text.from_markup(f"[bold {status_color}]Status: {status_text}[/] | [dim]{connection_status}[/]"),
+            Text.from_markup(
+                f"[bold {status_color}]Status: {status_text}[/] | [dim]{connection_status}[/]"
+            ),
             border_style=NordColors.FROST_4,
             padding=(0, 2),
         )
@@ -1235,7 +1439,11 @@ def display_status_bar():
 def main_menu():
     menu_options = [
         ("1", "Connect to SFTP Server (manual)", lambda: connect_sftp()),
-        ("2", "Connect to SFTP Server (select device)", lambda: connect_device_via_menu()),
+        (
+            "2",
+            "Connect to SFTP Server (select device)",
+            lambda: connect_device_via_menu(),
+        ),
         ("3", "List Remote Directory", lambda: list_remote_directory()),
         ("4", "Upload File", lambda: upload_file()),
         ("5", "Download File", lambda: download_file()),
@@ -1253,17 +1461,25 @@ def main_menu():
         console.print(create_header())
         display_status_bar()
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        console.print(Align.center(
-            f"[{NordColors.SNOW_STORM_1}]Current Time: {current_time}[/] | [{NordColors.SNOW_STORM_1}]Host: {HOSTNAME}[/]"))
+        console.print(
+            Align.center(
+                f"[{NordColors.SNOW_STORM_1}]Current Time: {current_time}[/] | [{NordColors.SNOW_STORM_1}]Host: {HOSTNAME}[/]"
+            )
+        )
         console.print()
         console.print(f"[bold {NordColors.PURPLE}]SFTP Toolkit Menu[/]")
 
-        table = Table(show_header=True, header_style=f"bold {NordColors.FROST_3}", expand=True)
+        table = Table(
+            show_header=True, header_style=f"bold {NordColors.FROST_3}", expand=True
+        )
         table.add_column("Option", style="bold", width=8)
         table.add_column("Description", style="bold")
 
         for option, description, _ in menu_options:
-            if option in ["3", "4", "5", "6", "7", "8", "9"] and not sftp_connection.is_connected():
+            if (
+                option in ["3", "4", "5", "6", "7", "8", "9"]
+                and not sftp_connection.is_connected()
+            ):
                 table.add_row(option, f"[dim]{description} (requires connection)[/dim]")
             elif option == "A" and not sftp_connection.is_connected():
                 table.add_row(option, f"[dim]{description} (not connected)[/dim]")
@@ -1285,7 +1501,10 @@ def main_menu():
             console.print()
             console.print(
                 Panel(
-                    Text(f"Thank you for using SFTP Toolkit!", style=f"bold {NordColors.FROST_2}"),
+                    Text(
+                        f"Thank you for using SFTP Toolkit!",
+                        style=f"bold {NordColors.FROST_2}",
+                    ),
                     border_style=Style(color=NordColors.FROST_1),
                     padding=(1, 2),
                 )
