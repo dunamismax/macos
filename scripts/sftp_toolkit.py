@@ -8,6 +8,7 @@ import getpass
 import signal
 import subprocess
 import shutil
+import platform
 import threading
 import atexit
 from dataclasses import dataclass, field
@@ -38,7 +39,6 @@ def install_dependencies():
 
 
 try:
-    import platform
     import paramiko
     import pyfiglet
     from rich.console import Console
