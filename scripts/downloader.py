@@ -627,7 +627,8 @@ def download_youtube(
     url: str, output_dir: str, download_type: str = "combined", verbose: bool = False
 ):
     """
-    Downloads a YouTube video using yt-dlp with specified format options.
+    Downloads a YouTube video using yt-dlp with specified format options,
+    using --print filename for reliable file detection.
 
     Args:
         url: The YouTube URL to download.
@@ -638,12 +639,20 @@ def download_youtube(
     Returns:
         True if download succeeded, False otherwise.
     """
-    start_time = time.time()  # Define start_time early for error handling
+    start_time = time.time()
+    # Ensure output directory exists before starting
     try:
         ensure_directory(output_dir)
+    except Exception:
+        # Error handled by ensure_directory, but add context
+        print_error(f"Cannot proceed without output directory: {output_dir}")
+        return False  # Cannot proceed if dir creation fails
 
+    try:
+        # --- Configure yt-dlp command ---
         output_template = os.path.join(output_dir, "%(title)s.%(ext)s")
-        cmd = ["yt-dlp", "--no-playlist"]
+        # Base command + --print filename
+        cmd = ["yt-dlp", "--no-playlist", "--print", "filename"]
         format_string = ""
         info_panel_details = f"URL: {url}\n"
 
@@ -651,13 +660,19 @@ def download_youtube(
             format_string = "bestaudio[ext=m4a]/bestaudio/best"
             cmd.extend(["-f", format_string, "-x", "--audio-format", "mp3"])
             info_panel_details += "Type: Audio Only (MP3)\n"
-            output_template = os.path.join(output_dir, "%(title)s.mp3")
+            # yt-dlp handles the extension change with -x --audio-format
+            # Keep output template generic unless specifically needed
+            output_template_final = os.path.join(output_dir, "%(title)s.mp3")
+            cmd.extend(
+                ["-o", output_template_final]
+            )  # Explicitly set output for audio extraction
         elif download_type == "video":
             format_string = "bestvideo[ext=mp4]/bestvideo/best"
             cmd.extend(["-f", format_string])
             info_panel_details += (
                 "Type: Video Only (Highest Quality)\nFormat: MP4/WebM/MKV\n"
             )
+            cmd.extend(["-o", output_template])  # Use generic template
         else:  # 'combined'
             format_string = (
                 "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
@@ -666,17 +681,22 @@ def download_youtube(
             info_panel_details += (
                 "Type: Combined Video+Audio (Highest Quality)\nFormat: MP4 (merged)\n"
             )
+            cmd.extend(["-o", output_template])  # Use generic template
 
-        cmd.extend(["-o", output_template, "--newline"])
+        # Add other options AFTER format/output but BEFORE URL
+        cmd.extend(["--newline"])  # Use newline for better parsing during progress
         if verbose:
             cmd.append("-v")
-        cmd.append(url)
+        cmd.append(url)  # Add URL at the very end
 
-        info_panel_details += f"Destination: {output_dir}"
+        info_panel_details += (
+            f"Destination Dir: {output_dir}"  # Clarify it's the directory
+        )
         display_panel("YouTube Download", info_panel_details, NordColors.FROST_2)
 
-        last_found_filename = "downloaded_file"  # Placeholder
+        last_parsed_filename_hint = "downloaded_file"  # Still useful as a hint
 
+        # --- Execute yt-dlp and Capture Output ---
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -687,12 +707,13 @@ def download_youtube(
             bufsize=1,
         )
 
-        # Use Rich Progress with corrected columns
+        stdout_lines = []  # Store all output lines
+
+        # --- Live Progress Parsing ---
         with Progress(
             *NordColors.get_progress_columns(), console=console, transient=True
         ) as progress:
             download_task = progress.add_task("Initializing...", total=1000)
-
             current_percent = 0.0
             description = "Starting..."
 
@@ -705,10 +726,15 @@ def download_youtube(
                     continue
 
                 line = line.strip()
-                if verbose and line:
+                if line:  # Only store non-empty lines
+                    stdout_lines.append(line)
+
+                if verbose:
                     console.log(f"[dim]yt-dlp: {line}[/dim]")
 
+                # --- Parse progress (keep this logic for live feedback) ---
                 if "[download]" in line:
+                    # (Keep existing progress parsing logic here...)
                     if "%" in line:
                         try:
                             parts = line.split()
@@ -720,27 +746,29 @@ def download_youtube(
                                             -1
                                         ].split("m")[-1]
                                     current_percent = float(percent_str)
-                                    description = line
+                                    description = line  # Show the full download line
+                                    # Update hint (less critical now, but doesn't hurt)
                                     if "Destination:" in line:
                                         try:
-                                            last_found_filename = os.path.basename(
-                                                line.split("Destination:")[1].strip()
+                                            last_parsed_filename_hint = (
+                                                os.path.basename(
+                                                    line.split("Destination:")[
+                                                        1
+                                                    ].strip()
+                                                )
                                             )
                                         except IndexError:
                                             pass
                                     break
                         except (ValueError, IndexError) as parse_err:
-                            if verbose:
-                                print_warning(
-                                    f"Couldn't parse percentage: {line} ({parse_err})"
-                                )
+                            # if verbose: print_warning(f"Couldn't parse percentage: {line} ({parse_err})")
                             current_percent = min(current_percent + 0.1, 99.9)
                     elif "Destination:" in line:
                         try:
-                            last_found_filename = os.path.basename(
+                            last_parsed_filename_hint = os.path.basename(
                                 line.split("Destination:")[1].strip()
                             )
-                            description = f"Downloading: {last_found_filename}"
+                            description = f"Downloading: {last_parsed_filename_hint}"
                         except IndexError:
                             pass
                     elif "has already been downloaded" in line:
@@ -750,11 +778,11 @@ def download_youtube(
                             filepath_part = (
                                 line.split("]")[1].strip().split(" has already been")[0]
                             )
-                            last_found_filename = os.path.basename(filepath_part)
+                            last_parsed_filename_hint = os.path.basename(filepath_part)
                         except Exception:
                             pass
                     else:
-                        description = line
+                        description = line  # Show other [download] messages
 
                 elif "[ExtractAudio]" in line or "Extracting audio" in line:
                     description = "Extracting Audio..."
@@ -769,11 +797,13 @@ def download_youtube(
                                 .strip()
                                 .strip('"')
                             )
-                            last_found_filename = os.path.basename(filepath_part)
+                            last_parsed_filename_hint = os.path.basename(filepath_part)
                     except Exception:
                         pass
-                elif "[FixupM3u8]" in line:
-                    description = "Fixing M3U8..."
+                elif (
+                    "[FixupM3u8]" in line or "[Metadata]" in line
+                ):  # Add other common stages
+                    description = "Processing..."
                     current_percent = max(current_percent, 90.0)
                 elif "[ffmpeg]" in line:
                     description = "Processing (FFmpeg)..."
@@ -785,6 +815,7 @@ def download_youtube(
                     description=description[: console.width - 40],
                 )
 
+            # --- Finalize and Check Result ---
             process.wait()
             return_code = process.returncode
             end_time = time.time()
@@ -796,30 +827,44 @@ def download_youtube(
                     completed=1000,
                     description="[green]Download Complete[/]",
                 )
-                time.sleep(0.5)
+                time.sleep(0.2)  # Shorter pause
 
+                # --- Find Downloaded File using --print filename ---
                 downloaded_file_path = None
-                scan_start_time = (
-                    start_time - 10
-                )  # Use start_time defined outside the block
-                newest_time = scan_start_time
-                potential_filename = last_found_filename
+                print_info("Locating final file path from yt-dlp output...")
 
-                expected_path = os.path.join(output_dir, potential_filename)
-                # Check existence and modification time relative to scan_start_time
-                if os.path.exists(expected_path):
-                    try:
-                        if os.path.getmtime(expected_path) > scan_start_time:
-                            downloaded_file_path = expected_path
-                            newest_time = os.path.getmtime(
-                                expected_path
-                            )  # Update newest_time
-                    except OSError:
-                        pass  # Ignore potential errors reading mtime
+                # Iterate backwards through captured lines
+                for line in reversed(stdout_lines):
+                    potential_path = line.strip()
+                    # Check if it looks like a plausible path and actually exists
+                    # The printed filename should be absolute.
+                    if (
+                        potential_path
+                        and potential_path.startswith(output_dir)
+                        and os.path.exists(potential_path)
+                    ):
+                        # More robust check: ensure it's not a debug/progress line
+                        if not (
+                            potential_path.startswith("[")
+                            or potential_path.startswith("ETA")
+                            or "%" in potential_path
+                            or "KiB/s" in potential_path
+                            or "MiB/s" in potential_path
+                            or "GiB/s" in potential_path
+                        ):
+                            print_success(f"Located file via --print: {potential_path}")
+                            downloaded_file_path = potential_path
+                            break  # Found it!
 
-                # Scan directory if expected path wasn't found or wasn't recent enough
+                # --- Fallback: Timestamp Scan (if --print parsing failed) ---
                 if not downloaded_file_path:
-                    print_info("Verifying downloaded file...")
+                    print_warning(
+                        "Could not find path from --print output, using fallback scan..."
+                    )
+                    scan_start_time = (
+                        start_time - 5
+                    )  # Allow a small buffer before start
+                    newest_time = scan_start_time
                     possible_extensions = (
                         ".mp4",
                         ".mkv",
@@ -827,25 +872,45 @@ def download_youtube(
                         ".mp3",
                         ".m4a",
                         ".opus",
-                    )
-                    for f in os.listdir(output_dir):
-                        if f.endswith(possible_extensions):
-                            file_path = os.path.join(output_dir, f)
-                            try:
-                                file_mod_time = os.path.getmtime(file_path)
-                                # Ensure file is recent and newer than any other recent file found so far
-                                if (
-                                    file_mod_time > scan_start_time
-                                    and file_mod_time > newest_time
-                                ):
-                                    newest_time = file_mod_time
-                                    downloaded_file_path = file_path
-                            except OSError:
-                                continue
+                        ".aac",
+                    )  # Added common audio
 
+                    try:  # Wrap listdir in try-except
+                        for f in os.listdir(output_dir):
+                            # Check extension and avoid temporary files if possible
+                            if f.endswith(possible_extensions) and not f.endswith(
+                                (".part", ".ytdl")
+                            ):
+                                file_path = os.path.join(output_dir, f)
+                                try:
+                                    file_mod_time = os.path.getmtime(file_path)
+                                    # Check if modified after download started AND is the newest found so far
+                                    if (
+                                        file_mod_time > scan_start_time
+                                        and file_mod_time > newest_time
+                                    ):
+                                        newest_time = file_mod_time
+                                        downloaded_file_path = file_path
+                                except OSError:
+                                    continue  # Ignore errors checking specific files
+                    except OSError as e:
+                        print_error(
+                            f"Error scanning output directory '{output_dir}': {e}"
+                        )
+                        # Proceed without a found path, will lead to failure message below
+
+                    if downloaded_file_path:
+                        print_success(
+                            f"Located file via fallback scan: {downloaded_file_path}"
+                        )
+
+                # --- Process Found File (or lack thereof) ---
                 if downloaded_file_path and os.path.exists(downloaded_file_path):
                     final_filename = os.path.basename(downloaded_file_path)
-                    file_size = os.path.getsize(downloaded_file_path)
+                    try:
+                        file_size = os.path.getsize(downloaded_file_path)
+                    except OSError:
+                        file_size = 0  # Handle error getting size
 
                     history = DownloadHistory.load()
                     history.add_entry(
@@ -868,13 +933,16 @@ def download_youtube(
                     )
                     return True
                 else:
-                    print_warning(
-                        "yt-dlp reported success, but the downloaded file could not be located."
+                    # This case should be rarer now
+                    print_error(
+                        "yt-dlp reported success, but the final file could not be located."
                     )
+                    print_info(f"Searched in: {output_dir}")
+                    print_info(f"Last filename hint: {last_parsed_filename_hint}")
                     history = DownloadHistory.load()
                     history.add_entry(
                         url=url,
-                        filename=potential_filename,
+                        filename=last_parsed_filename_hint,
                         output_path=output_dir,
                         size=0,
                         success=False,
@@ -883,6 +951,7 @@ def download_youtube(
                     )
                     return False
             else:
+                # Download failed (return code != 0)
                 progress.update(
                     download_task,
                     completed=current_percent * 10,
@@ -893,27 +962,33 @@ def download_youtube(
                     "YouTube Download Failed",
                     f"❌ yt-dlp exited with error code {return_code}\n"
                     f"🔗 URL: {url}\n"
-                    f"⁉️ Check logs above for details.",
+                    f"⁉️ Check logs above or run with verbose mode for details.",
                     NordColors.RED,
                 )
                 history = DownloadHistory.load()
                 history.add_entry(
                     url=url,
-                    filename=last_found_filename,
+                    filename=last_parsed_filename_hint,
                     output_path=output_dir,
                     size=0,
                     success=False,
                     elapsed_time=download_time,
                     download_type=download_type,
                 )
+                # Optionally print last few lines of output on error
+                if not verbose and stdout_lines:
+                    print_info("Last few lines of output:")
+                    for line in stdout_lines[-5:]:
+                        console.print(f"[dim]  {line}[/dim]")
                 return False
 
     except FileNotFoundError:
         print_error("yt-dlp command not found. Is it installed and in your PATH?")
+        # Add to history as failure
         history = DownloadHistory.load()
         history.add_entry(
             url=url,
-            filename="error",
+            filename="error - yt-dlp not found",
             output_path=output_dir,
             size=0,
             success=False,
@@ -925,10 +1000,11 @@ def download_youtube(
         print_error(f"An unexpected error occurred during YouTube download: {e}")
         if verbose:
             console.print_exception(show_locals=True)
+        # Add to history as failure
         history = DownloadHistory.load()
         history.add_entry(
             url=url,
-            filename="error",
+            filename="error - script exception",
             output_path=output_dir,
             size=0,
             success=False,
