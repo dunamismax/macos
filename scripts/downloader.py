@@ -207,7 +207,7 @@ console = Console()
 
 APP_NAME = "pytube.py"
 APP_TITLE = "The MacOS YouTube Downloader"
-VERSION = "1.2.0"  # Updated version
+VERSION = "1.2.1"  # Version bump for fix
 DEFAULT_DOWNLOAD_DIR = os.path.join(os.path.expanduser("~"), "Downloads", "PyTube")
 CONFIG_DIR = os.path.expanduser(
     "~/.config/pytube_downloader"
@@ -249,22 +249,29 @@ class NordColors:
     def get_frost_gradient(cls, steps=4):
         return [cls.FROST_1, cls.FROST_2, cls.FROST_3, cls.FROST_4][:steps]
 
+    # Corrected Method: Removed style from TaskProgressColumn and TransferSpeedColumn
     @classmethod
     def get_progress_columns(cls):
-        """Returns columns for Rich Progress specific to yt-dlp output style."""
+        """
+        Returns columns for Rich Progress specific to yt-dlp output style.
+        NOTE: Removed 'style' from TaskProgressColumn and TransferSpeedColumn
+              for compatibility with older Rich versions where it wasn't accepted.
+              Styling for these columns might revert to defaults in some versions.
+        """
         return [
             SpinnerColumn(spinner_name="dots", style=f"bold {cls.FROST_1}"),
             TextColumn(f"[bold {cls.FROST_2}]{{task.description}}[/]"),
             BarColumn(
                 bar_width=None,
-                style=cls.POLAR_NIGHT_3,
-                complete_style=cls.FROST_2,
-                finished_style=cls.GREEN,
+                style=cls.POLAR_NIGHT_3,  # Base bar style
+                complete_style=cls.FROST_2,  # Completed part style
+                finished_style=cls.GREEN,  # Finished bar style
             ),
-            TaskProgressColumn(style=cls.SNOW_STORM_1),
-            # MofNCompleteColumn(), # Not reliably parseable from yt-dlp
-            TransferSpeedColumn(style=cls.FROST_3),
-            TimeRemainingColumn(compact=True),
+            # TaskProgressColumn(style=cls.SNOW_STORM_1), # Removed style for compatibility
+            TaskProgressColumn(),  # Use default style
+            # TransferSpeedColumn(style=cls.FROST_3), # Removed style for compatibility
+            TransferSpeedColumn(),  # Use default style
+            TimeRemainingColumn(compact=True),  # No style needed/accepted
         ]
 
 
@@ -394,8 +401,6 @@ class DownloadHistory:
 # --- Utility Functions ---
 def clear_screen():
     """Clears the terminal screen."""
-    # Use rich's clear method for better cross-platform compatibility if needed later
-    # os.system('cls' if os.name == 'nt' else 'clear')
     console.clear()
 
 
@@ -404,35 +409,27 @@ def create_header() -> Panel:
     term_width = shutil.get_terminal_size().columns
     adjusted_width = min(term_width - 4, 80)  # Adjust width for padding/borders
 
-    # Try different fonts for the Figlet header
     fonts = ["slant", "small_slant", "standard", "digital", "small"]
     ascii_art = ""
     for font in fonts:
         try:
             fig = pyfiglet.Figlet(font=font, width=adjusted_width)
             ascii_art = fig.renderText(APP_NAME)
-            if (
-                ascii_art.strip() and len(ascii_art.splitlines()) > 1
-            ):  # Ensure non-empty art
+            if ascii_art.strip() and len(ascii_art.splitlines()) > 1:
                 break
         except Exception:
             continue
-    # Fallback if no font worked
     if not ascii_art.strip():
         ascii_art = APP_NAME
 
-    # Apply Nord color gradient to the ASCII art lines
     ascii_lines = [line for line in ascii_art.splitlines() if line.strip()]
     frost_colors = NordColors.get_frost_gradient(min(len(ascii_lines), 4))
     styled_text = ""
     for i, line in enumerate(ascii_lines):
         color = frost_colors[i % len(frost_colors)]
-        escaped_line = line.replace("[", r"\[").replace(
-            "]", r"\]"
-        )  # Escape Rich markup
+        escaped_line = line.replace("[", r"\[").replace("]", r"\]")
         styled_text += f"[bold {color}]{escaped_line}[/]\n"
 
-    # Create the panel
     panel = Panel(
         Text.from_markup(styled_text.strip()),
         border_style=NordColors.FROST_1,
@@ -442,7 +439,7 @@ def create_header() -> Panel:
         title_align="right",
         subtitle=f"[bold {NordColors.SNOW_STORM_1}]{APP_TITLE}[/]",
         subtitle_align="center",
-        width=adjusted_width,  # Set panel width
+        width=adjusted_width,
     )
     return panel
 
@@ -478,7 +475,9 @@ def print_info(message: str):
     print_message(message, NordColors.INFO, "ℹ")
 
 
-def display_panel(title: str, message: str, style: Union[Style, str] = NordColors.INFO):
+def display_panel(
+    title: str, message: Union[str, Text], style: Union[Style, str] = NordColors.INFO
+):
     """Displays content within a styled Rich panel."""
     panel = Panel(
         Text.from_markup(message) if isinstance(message, str) else message,
@@ -537,7 +536,7 @@ def create_menu_table(title: str, options: List[Tuple[str, str, str]]) -> Table:
         title=f"[bold {NordColors.FROST_1}]{title}[/]",
         border_style=NordColors.FROST_3,
         padding=(0, 1),
-        expand=True,  # Allow table to expand to console width
+        expand=True,
     )
 
     table.add_column("#", style=NordColors.ACCENT, width=3, justify="right")
@@ -557,8 +556,6 @@ def ensure_config_directory():
         os.makedirs(CONFIG_DIR, exist_ok=True)
     except Exception as e:
         print_error(f"Could not create config directory '{CONFIG_DIR}': {e}")
-        # Allow script to continue if possible, config/history saving will just fail
-        # sys.exit(1) # Optionally exit if config dir is critical
 
 
 def ensure_directory(path: str):
@@ -567,7 +564,7 @@ def ensure_directory(path: str):
         os.makedirs(path, exist_ok=True)
     except Exception as e:
         print_error(f"Failed to create directory '{path}': {e}")
-        raise  # Re-raise the exception to halt the process relying on this dir
+        raise
 
 
 def run_command(
@@ -581,7 +578,6 @@ def run_command(
         if verbose:
             print_step(f"Executing: {' '.join(cmd)}")
 
-        # Use a simple spinner for quick commands
         with Progress(
             SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
             TextColumn(f"[bold {NordColors.FROST_2}]Running command..."),
@@ -594,9 +590,7 @@ def run_command(
             )
         if verbose and result.stdout:
             console.print(f"[dim]Stdout: {result.stdout.strip()}[/dim]")
-        if (
-            result.stderr and result.returncode != 0
-        ):  # Only show stderr on error by default
+        if result.stderr and result.returncode != 0:
             console.print(f"[bold {NordColors.RED}]Stderr: {result.stderr.strip()}[/]")
 
         return result
@@ -607,8 +601,8 @@ def run_command(
         if e.stderr:
             console.print(f"[bold {NordColors.RED}]Stderr: {e.stderr.strip()}[/]")
         if check:
-            raise  # Re-raise if check=True
-        return None  # Return None if check=False and it failed
+            raise
+        return None
     except subprocess.TimeoutExpired:
         print_error(f"Command timed out after {timeout} seconds: {' '.join(cmd)}")
         if check:
@@ -644,35 +638,27 @@ def download_youtube(
     Returns:
         True if download succeeded, False otherwise.
     """
+    start_time = time.time()  # Define start_time early for error handling
     try:
         ensure_directory(output_dir)
 
-        # --- Configure yt-dlp command based on download_type ---
         output_template = os.path.join(output_dir, "%(title)s.%(ext)s")
-        cmd = [
-            "yt-dlp",
-            "--no-playlist",
-        ]  # Default args, prevent downloading whole playlists by default
+        cmd = ["yt-dlp", "--no-playlist"]
         format_string = ""
         info_panel_details = f"URL: {url}\n"
 
         if download_type == "audio":
-            format_string = "bestaudio[ext=m4a]/bestaudio/best"  # Prefer m4a, fallback
+            format_string = "bestaudio[ext=m4a]/bestaudio/best"
             cmd.extend(["-f", format_string, "-x", "--audio-format", "mp3"])
             info_panel_details += "Type: Audio Only (MP3)\n"
-            output_template = os.path.join(
-                output_dir, "%(title)s.mp3"
-            )  # Explicitly set mp3 extension
+            output_template = os.path.join(output_dir, "%(title)s.mp3")
         elif download_type == "video":
-            format_string = (
-                "bestvideo[ext=mp4]/bestvideo/best"  # Prefer mp4 video, fallback
-            )
+            format_string = "bestvideo[ext=mp4]/bestvideo/best"
             cmd.extend(["-f", format_string])
             info_panel_details += (
                 "Type: Video Only (Highest Quality)\nFormat: MP4/WebM/MKV\n"
             )
-        else:  # 'combined' (default)
-            # Prefer mp4 video + m4a audio, fallback to best available video+audio, then best overall
+        else:  # 'combined'
             format_string = (
                 "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
             )
@@ -681,40 +667,31 @@ def download_youtube(
                 "Type: Combined Video+Audio (Highest Quality)\nFormat: MP4 (merged)\n"
             )
 
-        cmd.extend(
-            ["-o", output_template, "--newline"]
-        )  # Use newline for better parsing
+        cmd.extend(["-o", output_template, "--newline"])
         if verbose:
             cmd.append("-v")
-            # Also print cookies info if available/needed for private videos
-            # cmd.extend(["--cookies-from-browser", "chrome"]) # Example
-        cmd.append(url)  # Add URL at the end
+        cmd.append(url)
 
         info_panel_details += f"Destination: {output_dir}"
         display_panel("YouTube Download", info_panel_details, NordColors.FROST_2)
 
-        start_time = time.time()
         last_found_filename = "downloaded_file"  # Placeholder
 
-        # --- Execute yt-dlp and parse progress ---
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,  # Redirect stderr to stdout
+            stderr=subprocess.STDOUT,
             text=True,
-            encoding="utf-8",  # Ensure correct decoding
-            errors="replace",  # Replace chars that can't be decoded
-            bufsize=1,  # Line buffered
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
         )
 
-        # Use Rich Progress to display download status
+        # Use Rich Progress with corrected columns
         with Progress(
             *NordColors.get_progress_columns(), console=console, transient=True
         ) as progress:
-            # Add a single task representing the overall download
-            download_task = progress.add_task(
-                "Initializing...", total=1000
-            )  # Use 1000 steps for finer % granularity
+            download_task = progress.add_task("Initializing...", total=1000)
 
             current_percent = 0.0
             description = "Starting..."
@@ -722,34 +699,28 @@ def download_youtube(
             while True:
                 line = process.stdout.readline()
                 if not line and process.poll() is not None:
-                    break  # Process finished
+                    break
                 if not line:
-                    time.sleep(0.05)  # Avoid busy-waiting
+                    time.sleep(0.05)
                     continue
 
                 line = line.strip()
                 if verbose and line:
-                    console.log(
-                        f"[dim]yt-dlp: {line}[/dim]"
-                    )  # Log verbose output dimmed
+                    console.log(f"[dim]yt-dlp: {line}[/dim]")
 
-                # --- Parse yt-dlp output for progress and status ---
                 if "[download]" in line:
                     if "%" in line:
                         try:
-                            # Extract percentage (handle potential variations in output)
                             parts = line.split()
                             for i, part in enumerate(parts):
                                 if "%" in part:
                                     percent_str = part.replace("%", "")
-                                    # Handle potential color codes before the number
                                     if "\x1b" in percent_str:
                                         percent_str = percent_str.split("\x1b")[
                                             -1
                                         ].split("m")[-1]
                                     current_percent = float(percent_str)
-                                    description = line  # Show the full download line
-                                    # Try to get filename if available in the same line
+                                    description = line
                                     if "Destination:" in line:
                                         try:
                                             last_found_filename = os.path.basename(
@@ -763,7 +734,6 @@ def download_youtube(
                                 print_warning(
                                     f"Couldn't parse percentage: {line} ({parse_err})"
                                 )
-                            # Advance progress slightly even if parsing fails
                             current_percent = min(current_percent + 0.1, 99.9)
                     elif "Destination:" in line:
                         try:
@@ -775,9 +745,8 @@ def download_youtube(
                             pass
                     elif "has already been downloaded" in line:
                         description = "File already downloaded"
-                        current_percent = 100.0  # Mark as complete
+                        current_percent = 100.0
                         try:
-                            # Example: [download] /path/to/video.mp4 has already been downloaded
                             filepath_part = (
                                 line.split("]")[1].strip().split(" has already been")[0]
                             )
@@ -785,20 +754,15 @@ def download_youtube(
                         except Exception:
                             pass
                     else:
-                        # Show other [download] messages like pre-processing
                         description = line
 
                 elif "[ExtractAudio]" in line or "Extracting audio" in line:
                     description = "Extracting Audio..."
-                    current_percent = max(
-                        current_percent, 95.0
-                    )  # Assume near completion
+                    current_percent = max(current_percent, 95.0)
                 elif "[Merger]" in line or "Merging formats into" in line:
                     description = "Merging Formats..."
-                    current_percent = max(
-                        current_percent, 98.0
-                    )  # Assume near completion
-                    try:  # Try to get final filename from merge message
+                    current_percent = max(current_percent, 98.0)
+                    try:
                         if "Merging formats into" in line:
                             filepath_part = (
                                 line.split("Merging formats into")[-1]
@@ -811,19 +775,17 @@ def download_youtube(
                 elif "[FixupM3u8]" in line:
                     description = "Fixing M3U8..."
                     current_percent = max(current_percent, 90.0)
-                elif "[ffmpeg]" in line:  # Generic ffmpeg messages
+                elif "[ffmpeg]" in line:
                     description = "Processing (FFmpeg)..."
                     current_percent = max(current_percent, 97.0)
 
-                # Update the progress bar
                 progress.update(
                     download_task,
                     completed=current_percent * 10,
                     description=description[: console.width - 40],
-                )  # Truncate desc
+                )
 
-            # --- Finalize Progress and Check Result ---
-            process.wait()  # Ensure process is finished
+            process.wait()
             return_code = process.returncode
             end_time = time.time()
             download_time = end_time - start_time
@@ -834,26 +796,29 @@ def download_youtube(
                     completed=1000,
                     description="[green]Download Complete[/]",
                 )
-                time.sleep(0.5)  # Allow progress bar to show complete state
+                time.sleep(0.5)
 
-                # --- Find the downloaded file (yt-dlp might rename it) ---
                 downloaded_file_path = None
-                newest_time = (
+                scan_start_time = (
                     start_time - 10
-                )  # Look for files created/modified after start
-                potential_filename = (
-                    last_found_filename  # Start with the last known name
-                )
+                )  # Use start_time defined outside the block
+                newest_time = scan_start_time
+                potential_filename = last_found_filename
 
-                # Check specific expected path first
                 expected_path = os.path.join(output_dir, potential_filename)
-                if (
-                    os.path.exists(expected_path)
-                    and os.path.getmtime(expected_path) > newest_time
-                ):
-                    downloaded_file_path = expected_path
-                else:
-                    # If not found, scan the directory for the most recent relevant file
+                # Check existence and modification time relative to scan_start_time
+                if os.path.exists(expected_path):
+                    try:
+                        if os.path.getmtime(expected_path) > scan_start_time:
+                            downloaded_file_path = expected_path
+                            newest_time = os.path.getmtime(
+                                expected_path
+                            )  # Update newest_time
+                    except OSError:
+                        pass  # Ignore potential errors reading mtime
+
+                # Scan directory if expected path wasn't found or wasn't recent enough
+                if not downloaded_file_path:
                     print_info("Verifying downloaded file...")
                     possible_extensions = (
                         ".mp4",
@@ -868,17 +833,20 @@ def download_youtube(
                             file_path = os.path.join(output_dir, f)
                             try:
                                 file_mod_time = os.path.getmtime(file_path)
-                                if file_mod_time > newest_time:
+                                # Ensure file is recent and newer than any other recent file found so far
+                                if (
+                                    file_mod_time > scan_start_time
+                                    and file_mod_time > newest_time
+                                ):
                                     newest_time = file_mod_time
                                     downloaded_file_path = file_path
                             except OSError:
-                                continue  # Ignore permission errors etc.
+                                continue
 
                 if downloaded_file_path and os.path.exists(downloaded_file_path):
                     final_filename = os.path.basename(downloaded_file_path)
                     file_size = os.path.getsize(downloaded_file_path)
 
-                    # Add to history
                     history = DownloadHistory.load()
                     history.add_entry(
                         url=url,
@@ -900,7 +868,6 @@ def download_youtube(
                     )
                     return True
                 else:
-                    # Success code 0 but file not found - unusual case
                     print_warning(
                         "yt-dlp reported success, but the downloaded file could not be located."
                     )
@@ -916,7 +883,6 @@ def download_youtube(
                     )
                     return False
             else:
-                # Download failed
                 progress.update(
                     download_task,
                     completed=current_percent * 10,
@@ -930,7 +896,6 @@ def download_youtube(
                     f"⁉️ Check logs above for details.",
                     NordColors.RED,
                 )
-                # Add failed entry to history
                 history = DownloadHistory.load()
                 history.add_entry(
                     url=url,
@@ -945,12 +910,6 @@ def download_youtube(
 
     except FileNotFoundError:
         print_error("yt-dlp command not found. Is it installed and in your PATH?")
-        return False
-    except Exception as e:
-        print_error(f"An unexpected error occurred during YouTube download: {e}")
-        if verbose:
-            console.print_exception(show_locals=True)
-        # Add failed entry to history
         history = DownloadHistory.load()
         history.add_entry(
             url=url,
@@ -958,7 +917,22 @@ def download_youtube(
             output_path=output_dir,
             size=0,
             success=False,
-            elapsed_time=time.time() - start_time if "start_time" in locals() else 0,
+            elapsed_time=time.time() - start_time,
+            download_type=download_type,
+        )
+        return False
+    except Exception as e:
+        print_error(f"An unexpected error occurred during YouTube download: {e}")
+        if verbose:
+            console.print_exception(show_locals=True)
+        history = DownloadHistory.load()
+        history.add_entry(
+            url=url,
+            filename="error",
+            output_path=output_dir,
+            size=0,
+            success=False,
+            elapsed_time=time.time() - start_time,
             download_type=download_type,
         )
         return False
@@ -969,24 +943,31 @@ def cleanup():
     """Performs cleanup actions before exiting."""
     try:
         print_message("Exiting...", NordColors.FROST_3)
-        # Config is saved implicitly by AppConfig.load() and then config.save() in menus
-        # History is saved after each download attempt
     except Exception as e:
-        # Avoid errors during cleanup itself
         print(f"Error during cleanup: {e}", file=sys.stderr)
 
 
 def signal_handler(sig, frame):
     """Handles termination signals gracefully."""
-    sig_name = signal.Signals(sig).name if sig in signal.Signals else f"Signal {sig}"
-    print_warning(f"\nProcess interrupted by {sig_name}. Cleaning up...")
-    # cleanup() # atexit will handle this
-    sys.exit(128 + sig)  # Standard exit code for signals
+    try:
+        sig_int = int(sig)
+        sig_name = (
+            signal.Signals(sig_int).name
+            if sig_int in signal.Signals._value2member_map_
+            else f"Signal {sig_int}"
+        )
+        print_warning(f"\nProcess interrupted by {sig_name}. Cleaning up...")
+    except Exception:  # Fallback if signal conversion fails
+        print_warning(f"\nProcess interrupted by signal {sig}. Cleaning up...")
+    # atexit will handle cleanup
+    sys.exit(
+        128 + sig_int if isinstance(sig, int) else 1
+    )  # Standard exit code for signals
 
 
-signal.signal(signal.SIGINT, signal_handler)  # Ctrl+C
-signal.signal(signal.SIGTERM, signal_handler)  # Termination signal
-atexit.register(cleanup)  # Register cleanup for normal exit
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+atexit.register(cleanup)
 
 # --- Menu Functions ---
 
@@ -1002,17 +983,22 @@ def youtube_download_menu():
     )
 
     config = AppConfig.load()
-    history = FileHistory(os.path.join(CONFIG_DIR, "youtube_url_history.txt"))
+    try:  # Ensure history file path exists
+        ensure_config_directory()
+        history_path = os.path.join(CONFIG_DIR, "youtube_url_history.txt")
+        history = FileHistory(history_path)
+    except Exception as e:
+        print_warning(f"Could not load/create URL history file: {e}")
+        history = None  # Disable history if it fails
+
     url_completer = WordCompleter(config.recent_urls, sentence=True)
 
-    # Get URL
     url = pt_prompt(
         "Enter the YouTube URL: ",
         history=history,
         completer=url_completer,
         style=PTStyle.from_dict({"prompt": f"bold {NordColors.FROST_2}"}),
-        # Basic validation - could be improved with regex
-        validator=None,  # lambda text: text.startswith("http") and ("youtube.com" in text or "youtu.be" in text),
+        validator=None,
         validate_while_typing=False,
     ).strip()
 
@@ -1021,7 +1007,6 @@ def youtube_download_menu():
         Prompt.ask("[dim]Press Enter to return to main menu...[/dim]")
         return
 
-    # Get Download Type
     download_type_options = [
         ("1", "Combined", "Video + Audio (Best Quality MP4) [Default]"),
         ("2", "Video Only", "Video Only (Best Quality MP4/WebM)"),
@@ -1036,27 +1021,22 @@ def youtube_download_menu():
     elif type_choice == "3":
         download_type = "audio"
 
-    # Get Output Directory
     output_dir = Prompt.ask(
         "Enter output directory",
         default=config.default_download_dir,
-        # Add path completion? Might be complex with prompt_toolkit
     )
-    output_dir = os.path.expanduser(output_dir)  # Expand ~
+    output_dir = os.path.expanduser(output_dir)
 
-    # Verbose Mode
     verbose = Confirm.ask("Enable verbose mode (for debugging)?", default=False)
 
-    # Execute Download
     success = download_youtube(url, output_dir, download_type, verbose)
 
-    # Update Recent URLs
     if success or Confirm.ask(
         "Add URL to recent list even if download failed?", default=False
     ):
         if url not in config.recent_urls:
             config.recent_urls.insert(0, url)
-            config.save()  # Save config with updated recent list
+            config.save()
 
     Prompt.ask("[dim]Press Enter to return to main menu...[/dim]")
 
@@ -1074,7 +1054,6 @@ def view_download_history():
         Prompt.ask("[dim]Press Enter to return to settings menu...[/dim]")
         return
 
-    # --- Display History Table ---
     table = Table(
         show_header=True,
         header_style=NordColors.HEADER,
@@ -1086,34 +1065,34 @@ def view_download_history():
     table.add_column("#", style=NordColors.ACCENT, width=3, justify="right")
     table.add_column("Date", style=NordColors.FROST_2, width=16)
     table.add_column("Type", style=NordColors.PURPLE, width=8)
-    table.add_column(
-        "Filename", style=NordColors.SNOW_STORM_1, overflow="fold"
-    )  # Allow filename wrap
+    table.add_column("Filename", style=NordColors.SNOW_STORM_1, overflow="fold")
     table.add_column("Size", style=NordColors.FROST_3, justify="right", width=10)
     table.add_column("Status", style=NordColors.FROST_4, width=8)
 
-    displayed_entries = history.entries[:15]  # Show max 15 entries initially
+    displayed_entries = history.entries[:15]
     for i, entry in enumerate(displayed_entries, 1):
         try:
-            date_obj = datetime.fromisoformat(entry.date)
-            date_str = date_obj.strftime("%Y-%m-%d %H:%M")
+            if entry.date:
+                date_obj = datetime.fromisoformat(entry.date)
+                date_str = date_obj.strftime("%Y-%m-%d %H:%M")
+            else:
+                date_str = "No Date"
         except (ValueError, TypeError):
             date_str = "Invalid Date"
 
         status = "[green]Success[/]" if entry.success else "[red]Failed[/]"
-        dl_type = entry.download_type[:7]  # Truncate type if needed
+        dl_type = entry.download_type[:7] if entry.download_type else "N/A"
 
         table.add_row(
             str(i),
             date_str,
             dl_type.capitalize(),
-            entry.filename,
-            format_size(entry.size),
+            entry.filename or "N/A",
+            format_size(entry.size) if entry.size is not None else "N/A",
             Text.from_markup(status),
         )
     console.print(table)
 
-    # --- History Options Menu ---
     options = [
         ("1", "View Details", "Show full details for a specific download"),
         ("2", "Clear History", "Delete all download history entries"),
@@ -1125,43 +1104,44 @@ def view_download_history():
     if choice == "1":
         if not displayed_entries:
             print_warning("No history entries to view details for.")
-            view_download_history()  # Re-show menu
-            return
+        else:
+            entry_num_str = Prompt.ask(
+                "Enter download number to view details",
+                choices=[str(i) for i in range(1, len(displayed_entries) + 1)],
+                show_choices=False,
+            )
+            try:
+                entry_index = int(entry_num_str) - 1
+                if 0 <= entry_index < len(displayed_entries):
+                    entry = displayed_entries[entry_index]
+                    try:
+                        if entry.date:
+                            date_obj = datetime.fromisoformat(entry.date)
+                            date_str_full = date_obj.strftime("%Y-%m-%d %H:%M:%S")
+                        else:
+                            date_str_full = "No Date"
+                    except (ValueError, TypeError):
+                        date_str_full = "Invalid Date"
 
-        entry_num_str = Prompt.ask(
-            "Enter download number to view details",
-            choices=[str(i) for i in range(1, len(displayed_entries) + 1)],
-            show_choices=False,
-        )
-        try:
-            entry_index = int(entry_num_str) - 1
-            if 0 <= entry_index < len(displayed_entries):
-                entry = displayed_entries[entry_index]
-                try:
-                    date_obj = datetime.fromisoformat(entry.date)
-                    date_str_full = date_obj.strftime("%Y-%m-%d %H:%M:%S")
-                except (ValueError, TypeError):
-                    date_str_full = "Invalid Date"
-
-                details_text = (
-                    f"URL: {entry.url}\n"
-                    f"Filename: {entry.filename}\n"
-                    f"Path: {entry.path}\n"
-                    f"Type: {entry.download_type.capitalize()}\n"
-                    f"Size: {format_size(entry.size)}\n"
-                    f"Status: {'Successful' if entry.success else 'Failed'}\n"
-                    f"Date: {date_str_full}\n"
-                    f"Download Time: {format_time(entry.elapsed_time)}"
-                )
-                display_panel(
-                    f"Download Details: #{entry_num_str}",
-                    details_text,
-                    NordColors.FROST_2,
-                )
-            else:
-                print_error("Invalid entry number.")
-        except ValueError:
-            print_error("Invalid input. Please enter a number.")
+                    details_text = (
+                        f"URL: {entry.url or 'N/A'}\n"
+                        f"Filename: {entry.filename or 'N/A'}\n"
+                        f"Path: {entry.path or 'N/A'}\n"
+                        f"Type: {(entry.download_type or 'N/A').capitalize()}\n"
+                        f"Size: {format_size(entry.size) if entry.size is not None else 'N/A'}\n"
+                        f"Status: {'Successful' if entry.success else 'Failed'}\n"
+                        f"Date: {date_str_full}\n"
+                        f"Download Time: {format_time(entry.elapsed_time) if entry.elapsed_time is not None else 'N/A'}"
+                    )
+                    display_panel(
+                        f"Download Details: #{entry_num_str}",
+                        details_text,
+                        NordColors.FROST_2,
+                    )
+                else:
+                    print_error("Invalid entry number.")
+            except ValueError:
+                print_error("Invalid input. Please enter a number.")
 
     elif choice == "2":
         if Confirm.ask(
@@ -1171,13 +1151,12 @@ def view_download_history():
             history.entries = []
             history.save()
             print_success("Download history cleared.")
-            time.sleep(1)  # Pause briefly
+            time.sleep(1)
 
-    # Loop back or return
     if choice != "3":
-        if choice == "1":  # Pause after showing details
+        if choice == "1":
             Prompt.ask("[dim]Press Enter to return to history menu...[/dim]")
-        view_download_history()  # Show history menu again
+        view_download_history()
 
 
 def settings_menu():
@@ -1209,14 +1188,14 @@ def settings_menu():
         "Select option", choices=[str(i) for i in range(1, 7)], default="6"
     )
 
-    action_taken = False  # Flag to decide whether to pause before re-displaying
+    action_taken = False
 
     if choice == "1":
         action_taken = True
         new_dir = Prompt.ask(
             "Enter new default download directory", default=config.default_download_dir
         )
-        new_dir = os.path.expanduser(new_dir)  # Expand ~ if present
+        new_dir = os.path.expanduser(new_dir)
 
         if os.path.abspath(new_dir) == os.path.abspath(config.default_download_dir):
             print_info("Directory is already set to this value.")
@@ -1228,7 +1207,7 @@ def settings_menu():
             f"Directory '{new_dir}' doesn't exist. Create it?", default=True
         ):
             try:
-                ensure_directory(new_dir)  # Uses os.makedirs
+                ensure_directory(new_dir)
                 config.default_download_dir = new_dir
                 config.save()
                 print_success(f"Created and set default download directory: {new_dir}")
@@ -1267,17 +1246,15 @@ def settings_menu():
             print_info("No recent URLs found.")
 
     elif choice == "3":
-        view_download_history()  # This function handles its own loop/return
+        view_download_history()
 
     elif choice == "4":
         action_taken = True
         print_step("Checking required dependencies...")
-        dependencies = {"yt-dlp": None, "ffmpeg": None}  # Store version info
+        dependencies = {"yt-dlp": None, "ffmpeg": None}
         missing_deps = []
 
-        # Check yt-dlp
         try:
-            # Use yt-dlp --version which is reliable
             result = run_command(["yt-dlp", "--version"], check=False, verbose=False)
             if result and result.returncode == 0:
                 dependencies["yt-dlp"] = result.stdout.strip()
@@ -1290,12 +1267,10 @@ def settings_menu():
         except Exception as e:
             dependencies["yt-dlp"] = f"[yellow]Error checking ({e})[/]"
 
-        # Check ffmpeg
         if shutil.which("ffmpeg"):
             try:
                 result = run_command(["ffmpeg", "-version"], check=False, verbose=False)
                 if result and result.returncode == 0:
-                    # Extract version from the first line, e.g., "ffmpeg version 4.4.1 ..."
                     version_line = result.stdout.split("\n")[0]
                     version = (
                         version_line.split(" version ")[1].split(" ")[0]
@@ -1311,7 +1286,6 @@ def settings_menu():
             missing_deps.append("ffmpeg")
             dependencies["ffmpeg"] = "[red]Missing[/]"
 
-        # Display Status Table
         dep_table = Table(
             show_header=True,
             header_style=NordColors.HEADER,
@@ -1322,8 +1296,12 @@ def settings_menu():
         dep_table.add_column("Dependency", style=NordColors.FROST_1)
         dep_table.add_column("Status / Version", style=NordColors.SNOW_STORM_1)
 
-        dep_table.add_row("yt-dlp", Text.from_markup(dependencies["yt-dlp"]))
-        dep_table.add_row("FFmpeg", Text.from_markup(dependencies["ffmpeg"]))
+        dep_table.add_row(
+            "yt-dlp", Text.from_markup(dependencies["yt-dlp"] or "[yellow]Unknown[/]")
+        )
+        dep_table.add_row(
+            "FFmpeg", Text.from_markup(dependencies["ffmpeg"] or "[yellow]Unknown[/]")
+        )
         console.print(dep_table)
 
         if missing_deps:
@@ -1361,11 +1339,9 @@ def settings_menu():
             NordColors.FROST_2,
         )
 
-    # Pause and loop back to settings menu if an action was taken, otherwise return
     if action_taken:
         Prompt.ask("[dim]Press Enter to return to settings menu...[/dim]")
         settings_menu()
-    # If choice was 6 or 3 (history handled its return), this function will simply return
 
 
 def main_menu():
@@ -1381,7 +1357,6 @@ def main_menu():
         ]
         console.print(create_menu_table("Main Menu", main_options))
 
-        # Optional: Show quick stats panel
         try:
             config = AppConfig.load()
             history = DownloadHistory.load()
@@ -1396,7 +1371,7 @@ def main_menu():
                 border_style=NordColors.FROST_3,
                 box=ROUNDED,
                 padding=(1, 2),
-                expand=False,  # Don't let it expand too much
+                expand=False,
             )
             console.print(stats_panel)
         except Exception as e:
@@ -1423,7 +1398,7 @@ def main_menu():
                     padding=(2, 4),
                 )
             )
-            break  # Exit the while loop
+            break
 
 
 # --- Main Execution ---
@@ -1433,38 +1408,34 @@ def main():
         clear_screen()
         console.print(create_header())
 
-        # Brief startup sequence (optional)
         with Progress(
             SpinnerColumn(spinner_name="dots", style=f"bold {NordColors.FROST_1}"),
             TextColumn(f"[bold {NordColors.FROST_2}]Initializing {APP_NAME}..."),
             console=console,
-            transient=True,  # Hide after completion
+            transient=True,
         ) as progress:
             task = progress.add_task("startup", total=3)
             ensure_config_directory()
             progress.advance(task)
-            AppConfig.load()  # Load config early
+            AppConfig.load()
             progress.advance(task)
-            DownloadHistory.load()  # Load history early
+            DownloadHistory.load()
             progress.advance(task)
-            time.sleep(0.3)  # Short pause
+            time.sleep(0.3)
 
         main_menu()
 
     except KeyboardInterrupt:
-        # Signal handler already prints a message
-        print_warning("Operation cancelled by user.")
-        sys.exit(130)  # Standard exit code for Ctrl+C
+        # Signal handler handles the message
+        sys.exit(130)
 
     except Exception as e:
         print_error(f"An unexpected critical error occurred: {e}")
-        # Use Rich traceback for detailed debugging if needed
         console.print_exception(show_locals=True)
         print_step("The application will now exit.")
         sys.exit(1)
 
-    # cleanup() is registered with atexit, no need to call explicitly here
-    sys.exit(0)  # Explicit successful exit
+    sys.exit(0)
 
 
 if __name__ == "__main__":
